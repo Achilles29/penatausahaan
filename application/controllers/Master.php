@@ -1,0 +1,522 @@
+<?php
+defined('BASEPATH') OR exit('No direct script access allowed');
+
+/**
+ * Master data — engine CRUD generik berbasis registry entitas.
+ * URL:
+ *   master/<entity>            -> index (halaman)
+ *   master/data/<entity>       -> JSON DataTables server-side
+ *   master/get/<entity>/<id>   -> JSON satu baris (untuk modal edit)
+ *   master/save/<entity>       -> simpan (POST)
+ *   master/delete/<entity>     -> hapus (POST id)
+ *   master/options/<entity>    -> JSON opsi cascading (?parent=..)
+ */
+class Master extends MY_Controller {
+
+	public function __construct()
+	{
+		parent::__construct();
+		$this->load->model('Master_model', 'mm');
+	}
+
+	// ================= REGISTRY ENTITAS =================
+	private function registry($key = NULL)
+	{
+		$reg = array(
+
+			'urusan' => array(
+				'title' => 'Urusan', 'table' => 'master_urusan', 'from' => 'master_urusan m', 'alias' => 'm',
+				'select' => 'm.id, m.kode_urusan, m.nama_urusan',
+				'searchable' => array('m.kode_urusan', 'm.nama_urusan'),
+				'order_by' => 'm.kode_urusan',
+				'columns' => array(
+					array('field' => 'kode_urusan', 'label' => 'Kode', 'order' => 'm.kode_urusan', 'width' => '120px'),
+					array('field' => 'nama_urusan', 'label' => 'Nama Urusan', 'order' => 'm.nama_urusan'),
+				),
+				'fields' => array(
+					array('name' => 'kode_urusan', 'label' => 'Kode Urusan', 'type' => 'text', 'required' => TRUE, 'unique' => TRUE),
+					array('name' => 'nama_urusan', 'label' => 'Nama Urusan', 'type' => 'text', 'required' => TRUE),
+				),
+				'manage' => array('superadmin'),
+			),
+
+			'bidang' => array(
+				'title' => 'Bidang Urusan', 'table' => 'master_bidang', 'from' => 'master_bidang m', 'alias' => 'm',
+				'select' => 'm.id, m.kode_bidang, m.nama_bidang, u.nama_urusan AS urusan_nama',
+				'joins' => array(array('master_urusan u', 'u.id = m.urusan_id')),
+				'searchable' => array('m.kode_bidang', 'm.nama_bidang', 'u.nama_urusan'),
+				'order_by' => 'm.kode_bidang',
+				'columns' => array(
+					array('field' => 'kode_bidang', 'label' => 'Kode', 'order' => 'm.kode_bidang', 'width' => '100px'),
+					array('field' => 'nama_bidang', 'label' => 'Nama Bidang'),
+					array('field' => 'urusan_nama', 'label' => 'Urusan', 'order' => 'u.nama_urusan'),
+				),
+				'filters' => array(
+					array('name' => 'm.urusan_id', 'label' => 'Urusan', 'source' => 'urusan'),
+				),
+				'fields' => array(
+					array('name' => 'urusan_id', 'label' => 'Urusan', 'type' => 'select', 'source' => 'urusan', 'required' => TRUE),
+					array('name' => 'kode_bidang', 'label' => 'Kode Bidang', 'type' => 'text', 'required' => TRUE),
+					array('name' => 'nama_bidang', 'label' => 'Nama Bidang', 'type' => 'text', 'required' => TRUE),
+				),
+				'manage' => array('superadmin'),
+			),
+
+			'program' => array(
+				'title' => 'Program', 'table' => 'master_program', 'from' => 'master_program m', 'alias' => 'm',
+				'select' => 'm.id, m.kode_program, m.nama_program, b.nama_bidang AS bidang_nama',
+				'joins' => array(array('master_bidang b', 'b.id = m.bidang_id')),
+				'searchable' => array('m.kode_program', 'm.nama_program'),
+				'order_by' => 'm.kode_program',
+				'columns' => array(
+					array('field' => 'kode_program', 'label' => 'Kode', 'order' => 'm.kode_program', 'width' => '110px'),
+					array('field' => 'nama_program', 'label' => 'Nama Program'),
+					array('field' => 'bidang_nama', 'label' => 'Bidang', 'order' => 'b.nama_bidang'),
+				),
+				'filters' => array(
+					array('name' => 'm.bidang_id', 'label' => 'Bidang', 'source' => 'bidang'),
+				),
+				'fields' => array(
+					array('name' => 'bidang_id', 'label' => 'Bidang Urusan', 'type' => 'select', 'source' => 'bidang', 'required' => TRUE),
+					array('name' => 'kode_program', 'label' => 'Kode Program', 'type' => 'text', 'required' => TRUE),
+					array('name' => 'nama_program', 'label' => 'Nama Program', 'type' => 'text', 'required' => TRUE),
+				),
+				'manage' => array('superadmin'),
+			),
+
+			'kegiatan' => array(
+				'title' => 'Kegiatan', 'table' => 'master_kegiatan', 'from' => 'master_kegiatan m', 'alias' => 'm',
+				'select' => 'm.id, m.kode_kegiatan, m.nama_kegiatan, p.nama_program AS program_nama',
+				'joins' => array(array('master_program p', 'p.id = m.program_id')),
+				'searchable' => array('m.kode_kegiatan', 'm.nama_kegiatan'),
+				'order_by' => 'm.kode_kegiatan',
+				'columns' => array(
+					array('field' => 'kode_kegiatan', 'label' => 'Kode', 'order' => 'm.kode_kegiatan', 'width' => '130px'),
+					array('field' => 'nama_kegiatan', 'label' => 'Nama Kegiatan'),
+					array('field' => 'program_nama', 'label' => 'Program', 'order' => 'p.nama_program'),
+				),
+				'filters' => array(
+					array('name' => 'm.program_id', 'label' => 'Program', 'source' => 'program'),
+				),
+				'fields' => array(
+					array('name' => 'program_id', 'label' => 'Program', 'type' => 'select', 'source' => 'program', 'required' => TRUE),
+					array('name' => 'kode_kegiatan', 'label' => 'Kode Kegiatan', 'type' => 'text', 'required' => TRUE),
+					array('name' => 'nama_kegiatan', 'label' => 'Nama Kegiatan', 'type' => 'text', 'required' => TRUE),
+				),
+				'manage' => array('superadmin'),
+			),
+
+			'subkegiatan' => array(
+				'title' => 'Sub Kegiatan', 'table' => 'master_subkegiatan', 'from' => 'master_subkegiatan m', 'alias' => 'm',
+				'select' => 'm.id, m.kode_subkegiatan, m.nama_subkegiatan, k.nama_kegiatan AS kegiatan_nama',
+				'joins' => array(array('master_kegiatan k', 'k.id = m.kegiatan_id')),
+				'searchable' => array('m.kode_subkegiatan', 'm.nama_subkegiatan'),
+				'order_by' => 'm.kode_subkegiatan',
+				'columns' => array(
+					array('field' => 'kode_subkegiatan', 'label' => 'Kode', 'order' => 'm.kode_subkegiatan', 'width' => '150px'),
+					array('field' => 'nama_subkegiatan', 'label' => 'Nama Sub Kegiatan'),
+					array('field' => 'kegiatan_nama', 'label' => 'Kegiatan', 'order' => 'k.nama_kegiatan'),
+				),
+				'filters' => array(
+					array('name' => 'm.kegiatan_id', 'label' => 'Kegiatan', 'source' => 'kegiatan'),
+				),
+				'fields' => array(
+					array('name' => 'kegiatan_id', 'label' => 'Kegiatan', 'type' => 'select', 'source' => 'kegiatan', 'required' => TRUE),
+					array('name' => 'kode_subkegiatan', 'label' => 'Kode Sub Kegiatan', 'type' => 'text', 'required' => TRUE),
+					array('name' => 'nama_subkegiatan', 'label' => 'Nama Sub Kegiatan', 'type' => 'textarea', 'required' => TRUE),
+				),
+				'manage' => array('superadmin'),
+			),
+
+			'rekening' => array(
+				'title' => 'Rekening (Kode Rekening)', 'table' => 'master_rekening', 'from' => 'master_rekening m', 'alias' => 'm',
+				'select' => 'm.id, m.kode_rekening, m.uraian, m.jenis_belanja',
+				'searchable' => array('m.kode_rekening', 'm.uraian'),
+				'order_by' => 'm.kode_rekening',
+				'columns' => array(
+					array('field' => 'kode_rekening', 'label' => 'Kode Rekening', 'order' => 'm.kode_rekening', 'width' => '200px'),
+					array('field' => 'uraian', 'label' => 'Uraian'),
+					array('field' => 'jenis_belanja', 'label' => 'Jenis', 'order' => 'm.jenis_belanja', 'width' => '140px'),
+				),
+				'fields' => array(
+					array('name' => 'kode_rekening', 'label' => 'Kode Rekening', 'type' => 'text', 'required' => TRUE, 'unique' => TRUE),
+					array('name' => 'uraian', 'label' => 'Uraian', 'type' => 'textarea', 'required' => TRUE),
+					array('name' => 'jenis_belanja', 'label' => 'Jenis Belanja', 'type' => 'text'),
+				),
+				'manage' => array('superadmin'),
+			),
+
+			'sumber_dana' => array(
+				'title' => 'Sumber Dana', 'table' => 'master_sumber_dana', 'from' => 'master_sumber_dana m', 'alias' => 'm',
+				'select' => 'm.id, m.kode, m.nama, m.is_active',
+				'searchable' => array('m.kode', 'm.nama'),
+				'order_by' => 'm.kode',
+				'columns' => array(
+					array('field' => 'kode', 'label' => 'Kode', 'order' => 'm.kode', 'width' => '150px'),
+					array('field' => 'nama', 'label' => 'Nama Sumber Dana'),
+					array('field' => 'is_active', 'label' => 'Status', 'render' => 'active', 'width' => '110px'),
+				),
+				'fields' => array(
+					array('name' => 'kode', 'label' => 'Kode', 'type' => 'text', 'required' => TRUE, 'unique' => TRUE),
+					array('name' => 'nama', 'label' => 'Nama', 'type' => 'text', 'required' => TRUE),
+					array('name' => 'keterangan', 'label' => 'Keterangan', 'type' => 'textarea'),
+					array('name' => 'is_active', 'label' => 'Aktif', 'type' => 'checkbox', 'default' => 1),
+				),
+				'manage' => array('superadmin'),
+			),
+
+			'opd' => array(
+				'title' => 'OPD', 'table' => 'master_opd', 'from' => 'master_opd m', 'alias' => 'm',
+				'select' => 'm.id, m.kode_opd, m.nama_opd, m.singkatan, m.kepala_opd, m.is_active',
+				'searchable' => array('m.kode_opd', 'm.nama_opd', 'm.singkatan'),
+				'order_by' => 'm.kode_opd',
+				'columns' => array(
+					array('field' => 'kode_opd', 'label' => 'Kode', 'order' => 'm.kode_opd', 'width' => '190px'),
+					array('field' => 'nama_opd', 'label' => 'Nama OPD'),
+					array('field' => 'singkatan', 'label' => 'Singkatan', 'width' => '110px'),
+					array('field' => 'is_active', 'label' => 'Status', 'render' => 'active', 'width' => '100px'),
+				),
+				'fields' => array(
+					array('name' => 'kode_opd', 'label' => 'Kode OPD', 'type' => 'text', 'required' => TRUE, 'unique' => TRUE),
+					array('name' => 'nama_opd', 'label' => 'Nama OPD', 'type' => 'text', 'required' => TRUE),
+					array('name' => 'singkatan', 'label' => 'Singkatan', 'type' => 'text'),
+					array('name' => 'kepala_opd', 'label' => 'Kepala OPD', 'type' => 'text'),
+					array('name' => 'nip_kepala', 'label' => 'NIP Kepala', 'type' => 'text'),
+					array('name' => 'is_active', 'label' => 'Aktif', 'type' => 'checkbox', 'default' => 1),
+				),
+				'manage' => array('superadmin'),
+			),
+
+			'opd_unit' => array(
+				'title' => 'Unit OPD', 'table' => 'master_opd_unit', 'from' => 'master_opd_unit m', 'alias' => 'm',
+				'select' => 'm.id, o.nama_opd AS opd_nama, m.kode_unit, m.nama_unit, m.jenis_unit, m.kepala',
+				'joins' => array(array('master_opd o', 'o.id = m.opd_id')),
+				'searchable' => array('m.nama_unit', 'm.kode_unit', 'o.nama_opd'),
+				'order_by' => 'o.nama_opd, m.nama_unit',
+				'columns' => array(
+					array('field' => 'opd_nama', 'label' => 'OPD', 'order' => 'o.nama_opd'),
+					array('field' => 'nama_unit', 'label' => 'Unit', 'order' => 'm.nama_unit'),
+					array('field' => 'jenis_unit', 'label' => 'Jenis', 'render' => 'badge', 'width' => '130px'),
+					array('field' => 'kepala', 'label' => 'Kepala'),
+				),
+				'filters' => array(
+					array('name' => 'm.opd_id', 'label' => 'OPD', 'source' => 'opd'),
+				),
+				'fields' => array(
+					array('name' => 'opd_id', 'label' => 'OPD', 'type' => 'select', 'source' => 'opd', 'required' => TRUE),
+					array('name' => 'kode_unit', 'label' => 'Kode Unit', 'type' => 'text'),
+					array('name' => 'nama_unit', 'label' => 'Nama Unit', 'type' => 'text', 'required' => TRUE),
+					array('name' => 'jenis_unit', 'label' => 'Jenis Unit', 'type' => 'enum', 'options' => array('sekretariat'=>'Sekretariat','bidang'=>'Bidang','uptd'=>'UPTD','lainnya'=>'Lainnya'), 'default' => 'bidang', 'required' => TRUE),
+					array('name' => 'kepala', 'label' => 'Kepala Unit', 'type' => 'text'),
+					array('name' => 'nip_kepala', 'label' => 'NIP Kepala', 'type' => 'text'),
+				),
+				'manage' => array('superadmin', 'admin_opd'),
+				'scope_col' => 'm.opd_id',
+				'save_scope_col' => 'opd_id',
+			),
+
+			'pegawai' => array(
+				'title' => 'Pegawai', 'table' => 'pegawai', 'from' => 'pegawai m', 'alias' => 'm',
+				'select' => 'm.id, m.nama_lengkap, m.status_kepegawaian, m.jenis_kepegawaian, m.nip, o.nama_opd AS opd_nama',
+				'joins' => array(array('master_opd o', 'o.id = m.opd_id')),
+				'searchable' => array('m.nama_lengkap', 'm.nip'),
+				'order_by' => 'm.nama_lengkap',
+				'columns' => array(
+					array('field' => 'nama_lengkap', 'label' => 'Nama', 'order' => 'm.nama_lengkap'),
+					array('field' => 'nip', 'label' => 'NIP', 'width' => '190px'),
+					array('field' => 'jenis_kepegawaian', 'label' => 'Jenis', 'render' => 'badge', 'width' => '110px'),
+					array('field' => 'opd_nama', 'label' => 'OPD', 'order' => 'o.nama_opd'),
+				),
+				'filters' => array(
+					array('name' => 'm.opd_id', 'label' => 'OPD', 'source' => 'opd'),
+				),
+				'fields' => array(
+					array('name' => 'nama_lengkap', 'label' => 'Nama Lengkap', 'type' => 'text', 'required' => TRUE),
+					array('name' => 'status_kepegawaian', 'label' => 'Status', 'type' => 'enum', 'options' => array('ASN'=>'ASN','NON_ASN'=>'Non ASN'), 'required' => TRUE),
+					array('name' => 'jenis_kepegawaian', 'label' => 'Jenis', 'type' => 'enum', 'options' => array('PNS'=>'PNS','PPPK'=>'PPPK','NON_ASN'=>'Non ASN'), 'required' => TRUE),
+					array('name' => 'nip', 'label' => 'NIP', 'type' => 'text'),
+					array('name' => 'npwp', 'label' => 'NPWP', 'type' => 'text'),
+					array('name' => 'opd_id', 'label' => 'OPD', 'type' => 'select', 'source' => 'opd', 'required' => TRUE),
+					array('name' => 'opd_unit_id', 'label' => 'Unit OPD', 'type' => 'select', 'source' => 'opd_unit', 'depends' => 'opd_id'),
+				),
+				'manage' => array('superadmin', 'admin_opd'),
+				'scope_col' => 'm.opd_id',
+				'save_scope_col' => 'opd_id',
+			),
+
+			'penerima' => array(
+				'title' => 'Penerima', 'table' => 'master_penerima', 'from' => 'master_penerima m', 'alias' => 'm',
+				'select' => 'm.id, m.nama_penerima, m.jenis_penerima, m.punya_npwp, m.npwp, m.nama_bank, m.no_rekening',
+				'searchable' => array('m.nama_penerima', 'm.npwp', 'm.no_rekening'),
+				'order_by' => 'm.nama_penerima',
+				'columns' => array(
+					array('field' => 'nama_penerima', 'label' => 'Nama Penerima', 'order' => 'm.nama_penerima'),
+					array('field' => 'jenis_penerima', 'label' => 'Jenis', 'render' => 'badge', 'width' => '100px'),
+					array('field' => 'npwp', 'label' => 'NPWP', 'width' => '180px'),
+					array('field' => 'nama_bank', 'label' => 'Bank'),
+					array('field' => 'no_rekening', 'label' => 'No. Rekening', 'width' => '150px'),
+				),
+				'fields' => array(
+					array('name' => 'nama_penerima', 'label' => 'Nama Penerima', 'type' => 'text', 'required' => TRUE),
+					array('name' => 'jenis_penerima', 'label' => 'Jenis', 'type' => 'enum', 'options' => array('orang'=>'Orang','badan'=>'Badan'), 'required' => TRUE),
+					array('name' => 'punya_npwp', 'label' => 'Punya NPWP', 'type' => 'checkbox', 'default' => 0),
+					array('name' => 'npwp', 'label' => 'NPWP', 'type' => 'text'),
+					array('name' => 'golongan', 'label' => 'Golongan', 'type' => 'enum', 'options' => array(''=>'-','I'=>'I','II'=>'II','III'=>'III','IV'=>'IV','NON_PNS'=>'Non PNS')),
+					array('name' => 'nama_bank', 'label' => 'Nama Bank', 'type' => 'text'),
+					array('name' => 'no_rekening', 'label' => 'No. Rekening', 'type' => 'text'),
+					array('name' => 'nama_rekening', 'label' => 'Nama Rekening', 'type' => 'text'),
+					array('name' => 'alamat', 'label' => 'Alamat', 'type' => 'textarea'),
+				),
+				'manage' => array('superadmin', 'admin_opd', 'user_opd'),
+			),
+
+			'skema_pajak' => array(
+				'title' => 'Skema Pajak', 'table' => 'master_skema_pajak', 'from' => 'master_skema_pajak m', 'alias' => 'm',
+				'select' => 'm.id, m.kode_skema, m.nama_skema, m.kategori, m.is_active',
+				'searchable' => array('m.kode_skema', 'm.nama_skema', 'm.kategori'),
+				'order_by' => 'm.kode_skema',
+				'columns' => array(
+					array('field' => 'kode_skema', 'label' => 'Kode', 'order' => 'm.kode_skema', 'width' => '150px'),
+					array('field' => 'nama_skema', 'label' => 'Nama Skema'),
+					array('field' => 'kategori', 'label' => 'Kategori', 'render' => 'badge', 'width' => '140px'),
+					array('field' => 'is_active', 'label' => 'Status', 'render' => 'active', 'width' => '100px'),
+				),
+				'fields' => array(
+					array('name' => 'kode_skema', 'label' => 'Kode Skema', 'type' => 'text', 'required' => TRUE, 'unique' => TRUE),
+					array('name' => 'nama_skema', 'label' => 'Nama Skema', 'type' => 'text', 'required' => TRUE),
+					array('name' => 'kategori', 'label' => 'Kategori', 'type' => 'text', 'required' => TRUE),
+					array('name' => 'keterangan', 'label' => 'Keterangan', 'type' => 'textarea'),
+					array('name' => 'is_active', 'label' => 'Aktif', 'type' => 'checkbox', 'default' => 1),
+				),
+				'manage' => array('superadmin'),
+			),
+		);
+
+		if ($key === NULL) return $reg;
+		if ( ! isset($reg[$key])) show_404();
+		return $reg[$key];
+	}
+
+	// ================= HALAMAN INDEX =================
+	public function index($entity = 'urusan')
+	{
+		$cfg = $this->registry($entity);
+
+		// Siapkan opsi filter
+		$filter_options = array();
+		if ( ! empty($cfg['filters']))
+		{
+			foreach ($cfg['filters'] as $f)
+			{
+				$filter_options[$f['name']] = $this->source_options($f['source']);
+			}
+		}
+		// Siapkan opsi select untuk form
+		$field_options = array();
+		foreach ($cfg['fields'] as $fld)
+		{
+			if ($fld['type'] === 'select' && empty($fld['depends']))
+			{
+				$field_options[$fld['name']] = $this->source_options($fld['source']);
+			}
+		}
+
+		$data = array(
+			'entity'         => $entity,
+			'cfg'            => $cfg,
+			'can_manage'     => $this->can_manage($cfg),
+			'filter_options' => $filter_options,
+			'field_options'  => $field_options,
+		);
+		$this->render('master/index', $data, $cfg['title']);
+	}
+
+	// ================= JSON DATATABLES =================
+	public function data($entity)
+	{
+		$cfg = $this->registry($entity);
+		$dt = array(
+			'draw'   => (int) $this->input->get('draw'),
+			'start'  => (int) $this->input->get('start'),
+			'length' => (int) $this->input->get('length'),
+			'search' => $this->input->get('search'),
+			'order'  => $this->input->get('order'),
+		);
+
+		// Filter dari request
+		$filters = array();
+		if ( ! empty($cfg['filters']))
+		{
+			foreach ($cfg['filters'] as $f)
+			{
+				$val = $this->input->get('f_' . md5($f['name']));
+				if ($val !== NULL && $val !== '') $filters[$f['name']] = $val;
+			}
+		}
+
+		$scope = $this->scope_for($cfg);
+		$res = $this->mm->datatables($cfg, $dt, $filters, $scope);
+
+		$out = array(
+			'draw'            => $dt['draw'],
+			'recordsTotal'    => $res['recordsTotal'],
+			'recordsFiltered' => $res['recordsFiltered'],
+			'data'            => $res['data'],
+		);
+		$this->output->set_content_type('application/json')->set_output(json_encode($out));
+	}
+
+	// ================= JSON GET ROW =================
+	public function get($entity, $id)
+	{
+		$cfg = $this->registry($entity);
+		$row = $this->mm->get_row($cfg['table'], (int) $id);
+		if ( ! $row) show_404();
+		if ( ! $this->can_manage($cfg, $row)) show_error('Akses ditolak', 403);
+		$this->output->set_content_type('application/json')->set_output(json_encode($row));
+	}
+
+	// ================= SIMPAN =================
+	public function save($entity)
+	{
+		$cfg = $this->registry($entity);
+		if ( ! $this->can_manage($cfg)) show_error('Akses ditolak', 403);
+
+		$id   = (int) $this->input->post('id');
+		$data = array();
+		$errors = array();
+
+		foreach ($cfg['fields'] as $fld)
+		{
+			$name = $fld['name'];
+			if ($fld['type'] === 'checkbox')
+			{
+				$val = $this->input->post($name) ? 1 : 0;
+			}
+			else
+			{
+				$val = $this->input->post($name, TRUE);
+				if ($val === '') $val = NULL;
+			}
+
+			if ( ! empty($fld['required']) && ($val === NULL || $val === ''))
+			{
+				$errors[] = $fld['label'] . ' wajib diisi.';
+			}
+			if ( ! empty($fld['unique']) && $val !== NULL)
+			{
+				if ( ! $this->mm->is_unique_value($cfg['table'], $name, $val, $id ?: NULL))
+				{
+					$errors[] = $fld['label'] . ' "' . $val . '" sudah digunakan.';
+				}
+			}
+			$data[$name] = $val;
+		}
+
+		// Batasan scope OPD untuk admin_opd
+		if ( ! empty($cfg['save_scope_col']) && current_role() === 'admin_opd')
+		{
+			$data[$cfg['save_scope_col']] = scope_opd_id();
+		}
+
+		if ($errors)
+		{
+			$this->session->set_flashdata('error', implode(' ', $errors));
+			redirect('master/' . $entity);
+		}
+
+		if ($id > 0)
+		{
+			$this->mm->update($cfg['table'], $id, $data);
+			$this->session->set_flashdata('success', $cfg['title'] . ' berhasil diperbarui.');
+		}
+		else
+		{
+			$this->mm->insert($cfg['table'], $data);
+			$this->session->set_flashdata('success', $cfg['title'] . ' berhasil ditambahkan.');
+		}
+		redirect('master/' . $entity);
+	}
+
+	// ================= HAPUS =================
+	public function delete($entity)
+	{
+		$cfg = $this->registry($entity);
+		if ( ! $this->can_manage($cfg)) show_error('Akses ditolak', 403);
+		$id = (int) $this->input->post('id');
+
+		$row = $this->mm->get_row($cfg['table'], $id);
+		if ($row && ! $this->can_manage($cfg, $row)) show_error('Akses ditolak', 403);
+
+		$this->db->db_debug = FALSE;
+		$ok = $this->mm->delete($cfg['table'], $id);
+		if ($ok && $this->db->affected_rows() >= 0 && ! $this->db->error()['code'])
+		{
+			$this->session->set_flashdata('success', $cfg['title'] . ' berhasil dihapus.');
+		}
+		else
+		{
+			$this->session->set_flashdata('error', 'Data tidak dapat dihapus karena masih digunakan oleh data lain.');
+		}
+		redirect('master/' . $entity);
+	}
+
+	// ================= OPSI CASCADING =================
+	public function options($entity)
+	{
+		$parent = $this->input->get('parent');
+		$opts = $this->source_options($entity, $parent);
+		$this->output->set_content_type('application/json')->set_output(json_encode($opts));
+	}
+
+	// ================= HELPERS =================
+
+	/** Opsi [id=>label] untuk sebuah source entitas, opsional difilter parent. */
+	private function source_options($source, $parent = NULL)
+	{
+		switch ($source)
+		{
+			case 'urusan':
+				return $this->mm->options('master_urusan', 'id', "CONCAT(kode_urusan,' - ',nama_urusan)", array(), 'kode_urusan');
+			case 'bidang':
+				$w = ($parent !== NULL && $parent !== '') ? array('urusan_id' => $parent) : array();
+				return $this->mm->options('master_bidang', 'id', "CONCAT(kode_bidang,' - ',nama_bidang)", $w, 'kode_bidang');
+			case 'program':
+				$w = ($parent !== NULL && $parent !== '') ? array('bidang_id' => $parent) : array();
+				return $this->mm->options('master_program', 'id', "CONCAT(kode_program,' - ',nama_program)", $w, 'kode_program');
+			case 'kegiatan':
+				$w = ($parent !== NULL && $parent !== '') ? array('program_id' => $parent) : array();
+				return $this->mm->options('master_kegiatan', 'id', "CONCAT(kode_kegiatan,' - ',nama_kegiatan)", $w, 'kode_kegiatan');
+			case 'opd':
+				return $this->mm->options('master_opd', 'id', "CONCAT(COALESCE(singkatan,''),' - ',nama_opd)", array(), 'nama_opd');
+			case 'opd_unit':
+				$w = ($parent !== NULL && $parent !== '') ? array('opd_id' => $parent) : array();
+				return $this->mm->options('master_opd_unit', 'id', 'nama_unit', $w, 'nama_unit');
+		}
+		return array();
+	}
+
+	/** Batasan scope untuk index query. */
+	private function scope_for($cfg)
+	{
+		if (empty($cfg['scope_col'])) return NULL;
+		if (is_super()) return NULL;
+		if (current_role() === 'admin_opd')
+		{
+			return array('column' => $cfg['scope_col'], 'ids' => array((int) scope_opd_id()));
+		}
+		// user_opd tidak mengelola entitas ber-scope OPD di Tahap 1
+		return array('column' => $cfg['scope_col'], 'ids' => array((int) scope_opd_id()));
+	}
+
+	/** Apakah user boleh mengelola entitas (opsional cek baris utk scope OPD). */
+	private function can_manage($cfg, $row = NULL)
+	{
+		if ( ! has_role($cfg['manage'])) return FALSE;
+		if ($row !== NULL && ! empty($cfg['save_scope_col']) && current_role() === 'admin_opd')
+		{
+			return (int) $row[$cfg['save_scope_col']] === (int) scope_opd_id();
+		}
+		return TRUE;
+	}
+}

@@ -1,0 +1,141 @@
+/* =====================================================================
+   App theme — Materio-inspired (fresh, dibuat untuk Penatausahaan)
+   Bootstrap 5 base + kustomisasi warna/layout ala Materio.
+   ===================================================================== */
+:root {
+  --bs-primary: #696cff;
+  --bs-primary-rgb: 105, 108, 255;
+  --p-primary: #696cff;
+  --p-primary-hover: #5a5ff0;
+  --p-body-bg: #f5f5f9;
+  --p-sidebar-w: 260px;
+  --p-navbar-h: 62px;
+  --p-card-shadow: 0 0.25rem 1.125rem rgba(75, 70, 92, 0.1);
+  --p-border: #e4e6f0;
+  --p-text: #566a7f;
+  --p-heading: #384551;
+}
+
+* { scrollbar-width: thin; }
+body {
+  background-color: var(--p-body-bg);
+  color: var(--p-text);
+  font-family: "Public Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 0.9375rem;
+}
+h1,h2,h3,h4,h5,h6,.h1,.h2,.h3,.h4,.h5,.h6 { color: var(--p-heading); }
+a { color: var(--p-primary); text-decoration: none; }
+a:hover { color: var(--p-primary-hover); }
+
+/* ---- Warna primary override Bootstrap ---- */
+.btn-primary {
+  --bs-btn-bg: var(--p-primary); --bs-btn-border-color: var(--p-primary);
+  --bs-btn-hover-bg: var(--p-primary-hover); --bs-btn-hover-border-color: var(--p-primary-hover);
+  --bs-btn-active-bg: var(--p-primary-hover); --bs-btn-active-border-color: var(--p-primary-hover);
+  --bs-btn-disabled-bg: var(--p-primary); --bs-btn-disabled-border-color: var(--p-primary);
+  box-shadow: 0 0.125rem 0.25rem rgba(105,108,255,0.4);
+}
+.btn-outline-primary {
+  --bs-btn-color: var(--p-primary); --bs-btn-border-color: var(--p-primary);
+  --bs-btn-hover-bg: var(--p-primary); --bs-btn-hover-border-color: var(--p-primary);
+  --bs-btn-active-bg: var(--p-primary); --bs-btn-active-border-color: var(--p-primary);
+}
+.text-primary { color: var(--p-primary) !important; }
+.bg-primary { background-color: var(--p-primary) !important; }
+.form-control:focus, .form-select:focus {
+  border-color: var(--p-primary);
+  box-shadow: 0 0 0 0.15rem rgba(105,108,255,0.15);
+}
+.page-link { color: var(--p-primary); }
+.page-item.active .page-link { background-color: var(--p-primary); border-color: var(--p-primary); }
+
+/* ---- Layout ---- */
+.layout-wrapper { display: flex; min-height: 100vh; }
+.layout-sidebar {
+  width: var(--p-sidebar-w); flex-shrink: 0; background: #fff;
+  border-right: 1px solid var(--p-border); position: fixed; top: 0; bottom: 0; left: 0;
+  z-index: 1030; transition: transform .2s ease; overflow-y: auto;
+}
+.layout-page {
+  flex: 1; margin-left: var(--p-sidebar-w); display: flex; flex-direction: column; min-width: 0;
+}
+.content-wrapper { flex: 1; padding: 1.5rem; }
+.content-wrapper .container-fluid { padding: 0; }
+
+/* ---- Sidebar brand & menu ---- */
+.sidebar-brand {
+  height: var(--p-navbar-h); display: flex; align-items: center; gap: .5rem;
+  padding: 0 1.5rem; font-weight: 700; color: var(--p-primary); font-size: 1.15rem;
+  border-bottom: 1px solid var(--p-border); position: sticky; top: 0; background:#fff; z-index: 2;
+}
+.sidebar-brand i { font-size: 1.4rem; }
+.sidebar-menu { list-style: none; margin: 0; padding: .75rem .75rem 2rem; }
+.sidebar-menu .menu-header {
+  color: #a5a3ae; font-size: .75rem; text-transform: uppercase; letter-spacing: .04em;
+  padding: 1rem .75rem .35rem; font-weight: 600;
+}
+.sidebar-menu a.menu-link {
+  display: flex; align-items: center; gap: .65rem; padding: .6rem .85rem; border-radius: .5rem;
+  color: var(--p-text); font-weight: 500; margin-bottom: .1rem; transition: background .12s, color .12s;
+}
+.sidebar-menu a.menu-link i { width: 1.35rem; text-align: center; font-size: 1.05rem; }
+.sidebar-menu a.menu-link:hover { background: rgba(105,108,255,.08); color: var(--p-primary); }
+.sidebar-menu a.menu-link.active {
+  background: linear-gradient(72deg, var(--p-primary), #8a8dff);
+  color: #fff; box-shadow: 0 .125rem .35rem rgba(105,108,255,.4);
+}
+.sidebar-menu .menu-sub { list-style: none; padding: 0 0 0 1.5rem; margin: .1rem 0; }
+.sidebar-menu .menu-sub a.menu-link { padding: .45rem .85rem; font-size: .9rem; }
+.sidebar-menu .menu-toggle { cursor: pointer; justify-content: space-between; }
+.sidebar-menu .menu-toggle .arrow { margin-left: auto; transition: transform .2s; font-size: .8rem; }
+.sidebar-menu .menu-item.open > .menu-toggle .arrow { transform: rotate(90deg); }
+
+/* ---- Navbar ---- */
+.layout-navbar {
+  height: var(--p-navbar-h); background: #fff; border-radius: .5rem; margin: .75rem 1.5rem 0;
+  display: flex; align-items: center; padding: 0 1rem; box-shadow: var(--p-card-shadow);
+  position: sticky; top: .75rem; z-index: 1020;
+}
+.navbar-toggle { border: none; background: transparent; font-size: 1.35rem; color: var(--p-text); }
+
+/* ---- Cards ---- */
+.card { border: 0; border-radius: .5rem; box-shadow: var(--p-card-shadow); margin-bottom: 1.5rem; }
+.card-header { background: transparent; border-bottom: 1px solid var(--p-border); font-weight: 600; padding: 1.25rem 1.5rem; }
+.card-body { padding: 1.5rem; }
+.card-title { color: var(--p-heading); }
+
+/* ---- Stat cards ---- */
+.stat-card .stat-icon {
+  width: 2.75rem; height: 2.75rem; border-radius: .5rem; display: flex; align-items: center;
+  justify-content: center; font-size: 1.3rem;
+}
+.stat-card .stat-value { font-size: 1.5rem; font-weight: 700; color: var(--p-heading); }
+
+/* ---- Tables ---- */
+table.dataTable thead th { color: var(--p-heading); text-transform: uppercase; font-size: .8125rem; letter-spacing: .02em; }
+.table > :not(caption) > * > * { padding: .75rem 1rem; }
+.badge-soft-primary { background: rgba(105,108,255,.12); color: var(--p-primary); }
+.badge-soft-success { background: rgba(40,199,111,.14); color: #28c76f; }
+.badge-soft-secondary { background: rgba(130,134,139,.14); color: #82868b; }
+
+/* ---- Login ---- */
+.auth-wrapper { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1rem;
+  background: linear-gradient(135deg, #f5f5f9 0%, #ececf7 100%); }
+.auth-card { width: 100%; max-width: 420px; }
+.auth-brand { text-align: center; margin-bottom: 1.25rem; color: var(--p-primary); font-weight: 700; font-size: 1.4rem; }
+
+/* ---- Utilities ---- */
+.cursor-pointer { cursor: pointer; }
+.text-muted-2 { color: #a5a3ae; }
+.sidebar-backdrop { display:none; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 1029; }
+
+/* ---- Responsive ---- */
+@media (max-width: 991.98px) {
+  .layout-sidebar { transform: translateX(-100%); }
+  .layout-sidebar.show { transform: translateX(0); }
+  .layout-page { margin-left: 0; }
+  .sidebar-backdrop.show { display: block; }
+}
+@media (min-width: 992px) {
+  .navbar-toggle { display: none; }
+}
