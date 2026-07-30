@@ -1,5 +1,6 @@
 <?php defined('BASEPATH') OR exit('No direct script access allowed');
-/** Viewer read-only DataTables server-side. Var: $cfg,$opd_opts,$is_super,$data_url,$judul,$ikon,$ket */
+/** Viewer read-only DataTables server-side + filter bertingkat.
+ *  Var: $cfg, $filters (chain), $data_url, $judul, $ikon, $ket */
 $cols = $cfg['columns'];
 $js_cols = array();
 foreach ($cols as $c) {
@@ -12,15 +13,21 @@ foreach ($cols as $c) {
     <small class="text-muted"><?= html_escape($ket) ?></small>
   </div>
 
-  <?php if ($is_super): ?>
+  <?php if ( ! empty($filters)): ?>
   <div class="card-body border-bottom py-3">
     <div class="row g-2 align-items-end">
-      <div class="col-md-5">
-        <label class="form-label small mb-1">OPD</label>
-        <select class="form-select form-select-sm" id="filterOpd">
-          <option value="">— Semua OPD —</option>
-          <?php foreach ($opd_opts as $k => $v): ?><option value="<?= $k ?>"><?= html_escape($v) ?></option><?php endforeach; ?>
+      <?php foreach ($filters as $f): ?>
+      <div class="col-md-3 col-sm-6">
+        <label class="form-label small mb-1"><?= html_escape($f['label']) ?></label>
+        <select class="form-select form-select-sm filter-input" data-filter="f_<?= md5($f['name']) ?>"
+                data-cascade="1" data-level="<?= html_escape($f['source']) ?>" data-label="<?= html_escape($f['label']) ?>"
+                data-opturl="<?= $f['opturl'] ?>">
+          <option value="">— Semua <?= html_escape($f['label']) ?> —</option>
         </select>
+      </div>
+      <?php endforeach; ?>
+      <div class="col-md-2 col-sm-6">
+        <button type="button" class="btn btn-sm btn-label-secondary w-100" id="btnResetFilter"><i class="fa-solid fa-rotate-left me-1"></i>Reset</button>
       </div>
     </div>
   </div>
@@ -52,13 +59,19 @@ var VCFG = { columns: <?= json_encode($js_cols) ?>, data_url: '<?= $data_url ?>'
   });
   var table = $('#tbl').DataTable({
     processing:true, serverSide:true, order:[[1,'asc']],
-    ajax:{ url:VCFG.data_url, data:function(d){ var o=$('#filterOpd'); if(o.length) d.f_opd=o.val(); } },
+    ajax:{ url:VCFG.data_url, data:function(d){ $('.filter-input').each(function(){ d[$(this).data('filter')] = $(this).val(); }); } },
     columns: columns, pageLength:25, lengthMenu:[[25,50,100,-1],[25,50,100,'Semua']],
     language:{ processing:'Memuat…', search:'Cari:', lengthMenu:'Tampil _MENU_ baris',
       info:'Menampilkan _START_–_END_ dari _TOTAL_ data', infoEmpty:'Tidak ada data',
       infoFiltered:'(disaring dari _MAX_ total)', zeroRecords:'Data tidak ditemukan',
       paginate:{ first:'Awal', last:'Akhir', next:'›', previous:'‹' } }
   });
-  $('#filterOpd').on('change', function(){ table.ajax.reload(); });
+  $('.filter-input:not([data-cascade])').on('change', function(){ table.ajax.reload(); });
+  if (window.initCascadeFilters) window.initCascadeFilters(table);
+  $('#btnResetFilter').on('click', function(){
+    $('.filter-input').val('');
+    if (window.initCascadeFilters) window.initCascadeFilters(table);
+    table.ajax.reload();
+  });
 })();
 </script>

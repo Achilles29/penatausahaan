@@ -39,3 +39,18 @@ kosong di literasi **di-seed** template standar (dapat diedit via CRUD).
 ## 6. Repeatability lewat controller `Setup`
 Agar aman pindah device, `Setup` bisa rebuild penuh (skema + import + seed) via browser/CLI,
 menjalankan file SQL di `docs/master/`. Hanya localhost.
+
+## 7. Pajak ditentukan REKENING, bukan hardcode/input manual
+Temuan: di literasi penentuan jenis pajak (`$kategori`) **dipilih manual per transaksi**,
+tidak diturunkan dari kode rekening (dan tabel skema pajaknya kosong). Ini rawan salah
+(mis. jasa boga dikenai PPN padahal dikecualikan). Keputusan untuk `penatus`:
+- **Klasifikasi rekening**: kolom `master_rekening.kategori_pajak` diisi otomatis dari
+  prefix kode (5.1.01/5.1.02.01/5.1.02.02/5.2) + kata kunci uraian (Honorarium, Makan-Minum,
+  Jasa Boga, Sewa, Konstruksi, Perjalanan Dinas). Hanya akun belanja `5%`. Bisa dikoreksi
+  manual via CRUD rekening (kolom + filter tersedia).
+- **Aturan pajak sebagai DATA**: `master_skema_pajak.kategori` == `master_rekening.kategori_pajak`.
+  Satu skema per kategori, detail aturan (tarif/threshold/NPWP/golongan/basis PPN) di
+  `master_skema_pajak_detail`. Tarif saat ini **draft** — wajib dikoreksi sesuai regulasi.
+- **Lookup** via `helpers/pajak_helper.php::pajak_untuk_rekening($id)` → kategori + skema + aturan.
+  Jadi fondasi engine penghitungan pajak di Tahap 3 (pinbuk), tanpa hardcode.
+- Enum `jenis_pajak` ditambah `PPH4_2` (final: sewa tanah/bangunan, jasa konstruksi).

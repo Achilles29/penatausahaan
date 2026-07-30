@@ -21,6 +21,9 @@ URL lokal: `http://localhost/penatausahaan`
       OPD, unit OPD, pegawai, penerima, skema pajak.
 - [x] Modul Anggaran (viewer): DPA, Arus Kas.
 - [x] Modul Pengguna (CRUD user, aturan role & OPD).
+- [x] Fondasi pajak berbasis rekening: klasifikasi `kategori_pajak` otomatis +
+      skema pajak per kategori (data, bukan hardcode) + `pajak_untuk_rekening()`.
+      (Tarif masih draft — dikoreksi via CRUD.)
 
 ## Tahap 2 — Modul NPD (Nota Pencairan Dana)
 - [ ] Viewer sisa anggaran DPA (pagu − realisasi) per subkegiatan/rekening.
@@ -31,7 +34,9 @@ URL lokal: `http://localhost/penatausahaan`
 
 ## Tahap 3 — Pindah Buku + Engine Pajak
 - [ ] Pindah buku (pinbuk) dari NPD detail.
-- [ ] Engine penghitungan pajak (PPh21/22/23, PPN, PDRD) sesuai skema & NPWP.
+- [ ] Engine penghitungan pajak memakai `pajak_untuk_rekening()` (fondasi Tahap 1):
+      rekening → kategori → skema → hitung PPh21/22/23/4(2), PPN, PDRD sesuai NPWP/golongan.
+- [ ] Finalisasi tarif/ketentuan draft agar sesuai regulasi.
 - [ ] Rincian pajak & netto per penerima.
 
 ## Tahap 4 — Cetak

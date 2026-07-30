@@ -105,10 +105,12 @@ CREATE TABLE master_rekening (
   kode_rekening VARCHAR(50) NOT NULL,
   uraian TEXT NOT NULL,
   jenis_belanja VARCHAR(50) DEFAULT NULL,
+  kategori_pajak VARCHAR(30) DEFAULT NULL COMMENT 'Klasifikasi jenis belanja untuk penentuan pajak; tertaut ke master_skema_pajak.kategori',
   created_at TIMESTAMP NULL DEFAULT current_timestamp(),
   updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE current_timestamp(),
   PRIMARY KEY (id),
-  UNIQUE KEY uk_kode_rekening (kode_rekening)
+  UNIQUE KEY uk_kode_rekening (kode_rekening),
+  KEY idx_rekening_kategori_pajak (kategori_pajak)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 CREATE TABLE master_sumber_dana (
@@ -305,7 +307,7 @@ CREATE TABLE master_skema_pajak (
 CREATE TABLE master_skema_pajak_detail (
   id INT NOT NULL AUTO_INCREMENT,
   skema_id INT DEFAULT NULL,
-  jenis_pajak ENUM('PPH21','PPH22','PPH23','PPN','PDRD') DEFAULT NULL,
+  jenis_pajak ENUM('PPH21','PPH22','PPH23','PPH4_2','PPN','PDRD') DEFAULT NULL,
   batas_min DECIMAL(15,2) DEFAULT 0.00,
   batas_max DECIMAL(15,2) DEFAULT NULL,
   punya_npwp TINYINT(1) DEFAULT NULL,

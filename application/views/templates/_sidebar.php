@@ -17,7 +17,7 @@ $org_active  = ($seg1 === 'master' && in_array($seg3, array('opd','opd_unit','pe
 ?>
 <aside class="layout-sidebar">
   <div class="sidebar-brand">
-    <i class="fa-solid fa-building-columns"></i>
+    <img src="<?= base_url('assets/img/logo.png') ?>" alt="Logo" style="height:34px;width:auto;">
     <span>Penatausahaan</span>
   </div>
 
@@ -71,7 +71,7 @@ $org_active  = ($seg1 === 'master' && in_array($seg3, array('opd','opd_unit','pe
       </a>
     </li>
     <li class="menu-item">
-      <a class="menu-link <?= $is('master','skema_pajak')?'active':'' ?>" href="<?= site_url('master/skema_pajak') ?>">
+      <a class="menu-link <?= $is('skema_pajak')?'active':'' ?>" href="<?= site_url('skema_pajak') ?>">
         <i class="fa-solid fa-percent"></i><span>Skema Pajak</span>
       </a>
     </li>

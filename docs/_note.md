@@ -29,3 +29,29 @@ SEBELUMNYA SAYA SUDAH BUAT di folder C:\xampp\htdocs\literasi tapi masih banyak 
 
 - di folder sudah ada master CI3 dan template materio tapi masih bersih, sesuaikan agar siap dipakai
 
+
+
+==================
+
+- masih banyak bug, icon belum terlihat, collapse expand belum berfugsi
+- dashboard superadmin seharusnya tampul seluruh opd
+- dashboard admin opd dan user opd tampil sesuai kewanangannya
+
+- saya lihat kamu sudah import database dari literasi, apakah langsung kamu ambil buta, atau kamu sesuaikan pemetaan yang masih tidak sesuai? lalu penetapan ketentuan pajaknya. karena di literasi database pajak hardcode tidak berdasar ketentuan rekening
+
+
+===
+- icon belum muncul
+- logo dan ico ada di assets, pindahkan dan gunakan sesuai ketentuan
+
+- banyak funsgi tambah, edit , hapus yang belum berfungsi. perbaiki semua
+- data banyak yang belum tampil, padahal saya login superadmin
+
+=================
+
+- sidebar belum bisa expand collapse. default buat collapse
+- semua halaman mempunyai filter bertingkat mulai dari urusan , bidang urusan , opd, sampai sub keghiatan dan rekening sesuai dengan data yang tampil
+- skema pajak tampilkan besarna pajaknya masing masing, karena pajak yang sama bisa beda besarannya tergantun nilai pembayaran dan penerima punya npwp atau tidak
+==============
+
+urutan tampilan data urut kode terkecil, urusan, bidang , opd dan seterusnya.

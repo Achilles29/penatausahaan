@@ -6,13 +6,22 @@ $assets = base_url('assets/');
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- State sidebar diterapkan sebelum render agar tidak berkedip. Default: collapsed. -->
+  <script>(function(){try{var c=localStorage.getItem('sidebarCollapsed');if(c===null)c='true';if(c==='true')document.documentElement.classList.add('sidebar-collapsed');}catch(e){document.documentElement.classList.add('sidebar-collapsed');}})();</script>
   <title><?= isset($page_title) ? html_escape($page_title) : 'Penatausahaan' ?> &middot; Penatausahaan</title>
   <link rel="icon" type="image/x-icon" href="<?= $assets ?>img/favicon.ico">
   <link rel="stylesheet" href="<?= $assets ?>vendor/bootstrap/bootstrap.min.css">
-  <link rel="stylesheet" href="<?= $assets ?>vendor/fontawesome/css/all.min.css">
+  <link rel="stylesheet" href="<?= $assets ?>vendor/fontawesome/css/all.min.css?v=fa6">
   <link rel="stylesheet" href="<?= $assets ?>vendor/datatables/dataTables.bootstrap5.min.css">
-  <link rel="stylesheet" href="<?= $assets ?>css/app.css">
+  <link rel="stylesheet" href="<?= $assets ?>css/app.css?v=4">
   <?php if (isset($extra_css)) echo $extra_css; ?>
+
+  <!-- Library JS dimuat di <head> agar tersedia untuk script inline di dalam konten halaman -->
+  <script src="<?= $assets ?>vendor/jquery/jquery.min.js"></script>
+  <script src="<?= $assets ?>vendor/bootstrap/bootstrap.bundle.min.js"></script>
+  <script src="<?= $assets ?>vendor/datatables/dataTables.min.js"></script>
+  <script src="<?= $assets ?>vendor/datatables/dataTables.bootstrap5.min.js"></script>
+  <script src="<?= $assets ?>js/app.js?v=4"></script>
 </head>
 <body>
 <div class="layout-wrapper">
@@ -47,11 +56,6 @@ $assets = base_url('assets/');
   </div>
 </div>
 
-<script src="<?= $assets ?>vendor/jquery/jquery.min.js"></script>
-<script src="<?= $assets ?>vendor/bootstrap/bootstrap.bundle.min.js"></script>
-<script src="<?= $assets ?>vendor/datatables/dataTables.min.js"></script>
-<script src="<?= $assets ?>vendor/datatables/dataTables.bootstrap5.min.js"></script>
-<script src="<?= $assets ?>js/app.js"></script>
 <?php if (isset($extra_js)) echo $extra_js; ?>
 </body>
 </html>

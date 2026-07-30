@@ -3,7 +3,8 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 
 /**
  * Anggaran (read-only Tahap 1): viewer DPA (raw SIPD) & Arus Kas.
- * Memakai ulang engine DataTables server-side dari Master_model.
+ * Memakai ulang engine DataTables server-side dari Master_model + filter
+ * bertingkat OPD -> Urusan -> Bidang -> Program -> Kegiatan -> Sub Kegiatan -> Rekening.
  */
 class Anggaran extends MY_Controller {
 
@@ -13,7 +14,7 @@ class Anggaran extends MY_Controller {
 		$this->load->model('Master_model', 'mm');
 	}
 
-	// ---------- DPA ----------
+	// ======================= DPA =======================
 	private function dpa_cfg()
 	{
 		return array(
@@ -41,14 +42,9 @@ class Anggaran extends MY_Controller {
 
 	public function dpa()
 	{
-		$opd_opts = is_super()
-			? $this->mm->options('master_opd', 'id', "CONCAT(COALESCE(singkatan,''),' - ',nama_opd)", array(), 'nama_opd')
-			: array();
-
 		$this->render('anggaran/viewer', array(
 			'cfg'      => $this->dpa_cfg(),
-			'opd_opts' => $opd_opts,
-			'is_super' => is_super(),
+			'filters'  => $this->chain('dd'),
 			'data_url' => site_url('anggaran/dpa_data'),
 			'judul'    => 'DPA — Dokumen Pelaksanaan Anggaran',
 			'ikon'     => 'fa-file-invoice-dollar',
@@ -58,30 +54,16 @@ class Anggaran extends MY_Controller {
 
 	public function dpa_data()
 	{
-		$cfg = $this->dpa_cfg();
-		$dt = array(
-			'draw' => (int) $this->input->get('draw'), 'start' => (int) $this->input->get('start'),
-			'length' => (int) $this->input->get('length'), 'search' => $this->input->get('search'),
-			'order' => $this->input->get('order'),
-		);
-		$filters = array();
-		$fopd = $this->input->get('f_opd');
-		if (is_super() && $fopd !== NULL && $fopd !== '') $filters['d.opd_id'] = $fopd;
-
-		$scope = $this->dpa_scope();
-		$res = $this->mm->datatables($cfg, $dt, $filters, $scope);
-		$this->json(array('draw' => $dt['draw']) + $res + array(
-			'recordsTotal' => $res['recordsTotal'], 'recordsFiltered' => $res['recordsFiltered'],
-		));
+		$res = $this->run_datatable($this->dpa_cfg(), $this->chain('dd'), 'd.opd_id');
+		$this->json($res);
 	}
 
-	private function dpa_scope()
+	public function dpa_rekening_options()
 	{
-		if (is_super()) return NULL;
-		return array('column' => 'd.opd_id', 'ids' => array((int) scope_opd_id()));
+		$this->json_out($this->rekening_options('dd'));
 	}
 
-	// ---------- ARUS KAS ----------
+	// ======================= ARUS KAS =======================
 	private function ak_cfg()
 	{
 		return array(
@@ -106,14 +88,9 @@ class Anggaran extends MY_Controller {
 
 	public function arus_kas()
 	{
-		$opd_opts = is_super()
-			? $this->mm->options('master_opd', 'id', "CONCAT(COALESCE(singkatan,''),' - ',nama_opd)", array(), 'nama_opd')
-			: array();
-
 		$this->render('anggaran/viewer', array(
 			'cfg'      => $this->ak_cfg(),
-			'opd_opts' => $opd_opts,
-			'is_super' => is_super(),
+			'filters'  => $this->chain('ak'),
 			'data_url' => site_url('anggaran/arus_kas_data'),
 			'judul'    => 'Arus Kas / Anggaran Kas',
 			'ikon'     => 'fa-money-bill-trend-up',
@@ -123,24 +100,85 @@ class Anggaran extends MY_Controller {
 
 	public function arus_kas_data()
 	{
-		$cfg = $this->ak_cfg();
+		$res = $this->run_datatable($this->ak_cfg(), $this->chain('ak'), 'ak.opd_id');
+		$this->json($res);
+	}
+
+	public function ak_rekening_options()
+	{
+		$this->json_out($this->rekening_options('ak'));
+	}
+
+	// ======================= HELPERS =======================
+
+	/** Rantai filter bertingkat. $p = alias tabel ('dd' DPA / 'ak' arus kas). */
+	private function chain($p)
+	{
+		$opd_col = ($p === 'dd') ? 'd.opd_id' : 'ak.opd_id';
+		$rek_url = ($p === 'dd') ? 'anggaran/dpa_rekening_options' : 'anggaran/ak_rekening_options';
+		$c = array();
+		if (is_super())
+		{
+			$c[] = array('name' => $opd_col, 'label' => 'OPD', 'source' => 'opd', 'opturl' => site_url('master/options/opd'));
+		}
+		$c[] = array('name' => $p.'.urusan_id', 'label' => 'Urusan', 'source' => 'urusan', 'opturl' => site_url('master/options/urusan'));
+		$c[] = array('name' => $p.'.bidang_id', 'label' => 'Bidang', 'source' => 'bidang', 'opturl' => site_url('master/options/bidang'));
+		$c[] = array('name' => $p.'.program_id', 'label' => 'Program', 'source' => 'program', 'opturl' => site_url('master/options/program'));
+		$c[] = array('name' => $p.'.kegiatan_id', 'label' => 'Kegiatan', 'source' => 'kegiatan', 'opturl' => site_url('master/options/kegiatan'));
+		$c[] = array('name' => $p.'.subkegiatan_id', 'label' => 'Sub Kegiatan', 'source' => 'subkegiatan', 'opturl' => site_url('master/options/subkegiatan'));
+		$c[] = array('name' => $p.'.rekening_id', 'label' => 'Rekening', 'source' => 'rekening', 'opturl' => site_url($rek_url));
+		return $c;
+	}
+
+	private function run_datatable($cfg, $chain, $opd_col)
+	{
 		$dt = array(
 			'draw' => (int) $this->input->get('draw'), 'start' => (int) $this->input->get('start'),
 			'length' => (int) $this->input->get('length'), 'search' => $this->input->get('search'),
 			'order' => $this->input->get('order'),
 		);
 		$filters = array();
-		$fopd = $this->input->get('f_opd');
-		if (is_super() && $fopd !== NULL && $fopd !== '') $filters['ak.opd_id'] = $fopd;
-
-		$scope = is_super() ? NULL : array('column' => 'ak.opd_id', 'ids' => array((int) scope_opd_id()));
+		foreach ($chain as $f)
+		{
+			$v = $this->input->get('f_' . md5($f['name']));
+			if ($v !== NULL && $v !== '') $filters[$f['name']] = $v;
+		}
+		$scope = is_super() ? NULL : array('column' => $opd_col, 'ids' => array((int) scope_opd_id()));
 		$res = $this->mm->datatables($cfg, $dt, $filters, $scope);
-		$this->json(array('draw' => $dt['draw']) + $res);
+		return array('draw' => $dt['draw']) + $res;
 	}
 
-	// ---------- util ----------
-	private function json($arr)
+	/** Opsi rekening data-driven: distinct rekening yang ADA di data (scoped + dipersempit ancestor). */
+	private function rekening_options($p)
 	{
-		$this->output->set_content_type('application/json')->set_output(json_encode($arr));
+		if ($p === 'dd')
+		{
+			$this->db->from('dpa_detail dd')->join('dpa d', 'd.id = dd.dpa_id');
+			$opd_col = 'd.opd_id';
+		}
+		else
+		{
+			$this->db->from('anggaran_kas ak');
+			$opd_col = 'ak.opd_id';
+		}
+		$this->db->join('master_rekening r', 'r.id = ' . $p . '.rekening_id')
+			->select('r.id AS k, CONCAT(r.kode_rekening, " - ", LEFT(r.uraian,50)) AS v', FALSE)
+			->distinct();
+
+		if ( ! is_super()) $this->db->where($opd_col, (int) scope_opd_id());
+		$map = array('opd' => $opd_col, 'urusan' => $p.'.urusan_id', 'bidang' => $p.'.bidang_id',
+			'program' => $p.'.program_id', 'kegiatan' => $p.'.kegiatan_id', 'subkegiatan' => $p.'.subkegiatan_id');
+		foreach ($map as $lv => $col)
+		{
+			$v = $this->input->get($lv);
+			if ($v !== NULL && $v !== '') $this->db->where($col, $v);
+		}
+		$rows = $this->db->order_by('r.kode_rekening')->get()->result();
+		$out = array();
+		foreach ($rows as $r) $out[$r->k] = $r->v;
+		return $out;
 	}
+
+	private function json($arr)     { $this->output->set_content_type('application/json')->set_output(json_encode($arr)); }
+	private function json_out($arr) { $this->json($arr); }
 }

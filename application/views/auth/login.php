@@ -9,14 +9,15 @@ $assets = base_url('assets/');
   <title>Masuk &middot; Penatausahaan</title>
   <link rel="icon" type="image/x-icon" href="<?= $assets ?>img/favicon.ico">
   <link rel="stylesheet" href="<?= $assets ?>vendor/bootstrap/bootstrap.min.css">
-  <link rel="stylesheet" href="<?= $assets ?>vendor/fontawesome/css/all.min.css">
-  <link rel="stylesheet" href="<?= $assets ?>css/app.css">
+  <link rel="stylesheet" href="<?= $assets ?>vendor/fontawesome/css/all.min.css?v=fa6">
+  <link rel="stylesheet" href="<?= $assets ?>css/app.css?v=2">
 </head>
 <body>
 <div class="auth-wrapper">
   <div class="auth-card">
     <div class="auth-brand">
-      <i class="fa-solid fa-building-columns me-2"></i>Penatausahaan
+      <img src="<?= $assets ?>img/logo.png" alt="Logo" style="height:48px;width:auto;"><br>
+      <span class="mt-2 d-inline-block">Penatausahaan</span>
     </div>
     <div class="card">
       <div class="card-body p-4">

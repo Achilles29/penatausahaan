@@ -74,6 +74,7 @@ class Master extends MY_Controller {
 					array('field' => 'bidang_nama', 'label' => 'Bidang', 'order' => 'b.nama_bidang'),
 				),
 				'filters' => array(
+					array('name' => 'b.urusan_id', 'label' => 'Urusan', 'source' => 'urusan'),
 					array('name' => 'm.bidang_id', 'label' => 'Bidang', 'source' => 'bidang'),
 				),
 				'fields' => array(
@@ -87,7 +88,10 @@ class Master extends MY_Controller {
 			'kegiatan' => array(
 				'title' => 'Kegiatan', 'table' => 'master_kegiatan', 'from' => 'master_kegiatan m', 'alias' => 'm',
 				'select' => 'm.id, m.kode_kegiatan, m.nama_kegiatan, p.nama_program AS program_nama',
-				'joins' => array(array('master_program p', 'p.id = m.program_id')),
+				'joins' => array(
+					array('master_program p', 'p.id = m.program_id'),
+					array('master_bidang b', 'b.id = p.bidang_id'),
+				),
 				'searchable' => array('m.kode_kegiatan', 'm.nama_kegiatan'),
 				'order_by' => 'm.kode_kegiatan',
 				'columns' => array(
@@ -96,6 +100,8 @@ class Master extends MY_Controller {
 					array('field' => 'program_nama', 'label' => 'Program', 'order' => 'p.nama_program'),
 				),
 				'filters' => array(
+					array('name' => 'b.urusan_id', 'label' => 'Urusan', 'source' => 'urusan'),
+					array('name' => 'p.bidang_id', 'label' => 'Bidang', 'source' => 'bidang'),
 					array('name' => 'm.program_id', 'label' => 'Program', 'source' => 'program'),
 				),
 				'fields' => array(
@@ -109,7 +115,11 @@ class Master extends MY_Controller {
 			'subkegiatan' => array(
 				'title' => 'Sub Kegiatan', 'table' => 'master_subkegiatan', 'from' => 'master_subkegiatan m', 'alias' => 'm',
 				'select' => 'm.id, m.kode_subkegiatan, m.nama_subkegiatan, k.nama_kegiatan AS kegiatan_nama',
-				'joins' => array(array('master_kegiatan k', 'k.id = m.kegiatan_id')),
+				'joins' => array(
+					array('master_kegiatan k', 'k.id = m.kegiatan_id'),
+					array('master_program p', 'p.id = k.program_id'),
+					array('master_bidang b', 'b.id = p.bidang_id'),
+				),
 				'searchable' => array('m.kode_subkegiatan', 'm.nama_subkegiatan'),
 				'order_by' => 'm.kode_subkegiatan',
 				'columns' => array(
@@ -118,6 +128,9 @@ class Master extends MY_Controller {
 					array('field' => 'kegiatan_nama', 'label' => 'Kegiatan', 'order' => 'k.nama_kegiatan'),
 				),
 				'filters' => array(
+					array('name' => 'b.urusan_id', 'label' => 'Urusan', 'source' => 'urusan'),
+					array('name' => 'p.bidang_id', 'label' => 'Bidang', 'source' => 'bidang'),
+					array('name' => 'k.program_id', 'label' => 'Program', 'source' => 'program'),
 					array('name' => 'm.kegiatan_id', 'label' => 'Kegiatan', 'source' => 'kegiatan'),
 				),
 				'fields' => array(
@@ -130,18 +143,22 @@ class Master extends MY_Controller {
 
 			'rekening' => array(
 				'title' => 'Rekening (Kode Rekening)', 'table' => 'master_rekening', 'from' => 'master_rekening m', 'alias' => 'm',
-				'select' => 'm.id, m.kode_rekening, m.uraian, m.jenis_belanja',
+				'select' => 'm.id, m.kode_rekening, m.uraian, m.kategori_pajak',
 				'searchable' => array('m.kode_rekening', 'm.uraian'),
 				'order_by' => 'm.kode_rekening',
 				'columns' => array(
 					array('field' => 'kode_rekening', 'label' => 'Kode Rekening', 'order' => 'm.kode_rekening', 'width' => '200px'),
 					array('field' => 'uraian', 'label' => 'Uraian'),
-					array('field' => 'jenis_belanja', 'label' => 'Jenis', 'order' => 'm.jenis_belanja', 'width' => '140px'),
+					array('field' => 'kategori_pajak', 'label' => 'Kategori Pajak', 'render' => 'badge', 'order' => 'm.kategori_pajak', 'width' => '150px'),
+				),
+				'filters' => array(
+					array('name' => 'm.kategori_pajak', 'label' => 'Kategori Pajak', 'options' => $this->kategori_pajak_options()),
 				),
 				'fields' => array(
 					array('name' => 'kode_rekening', 'label' => 'Kode Rekening', 'type' => 'text', 'required' => TRUE, 'unique' => TRUE),
 					array('name' => 'uraian', 'label' => 'Uraian', 'type' => 'textarea', 'required' => TRUE),
-					array('name' => 'jenis_belanja', 'label' => 'Jenis Belanja', 'type' => 'text'),
+					array('name' => 'kategori_pajak', 'label' => 'Kategori Pajak', 'type' => 'enum', 'options' => $this->kategori_pajak_options()),
+					array('name' => 'jenis_belanja', 'label' => 'Jenis Belanja (opsional)', 'type' => 'text'),
 				),
 				'manage' => array('superadmin'),
 			),
@@ -308,7 +325,9 @@ class Master extends MY_Controller {
 		{
 			foreach ($cfg['filters'] as $f)
 			{
-				$filter_options[$f['name']] = $this->source_options($f['source']);
+				// Filter statis (punya 'options') dirender server; filter cascade
+				// (punya 'source') opsinya dimuat via JS bertingkat.
+				if (isset($f['options'])) $filter_options[$f['name']] = $f['options'];
 			}
 		}
 		// Siapkan opsi select untuk form
@@ -471,6 +490,25 @@ class Master extends MY_Controller {
 
 	// ================= HELPERS =================
 
+	/** Daftar kategori pajak rekening (dasar penentuan pajak). */
+	private function kategori_pajak_options()
+	{
+		return array(
+			'honorarium'       => 'Honorarium',
+			'barang'           => 'Barang',
+			'jasa'             => 'Jasa',
+			'jasa_boga'        => 'Jasa Boga/Katering',
+			'makan_minum'      => 'Makan & Minum',
+			'sewa'             => 'Sewa',
+			'konstruksi'       => 'Konstruksi',
+			'modal'            => 'Modal',
+			'perjalanan_dinas' => 'Perjalanan Dinas',
+			'pegawai'          => 'Pegawai/Gaji',
+			'non_pajak'        => 'Non Pajak',
+			'lainnya'          => 'Lainnya',
+		);
+	}
+
 	/** Opsi [id=>label] untuk sebuah source entitas, opsional difilter parent. */
 	private function source_options($source, $parent = NULL)
 	{
@@ -487,6 +525,9 @@ class Master extends MY_Controller {
 			case 'kegiatan':
 				$w = ($parent !== NULL && $parent !== '') ? array('program_id' => $parent) : array();
 				return $this->mm->options('master_kegiatan', 'id', "CONCAT(kode_kegiatan,' - ',nama_kegiatan)", $w, 'kode_kegiatan');
+			case 'subkegiatan':
+				if ($parent === NULL || $parent === '') return array(); // butuh induk (kegiatan)
+				return $this->mm->options('master_subkegiatan', 'id', "CONCAT(kode_subkegiatan,' - ',LEFT(nama_subkegiatan,60))", array('kegiatan_id' => $parent), 'kode_subkegiatan');
 			case 'opd':
 				return $this->mm->options('master_opd', 'id', "CONCAT(COALESCE(singkatan,''),' - ',nama_opd)", array(), 'nama_opd');
 			case 'opd_unit':

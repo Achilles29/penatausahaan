@@ -39,8 +39,20 @@ anggaran_kas (223)                 [pagu tahunan per subkeg/rekening]
 ```
 pegawai (1)  ── pegawai_jabatan, pegawai_rekening ── ref_bank (2), ref_jabatan (5)
 master_penerima (2)                [orang/badan, npwp, golongan, bank]
-master_skema_pajak (5) ─ master_skema_pajak_detail (11)   [PPh21/22/23, PPN, PDRD]
+master_skema_pajak (12) ─ master_skema_pajak_detail (18)  [PPh21/22/23, PPh4(2), PPN, PDRD]
 ```
+
+### Pajak berbasis rekening (bukan hardcode)
+```
+master_rekening.kategori_pajak  ──(sama dengan)──►  master_skema_pajak.kategori
+   (honorarium/barang/jasa/jasa_boga/makan_minum/sewa/                │
+    konstruksi/modal/perjalanan_dinas/pegawai/non_pajak/lainnya)      ▼
+                                              master_skema_pajak_detail (aturan tarif/NPWP/dll)
+```
+- `kategori_pajak` diisi otomatis (prefix kode + kata kunci uraian, hanya akun `5%`),
+  dapat dikoreksi via CRUD rekening.
+- Lookup aturan: `pajak_untuk_rekening($rekening_id)` di `helpers/pajak_helper.php`.
+- Tarif/ketentuan saat ini **DRAFT** — koreksi via menu Skema Pajak sesuai regulasi.
 
 ## Transaksi (skema siap, diisi Tahap 2+)
 ```

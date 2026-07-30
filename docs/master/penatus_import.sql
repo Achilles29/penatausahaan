@@ -104,26 +104,69 @@ INSERT INTO penatus.anggaran_kas (id, tahun, opd_id, urusan_id, bidang_id, progr
 INSERT INTO penatus.anggaran_kas_bulanan (id, anggaran_kas_id, bulan, nilai_maksimal, created_at, updated_at)
   SELECT id, anggaran_kas_id, bulan, nilai_maksimal, created_at, updated_at FROM literasi.anggaran_kas_bulanan;
 
--- ---------- Seed skema pajak (template awal, dapat diedit via CRUD) ----------
+-- ---------- Klasifikasi jenis belanja rekening (DASAR PENENTUAN PAJAK) ----------
+-- Langkah 1: kategori default dari prefix kode rekening
+UPDATE penatus.master_rekening SET kategori_pajak =
+  CASE
+    WHEN kode_rekening LIKE '5.1.01%'    THEN 'pegawai'
+    WHEN kode_rekening LIKE '5.1.02.01%' THEN 'barang'
+    WHEN kode_rekening LIKE '5.1.02.02%' THEN 'jasa'
+    WHEN kode_rekening LIKE '5.2%'       THEN 'modal'
+    WHEN kode_rekening LIKE '5%'         THEN 'lainnya'
+    ELSE 'non_pajak'
+  END;
+-- Langkah 2: override dari kata kunci uraian (HANYA akun belanja '5%'; umum -> spesifik)
+UPDATE penatus.master_rekening SET kategori_pajak='sewa'             WHERE kode_rekening LIKE '5%' AND uraian LIKE '%Sewa%';
+UPDATE penatus.master_rekening SET kategori_pajak='perjalanan_dinas' WHERE kode_rekening LIKE '5%' AND uraian LIKE '%Perjalanan Dinas%';
+UPDATE penatus.master_rekening SET kategori_pajak='konstruksi'       WHERE kode_rekening LIKE '5%' AND uraian LIKE '%Konstruksi%';
+UPDATE penatus.master_rekening SET kategori_pajak='makan_minum'      WHERE kode_rekening LIKE '5%' AND (uraian LIKE '%Makan%Minum%' OR uraian LIKE '%Makanan dan Minuman%');
+UPDATE penatus.master_rekening SET kategori_pajak='jasa_boga'        WHERE kode_rekening LIKE '5%' AND (uraian LIKE '%Jasa Boga%' OR uraian LIKE '%Katering%' OR uraian LIKE '%Catering%');
+UPDATE penatus.master_rekening SET kategori_pajak='honorarium'       WHERE kode_rekening LIKE '5%' AND uraian LIKE '%Honorarium%';
+
+-- ---------- Skema pajak per KATEGORI (draft, tertaut ke rekening via kategori) ----------
+-- master_skema_pajak.kategori == master_rekening.kategori_pajak  => penentuan otomatis.
 INSERT INTO penatus.master_skema_pajak (id, kode_skema, nama_skema, kategori, keterangan, is_active) VALUES
-  (1,'PPH21_HONOR','PPh 21 Honorarium','honorarium','Pemotongan PPh 21 atas honorarium (final utk PNS per golongan)',1),
-  (2,'PPH22_BARANG','PPh 22 Belanja Barang','barang','PPh 22 atas belanja barang di atas batas',1),
-  (3,'PPH23_JASA','PPh 23 Jasa','jasa','PPh 23 atas imbalan jasa',1),
-  (4,'PPN','PPN','ppn','PPN 11% atas penyerahan BKP/JKP oleh PKP',1),
-  (5,'NONPAJAK','Tanpa Pajak','nonpajak','Transaksi tanpa pemotongan pajak',1);
+  (1,'HONOR','PPh 21 Honorarium','honorarium','Honorarium: PPh 21 final utk PNS per golongan; non-PNS tarif Ps.17 (+20% tanpa NPWP).',1),
+  (2,'BARANG','Belanja Barang','barang','PPh 22 (1,5%/3%) + PPN 11% bila PKP & DPP > 2 juta.',1),
+  (3,'JASA','Belanja Jasa','jasa','PPh 23 (2%/4%) + PPN 11% bila PKP.',1),
+  (4,'JASA_BOGA','Jasa Boga / Katering','jasa_boga','PPh 23 (2%/4%) atas jasa boga; DIKECUALIKAN dari PPN.',1),
+  (5,'SEWA','Sewa','sewa','Sewa selain tanah/bangunan: PPh 23 2%/4%. CATATAN: sewa tanah/bangunan = PPh Ps.4(2) 10% final (ubah bila berlaku).',1),
+  (6,'KONSTRUKSI','Jasa Konstruksi','konstruksi','PPh Ps.4(2) final (tarif tergantung kualifikasi) + PPN 11%. Angka draft, sesuaikan.',1),
+  (7,'MODAL','Belanja Modal','modal','Sama seperti barang: PPh 22 (1,5%/3%) + PPN 11% (barang). Konstruksi/konsultan diklasifikasi terpisah.',1),
+  (8,'MAKMIN','Makan & Minum','makan_minum','Umumnya tanpa potongan bendahara; pajak restoran (PB1) sudah termasuk harga. Sesuaikan bila perlu.',1),
+  (9,'PERJADIN','Perjalanan Dinas','perjalanan_dinas','Umumnya tanpa pemotongan (lumpsum/at cost).',1),
+  (10,'PEGAWAI','Belanja Pegawai / Gaji','pegawai','Gaji/tunjangan: PPh 21 diproses pada daftar gaji (di luar mekanisme pinbuk ini).',1),
+  (11,'NONPAJAK','Tanpa Pemotongan Pajak','non_pajak','Bukan objek pemotongan pajak.',1),
+  (12,'LAINNYA','Belanja Lainnya','lainnya','Belum terklasifikasi otomatis; tetapkan kategori pajak secara manual.',1);
 
 INSERT INTO penatus.master_skema_pajak_detail (skema_id, jenis_pajak, batas_min, batas_max, punya_npwp, tarif, basis_penghitungan, rumus, keterangan, kelompok, golongan_honor) VALUES
-  (1,'PPH21',0,NULL,NULL,0.00,'langsung','bruto*0%','Golongan I: 0% (final)','exclusive','I'),
-  (1,'PPH21',0,NULL,NULL,0.00,'langsung','bruto*0%','Golongan II: 0% (final)','exclusive','II'),
-  (1,'PPH21',0,NULL,NULL,5.00,'langsung','bruto*5%','Golongan III: 5% (final)','exclusive','III'),
-  (1,'PPH21',0,NULL,NULL,15.00,'langsung','bruto*15%','Golongan IV: 15% (final)','exclusive','IV'),
-  (1,'PPH21',0,NULL,1,5.00,'langsung','bruto*5%','Non-PNS ber-NPWP: 5%','exclusive','NON_PNS'),
-  (1,'PPH21',0,NULL,0,6.00,'langsung','bruto*6%','Non-PNS tanpa NPWP: 5% +20%','exclusive','NON_PNS'),
-  (2,'PPH22',2000000,NULL,1,1.50,'setelah_ppn','dpp*1.5%','Ber-NPWP 1,5% dari DPP (di atas 2 juta)','opsional',NULL),
+  -- Honorarium (PPh 21 final)
+  (1,'PPH21',0,NULL,NULL, 0.00,'langsung','bruto*0%','PNS Golongan I: 0% (final)','exclusive','I'),
+  (1,'PPH21',0,NULL,NULL, 0.00,'langsung','bruto*0%','PNS Golongan II: 0% (final)','exclusive','II'),
+  (1,'PPH21',0,NULL,NULL, 5.00,'langsung','bruto*5%','PNS Golongan III: 5% (final)','exclusive','III'),
+  (1,'PPH21',0,NULL,NULL,15.00,'langsung','bruto*15%','PNS Golongan IV: 15% (final)','exclusive','IV'),
+  (1,'PPH21',0,NULL,1, 5.00,'langsung','bruto*5%','Non-PNS ber-NPWP: 5%','exclusive','NON_PNS'),
+  (1,'PPH21',0,NULL,0, 6.00,'langsung','bruto*6%','Non-PNS tanpa NPWP: 5% +20%','exclusive','NON_PNS'),
+  -- Belanja Barang (PPh 22 + PPN)
+  (2,'PPH22',2000000,NULL,1,1.50,'setelah_ppn','dpp*1.5%','Ber-NPWP 1,5% dari DPP (belanja > 2 juta)','opsional',NULL),
   (2,'PPH22',2000000,NULL,0,3.00,'setelah_ppn','dpp*3%','Tanpa NPWP 3% dari DPP','opsional',NULL),
+  (2,'PPN', 2000000,NULL,NULL,11.00,'ppn_included','bruto*11/111','PPN 11% (harga termasuk PPN), bila rekanan PKP','opsional',NULL),
+  -- Belanja Jasa (PPh 23 + PPN)
   (3,'PPH23',0,NULL,1,2.00,'setelah_ppn','dpp*2%','Ber-NPWP 2% dari DPP','opsional',NULL),
   (3,'PPH23',0,NULL,0,4.00,'setelah_ppn','dpp*4%','Tanpa NPWP 4% dari DPP','opsional',NULL),
-  (4,'PPN',0,NULL,NULL,11.00,'ppn_included','bruto*100/111*11%','PPN 11% (harga termasuk PPN)','opsional',NULL);
+  (3,'PPN', 0,NULL,NULL,11.00,'ppn_included','bruto*11/111','PPN 11% bila rekanan PKP','opsional',NULL),
+  -- Jasa Boga / Katering (PPh 23, TANPA PPN)
+  (4,'PPH23',0,NULL,1,2.00,'langsung','bruto*2%','Jasa boga ber-NPWP 2% (bukan objek PPN)','opsional',NULL),
+  (4,'PPH23',0,NULL,0,4.00,'langsung','bruto*4%','Jasa boga tanpa NPWP 4%','opsional',NULL),
+  -- Sewa (draft PPh 23; tanah/bangunan PPh 4(2) — lihat keterangan skema)
+  (5,'PPH23',0,NULL,1,2.00,'setelah_ppn','dpp*2%','Sewa (selain tanah/bangunan) ber-NPWP 2%','opsional',NULL),
+  (5,'PPH23',0,NULL,0,4.00,'setelah_ppn','dpp*4%','Sewa (selain tanah/bangunan) tanpa NPWP 4%','opsional',NULL),
+  -- Jasa Konstruksi (PPh Final 4(2) + PPN) — angka DRAFT
+  (6,'PPH4_2',0,NULL,NULL,1.75,'setelah_ppn','dpp*1.75%','Konstruksi kualifikasi kecil bersertifikat (draft, sesuaikan)','opsional',NULL),
+  (6,'PPN',0,NULL,NULL,11.00,'ppn_included','bruto*11/111','PPN 11% bila rekanan PKP','opsional',NULL);
+
+-- Skema 8-12 (makan_minum, perjalanan_dinas, pegawai, non_pajak, lainnya) sengaja tanpa
+-- detail = tanpa pemotongan pada mekanisme pinbuk (draft, dapat ditambah via CRUD).
 
 -- ---------- Seed contoh penerima ----------
 INSERT INTO penatus.master_penerima (nama_penerima, jenis_penerima, punya_npwp, npwp, golongan, nama_bank, no_rekening, nama_rekening, is_active) VALUES
@@ -131,6 +174,6 @@ INSERT INTO penatus.master_penerima (nama_penerima, jenis_penerima, punya_npwp, 
   ('CV MITRA SEJAHTERA','badan',1,'01.234.567.8-901.000','NON_PNS','BCA','1234567890','CV MITRA SEJAHTERA',1);
 
 -- Selaraskan AUTO_INCREMENT tabel yang di-seed manual
-ALTER TABLE penatus.master_skema_pajak AUTO_INCREMENT = 6;
+ALTER TABLE penatus.master_skema_pajak AUTO_INCREMENT = 13;
 
 SET FOREIGN_KEY_CHECKS = 1;

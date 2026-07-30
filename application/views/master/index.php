@@ -25,17 +25,22 @@ foreach ($cols as $c) {
   <?php if ( ! empty($cfg['filters'])): ?>
   <div class="card-body border-bottom py-3">
     <div class="row g-2 align-items-end">
-      <?php foreach ($cfg['filters'] as $f): ?>
-      <div class="col-md-4">
+      <?php foreach ($cfg['filters'] as $f): $cascade = isset($f['source']); ?>
+      <div class="col-md-3 col-sm-6">
         <label class="form-label small mb-1"><?= html_escape($f['label']) ?></label>
-        <select class="form-select form-select-sm filter-input" data-filter="f_<?= md5($f['name']) ?>">
+        <select class="form-select form-select-sm filter-input"
+                data-filter="f_<?= md5($f['name']) ?>"
+                <?= $cascade ? 'data-cascade="1" data-level="'.html_escape($f['source']).'" data-label="'.html_escape($f['label']).'" data-opturl="'.site_url('master/options/'.$f['source']).'"' : '' ?>>
           <option value="">— Semua <?= html_escape($f['label']) ?> —</option>
-          <?php foreach ($filter_options[$f['name']] as $k => $v): ?>
+          <?php if ( ! $cascade && isset($filter_options[$f['name']])): foreach ($filter_options[$f['name']] as $k => $v): ?>
             <option value="<?= html_escape($k) ?>"><?= html_escape($v) ?></option>
-          <?php endforeach; ?>
+          <?php endforeach; endif; ?>
         </select>
       </div>
       <?php endforeach; ?>
+      <div class="col-md-2 col-sm-6">
+        <button type="button" class="btn btn-sm btn-label-secondary w-100" id="btnResetFilter"><i class="fa-solid fa-rotate-left me-1"></i>Reset</button>
+      </div>
     </div>
   </div>
   <?php endif; ?>
@@ -172,7 +177,14 @@ var MCFG = <?= $cfg_js ?>;
     }
   });
 
-  $('.filter-input').on('change', function () { table.ajax.reload(); });
+  // Filter statis (non-cascade) langsung reload; filter cascade ditangani initCascadeFilters
+  $('.filter-input:not([data-cascade])').on('change', function () { table.ajax.reload(); });
+  if (window.initCascadeFilters) window.initCascadeFilters(table);
+  $('#btnResetFilter').on('click', function () {
+    $('.filter-input').val('');
+    if (window.initCascadeFilters) window.initCascadeFilters(table);
+    table.ajax.reload();
+  });
 
   // Tambah
   $('#btnAdd').on('click', function () {
