@@ -14,48 +14,120 @@ class Anggaran extends MY_Controller {
 		$this->load->model('Master_model', 'mm');
 	}
 
-	// ======================= DPA =======================
-	private function dpa_cfg()
-	{
-		return array(
-			'from'  => 'dpa_detail dd', 'alias' => 'dd',
-			'select' => 'dd.id, o.singkatan AS opd_singkat, d.tahun, sk.kode_subkegiatan, sk.nama_subkegiatan,'
-				. ' r.kode_rekening, dd.paket_belanja, dd.koefisien, dd.harga_satuan, dd.total_harga',
-			'joins' => array(
-				array('dpa d', 'd.id = dd.dpa_id'),
-				array('master_opd o', 'o.id = d.opd_id'),
-				array('master_subkegiatan sk', 'sk.id = dd.subkegiatan_id'),
-				array('master_rekening r', 'r.id = dd.rekening_id'),
-			),
-			'searchable' => array('dd.paket_belanja', 'sk.nama_subkegiatan', 'r.kode_rekening', 'dd.keterangan_belanja'),
-			'order_by' => 'dd.no_urut',
-			'columns' => array(
-				array('field' => 'kode_subkegiatan', 'label' => 'Sub Kegiatan', 'order' => 'sk.kode_subkegiatan', 'width' => '150px'),
-				array('field' => 'paket_belanja', 'label' => 'Paket / Uraian Belanja'),
-				array('field' => 'kode_rekening', 'label' => 'Rekening', 'order' => 'r.kode_rekening', 'width' => '180px'),
-				array('field' => 'koefisien', 'label' => 'Koefisien', 'width' => '150px'),
-				array('field' => 'harga_satuan', 'label' => 'Harga Satuan', 'render' => 'money', 'width' => '150px'),
-				array('field' => 'total_harga', 'label' => 'Total', 'render' => 'money', 'width' => '160px'),
-			),
-		);
-	}
+	// ======================= DPA — Tree View =======================
 
 	public function dpa()
 	{
-		$this->render('anggaran/viewer', array(
-			'cfg'      => $this->dpa_cfg(),
-			'filters'  => $this->chain('dd'),
-			'data_url' => site_url('anggaran/dpa_data'),
-			'judul'    => 'DPA — Dokumen Pelaksanaan Anggaran',
-			'ikon'     => 'fa-file-invoice-dollar',
-			'ket'      => 'Data mentah DPA dari SIPD. Sumber sisa anggaran untuk penerbitan NPD.',
+		$opd_opts = is_super()
+			? $this->mm->options('master_opd', 'id', "CONCAT(kode_opd,' - ',COALESCE(singkatan,nama_opd))", array(), 'kode_opd')
+			: array();
+		$this->render('anggaran/dpa', array(
+			'opd_opts'  => $opd_opts,
+			'is_super'  => is_super(),
+			'my_opd_id' => is_super() ? '' : scope_opd_id(),
+			'tree_url'  => site_url('anggaran/dpa_tree'),
 		), 'DPA — Dokumen Pelaksanaan Anggaran');
 	}
 
-	public function dpa_data()
+	public function dpa_tree()
 	{
-		$res = $this->run_datatable($this->dpa_cfg(), $this->chain('dd'), 'd.opd_id');
-		$this->json($res);
+		$opd_id = is_super() ? $this->input->get('opd_id') : scope_opd_id();
+		if ( ! $opd_id)
+		{
+			$this->json(array('opd' => NULL, 'programs' => array(), 'total' => 0));
+			return;
+		}
+
+		$rows = $this->db
+			->select('o.id AS opd_id, o.kode_opd, o.nama_opd, COALESCE(o.singkatan, o.nama_opd) AS opd_singkat,
+			          p.id AS prog_id, p.kode_program, p.nama_program,
+			          k.id AS keg_id, k.kode_kegiatan, k.nama_kegiatan,
+			          sk.id AS subkeg_id, sk.kode_subkegiatan, sk.nama_subkegiatan,
+			          r.id AS rek_id, r.kode_rekening, r.uraian AS rek_uraian,
+			          dd.sumber_dana_id, dd.sumber_dana_text,
+			          dd.paket_belanja, dd.koefisien, dd.harga_satuan, dd.total_harga', FALSE)
+			->from('dpa d')
+			->join('dpa_detail dd', 'dd.dpa_id = d.id')
+			->join('master_opd o',        'o.id = d.opd_id')
+			->join('master_program p',    'p.id = dd.program_id')
+			->join('master_kegiatan k',   'k.id = dd.kegiatan_id')
+			->join('master_subkegiatan sk', 'sk.id = dd.subkegiatan_id')
+			->join('master_rekening r',   'r.id = dd.rekening_id')
+			->where('d.opd_id', (int) $opd_id)
+			->order_by('p.kode_program, k.kode_kegiatan, sk.kode_subkegiatan, r.kode_rekening, dd.no_urut')
+			->get()->result_array();
+
+		if (empty($rows))
+		{
+			$this->json(array('opd' => NULL, 'programs' => array(), 'total' => 0));
+			return;
+		}
+
+		$programs   = array();
+		$opd_total  = 0;
+
+		foreach ($rows as $row)
+		{
+			$pid  = $row['prog_id'];  $kid  = $row['keg_id'];
+			$skid = $row['subkeg_id']; $rid  = $row['rek_id'];
+			$amt  = (float) $row['total_harga'];
+
+			if ( ! isset($programs[$pid]))
+				$programs[$pid] = array('id'=>$pid,'kode'=>$row['kode_program'],'nama'=>$row['nama_program'],'total'=>0,'kegiatans'=>array());
+			if ( ! isset($programs[$pid]['kegiatans'][$kid]))
+				$programs[$pid]['kegiatans'][$kid] = array('id'=>$kid,'kode'=>$row['kode_kegiatan'],'nama'=>$row['nama_kegiatan'],'total'=>0,'subkegiatans'=>array());
+			if ( ! isset($programs[$pid]['kegiatans'][$kid]['subkegiatans'][$skid]))
+				$programs[$pid]['kegiatans'][$kid]['subkegiatans'][$skid] = array('id'=>$skid,'kode'=>$row['kode_subkegiatan'],'nama'=>$row['nama_subkegiatan'],'total'=>0,'rekenings'=>array());
+			if ( ! isset($programs[$pid]['kegiatans'][$kid]['subkegiatans'][$skid]['rekenings'][$rid]))
+				$programs[$pid]['kegiatans'][$kid]['subkegiatans'][$skid]['rekenings'][$rid] = array('id'=>$rid,'kode'=>$row['kode_rekening'],'nama'=>$row['rek_uraian'],'total'=>0,'items'=>array());
+
+			$programs[$pid]['kegiatans'][$kid]['subkegiatans'][$skid]['rekenings'][$rid]['items'][] = array(
+				'paket'  => $row['paket_belanja'],
+				'koef'   => $row['koefisien'],
+				'harga'  => (float) $row['harga_satuan'],
+				'total'  => $amt,
+				'sd_id'  => $row['sumber_dana_id'],
+				'sd'     => $row['sumber_dana_text'],
+			);
+			$programs[$pid]['kegiatans'][$kid]['subkegiatans'][$skid]['rekenings'][$rid]['total'] += $amt;
+			$programs[$pid]['kegiatans'][$kid]['subkegiatans'][$skid]['total']                    += $amt;
+			$programs[$pid]['kegiatans'][$kid]['total']                                            += $amt;
+			$programs[$pid]['total']                                                               += $amt;
+			$opd_total                                                                             += $amt;
+		}
+
+		// Re-index arrays (preserve order)
+		$out = array();
+		foreach ($programs as $p)
+		{
+			$out_k = array();
+			foreach ($p['kegiatans'] as $k)
+			{
+				$out_sk = array();
+				foreach ($k['subkegiatans'] as $sk)
+				{
+					$sk['rekenings'] = array_values($sk['rekenings']);
+					$out_sk[] = $sk;
+				}
+				$k['subkegiatans'] = $out_sk;
+				$out_k[] = $k;
+			}
+			$p['kegiatans'] = $out_k;
+			$out[] = $p;
+		}
+
+		$r0 = $rows[0];
+		$this->json(array(
+			'opd' => array(
+				'id'     => $r0['opd_id'],
+				'kode'   => $r0['kode_opd'],
+				'nama'   => $r0['nama_opd'],
+				'singkat'=> $r0['opd_singkat'],
+				'total'  => $opd_total,
+			),
+			'programs' => $out,
+			'total'    => $opd_total,
+		));
 	}
 
 	public function dpa_rekening_options()

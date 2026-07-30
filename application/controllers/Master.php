@@ -209,9 +209,9 @@ class Master extends MY_Controller {
 				'select' => 'm.id, o.nama_opd AS opd_nama, m.kode_unit, m.nama_unit, m.jenis_unit, m.kepala',
 				'joins' => array(array('master_opd o', 'o.id = m.opd_id')),
 				'searchable' => array('m.nama_unit', 'm.kode_unit', 'o.nama_opd'),
-				'order_by' => 'o.nama_opd, m.nama_unit',
+				'order_by' => 'o.kode_opd, m.nama_unit',
 				'columns' => array(
-					array('field' => 'opd_nama', 'label' => 'OPD', 'order' => 'o.nama_opd'),
+					array('field' => 'opd_nama', 'label' => 'OPD', 'order' => 'o.kode_opd'),
 					array('field' => 'nama_unit', 'label' => 'Unit', 'order' => 'm.nama_unit'),
 					array('field' => 'jenis_unit', 'label' => 'Jenis', 'render' => 'badge', 'width' => '130px'),
 					array('field' => 'kepala', 'label' => 'Kepala'),
@@ -234,24 +234,40 @@ class Master extends MY_Controller {
 
 			'pegawai' => array(
 				'title' => 'Pegawai', 'table' => 'pegawai', 'from' => 'pegawai m', 'alias' => 'm',
-				'select' => 'm.id, m.nama_lengkap, m.status_kepegawaian, m.jenis_kepegawaian, m.nip, o.nama_opd AS opd_nama',
+				'select' => 'm.id, m.nama_lengkap, m.jenis_kepegawaian, m.nip, m.golongan, m.pangkat,'
+					. ' o.nama_opd AS opd_nama, o.kode_opd,'
+					. ' (SELECT rj.nama_jabatan FROM pegawai_jabatan pj'
+					. '  JOIN ref_jabatan rj ON rj.id = pj.jabatan_id'
+					. '  WHERE pj.pegawai_id = m.id AND pj.is_active = 1'
+					. '  ORDER BY pj.id DESC LIMIT 1) AS jabatan_nama',
 				'joins' => array(array('master_opd o', 'o.id = m.opd_id')),
-				'searchable' => array('m.nama_lengkap', 'm.nip'),
-				'order_by' => 'm.nama_lengkap',
+				'searchable' => array('m.nama_lengkap', 'm.nip', 'm.pangkat'),
+				'order_by' => 'o.kode_opd, m.nama_lengkap',
 				'columns' => array(
 					array('field' => 'nama_lengkap', 'label' => 'Nama', 'order' => 'm.nama_lengkap'),
 					array('field' => 'nip', 'label' => 'NIP', 'width' => '190px'),
-					array('field' => 'jenis_kepegawaian', 'label' => 'Jenis', 'render' => 'badge', 'width' => '110px'),
-					array('field' => 'opd_nama', 'label' => 'OPD', 'order' => 'o.nama_opd'),
+					array('field' => 'golongan', 'label' => 'Gol.', 'width' => '60px'),
+					array('field' => 'jenis_kepegawaian', 'label' => 'Jenis', 'render' => 'badge', 'width' => '80px'),
+					array('field' => 'jabatan_nama', 'label' => 'Jabatan'),
+					array('field' => 'opd_nama', 'label' => 'OPD', 'order' => 'o.kode_opd'),
 				),
 				'filters' => array(
+					array('name' => 'm.jenis_kepegawaian', 'label' => 'Jenis', 'options' => array('PNS'=>'PNS','PPPK'=>'PPPK','NON_ASN'=>'Non ASN')),
 					array('name' => 'm.opd_id', 'label' => 'OPD', 'source' => 'opd'),
 				),
 				'fields' => array(
 					array('name' => 'nama_lengkap', 'label' => 'Nama Lengkap', 'type' => 'text', 'required' => TRUE),
-					array('name' => 'status_kepegawaian', 'label' => 'Status', 'type' => 'enum', 'options' => array('ASN'=>'ASN','NON_ASN'=>'Non ASN'), 'required' => TRUE),
-					array('name' => 'jenis_kepegawaian', 'label' => 'Jenis', 'type' => 'enum', 'options' => array('PNS'=>'PNS','PPPK'=>'PPPK','NON_ASN'=>'Non ASN'), 'required' => TRUE),
-					array('name' => 'nip', 'label' => 'NIP', 'type' => 'text'),
+					array('name' => 'jenis_kepegawaian', 'label' => 'Jenis Kepegawaian', 'type' => 'enum',
+						'options' => array('PNS'=>'PNS (Pegawai Negeri Sipil)','PPPK'=>'PPPK (Pegawai Pemerintah Dengan Perjanjian Kerja)','NON_ASN'=>'Non ASN'), 'required' => TRUE),
+					array('name' => 'nip', 'label' => 'NIP / NI PPPK', 'type' => 'text'),
+					array('name' => 'golongan', 'label' => 'Golongan', 'type' => 'select',
+						'options' => array(
+							'I/a'=>'I/a','I/b'=>'I/b','I/c'=>'I/c','I/d'=>'I/d',
+							'II/a'=>'II/a','II/b'=>'II/b','II/c'=>'II/c','II/d'=>'II/d',
+							'III/a'=>'III/a','III/b'=>'III/b','III/c'=>'III/c','III/d'=>'III/d',
+							'IV/a'=>'IV/a','IV/b'=>'IV/b','IV/c'=>'IV/c','IV/d'=>'IV/d','IV/e'=>'IV/e',
+						)),
+					array('name' => 'pangkat', 'label' => 'Pangkat', 'type' => 'text'),
 					array('name' => 'npwp', 'label' => 'NPWP', 'type' => 'text'),
 					array('name' => 'opd_id', 'label' => 'OPD', 'type' => 'select', 'source' => 'opd', 'required' => TRUE),
 					array('name' => 'opd_unit_id', 'label' => 'Unit OPD', 'type' => 'select', 'source' => 'opd_unit', 'depends' => 'opd_id'),
@@ -261,28 +277,69 @@ class Master extends MY_Controller {
 				'save_scope_col' => 'opd_id',
 			),
 
+			'ref_jabatan' => array(
+				'title' => 'Master Jabatan', 'table' => 'ref_jabatan', 'from' => 'ref_jabatan m', 'alias' => 'm',
+				'select' => 'm.id, m.kode_jabatan, m.nama_jabatan, m.singkatan_jabatan, m.jenis_jabatan, m.eselon, m.is_active',
+				'searchable' => array('m.nama_jabatan', 'm.kode_jabatan', 'm.singkatan_jabatan'),
+				'order_by' => 'm.jenis_jabatan, m.nama_jabatan',
+				'columns' => array(
+					array('field' => 'kode_jabatan', 'label' => 'Kode', 'width' => '100px'),
+					array('field' => 'nama_jabatan', 'label' => 'Nama Jabatan', 'order' => 'm.nama_jabatan'),
+					array('field' => 'singkatan_jabatan', 'label' => 'Singkatan', 'width' => '120px'),
+					array('field' => 'jenis_jabatan', 'label' => 'Jenis', 'render' => 'badge', 'width' => '120px'),
+					array('field' => 'eselon', 'label' => 'Eselon', 'width' => '80px'),
+					array('field' => 'is_active', 'label' => 'Aktif', 'render' => 'active', 'width' => '70px'),
+				),
+				'filters' => array(
+					array('name' => 'm.jenis_jabatan', 'label' => 'Jenis', 'options' => array(
+						'STRUKTURAL'=>'Struktural','FUNGSIONAL'=>'Fungsional','PENATAUSAHAAN'=>'Penatausahaan','LAINNYA'=>'Lainnya')),
+				),
+				'fields' => array(
+					array('name' => 'kode_jabatan', 'label' => 'Kode Jabatan', 'type' => 'text'),
+					array('name' => 'nama_jabatan', 'label' => 'Nama Jabatan', 'type' => 'text', 'required' => TRUE, 'unique' => TRUE),
+					array('name' => 'singkatan_jabatan', 'label' => 'Singkatan', 'type' => 'text'),
+					array('name' => 'jenis_jabatan', 'label' => 'Jenis Jabatan', 'type' => 'enum',
+						'options' => array('STRUKTURAL'=>'Struktural','FUNGSIONAL'=>'Fungsional','PENATAUSAHAAN'=>'Penatausahaan','LAINNYA'=>'Lainnya'), 'required' => TRUE),
+					array('name' => 'eselon', 'label' => 'Eselon', 'type' => 'select',
+						'options' => array('I'=>'Eselon I','IIa'=>'Eselon IIa','IIb'=>'Eselon IIb',
+							'IIIa'=>'Eselon IIIa','IIIb'=>'Eselon IIIb','IVa'=>'Eselon IVa','IVb'=>'Eselon IVb',
+							'Va'=>'Eselon Va','Vb'=>'Eselon Vb','NON'=>'Non Eselon')),
+					array('name' => 'is_active', 'label' => 'Status Aktif', 'type' => 'checkbox', 'default' => 1),
+				),
+				'manage' => array('superadmin', 'admin_opd'),
+			),
+
 			'penerima' => array(
-				'title' => 'Penerima', 'table' => 'master_penerima', 'from' => 'master_penerima m', 'alias' => 'm',
-				'select' => 'm.id, m.nama_penerima, m.jenis_penerima, m.punya_npwp, m.npwp, m.nama_bank, m.no_rekening',
+				'title' => 'Penerima Pembayaran', 'table' => 'master_penerima', 'from' => 'master_penerima m', 'alias' => 'm',
+				'select' => 'm.id, m.nama_penerima, m.jenis_penerima, m.golongan, m.punya_npwp, m.npwp, m.nama_bank, m.no_rekening, m.is_active',
 				'searchable' => array('m.nama_penerima', 'm.npwp', 'm.no_rekening'),
-				'order_by' => 'm.nama_penerima',
+				'order_by' => 'm.jenis_penerima, m.nama_penerima',
 				'columns' => array(
 					array('field' => 'nama_penerima', 'label' => 'Nama Penerima', 'order' => 'm.nama_penerima'),
 					array('field' => 'jenis_penerima', 'label' => 'Jenis', 'render' => 'badge', 'width' => '100px'),
+					array('field' => 'golongan', 'label' => 'Gol.', 'width' => '60px'),
 					array('field' => 'npwp', 'label' => 'NPWP', 'width' => '180px'),
 					array('field' => 'nama_bank', 'label' => 'Bank'),
 					array('field' => 'no_rekening', 'label' => 'No. Rekening', 'width' => '150px'),
+					array('field' => 'is_active', 'label' => 'Status', 'render' => 'active', 'width' => '80px'),
+				),
+				'filters' => array(
+					array('name' => 'm.jenis_penerima', 'label' => 'Jenis', 'options' => array('asn'=>'ASN','non_asn'=>'Non ASN','badan'=>'Badan/Vendor')),
+					array('name' => 'm.is_active', 'label' => 'Status', 'options' => array('1'=>'Aktif','0'=>'Nonaktif')),
 				),
 				'fields' => array(
 					array('name' => 'nama_penerima', 'label' => 'Nama Penerima', 'type' => 'text', 'required' => TRUE),
-					array('name' => 'jenis_penerima', 'label' => 'Jenis', 'type' => 'enum', 'options' => array('orang'=>'Orang','badan'=>'Badan'), 'required' => TRUE),
+					array('name' => 'jenis_penerima', 'label' => 'Jenis Penerima', 'type' => 'enum',
+						'options' => array('asn'=>'ASN (PNS/PPPK)','non_asn'=>'Non ASN (perorangan)','badan'=>'Badan / Vendor'), 'required' => TRUE),
+					array('name' => 'golongan', 'label' => 'Golongan (ASN)', 'type' => 'enum',
+						'options' => array(''=>'— tidak berlaku —','I'=>'I','II'=>'II','III'=>'III','IV'=>'IV')),
 					array('name' => 'punya_npwp', 'label' => 'Punya NPWP', 'type' => 'checkbox', 'default' => 0),
 					array('name' => 'npwp', 'label' => 'NPWP', 'type' => 'text'),
-					array('name' => 'golongan', 'label' => 'Golongan', 'type' => 'enum', 'options' => array(''=>'-','I'=>'I','II'=>'II','III'=>'III','IV'=>'IV','NON_PNS'=>'Non PNS')),
 					array('name' => 'nama_bank', 'label' => 'Nama Bank', 'type' => 'text'),
 					array('name' => 'no_rekening', 'label' => 'No. Rekening', 'type' => 'text'),
-					array('name' => 'nama_rekening', 'label' => 'Nama Rekening', 'type' => 'text'),
+					array('name' => 'nama_rekening', 'label' => 'Nama di Rekening', 'type' => 'text'),
 					array('name' => 'alamat', 'label' => 'Alamat', 'type' => 'textarea'),
+					array('name' => 'is_active', 'label' => 'Aktif', 'type' => 'checkbox', 'default' => 1),
 				),
 				'manage' => array('superadmin', 'admin_opd', 'user_opd'),
 			),
@@ -304,6 +361,33 @@ class Master extends MY_Controller {
 					array('name' => 'kategori', 'label' => 'Kategori', 'type' => 'text', 'required' => TRUE),
 					array('name' => 'keterangan', 'label' => 'Keterangan', 'type' => 'textarea'),
 					array('name' => 'is_active', 'label' => 'Aktif', 'type' => 'checkbox', 'default' => 1),
+				),
+				'manage' => array('superadmin'),
+			),
+
+			'pemetaan' => array(
+				'title' => 'Pemetaan OPD – Bidang Urusan', 'table' => 'opd_bidang_urusan', 'from' => 'opd_bidang_urusan m', 'alias' => 'm',
+				'select' => 'm.id, o.kode_opd, o.nama_opd AS opd_nama, b.kode_bidang, b.nama_bidang AS bidang_nama, m.is_dominant',
+				'joins' => array(
+					array('master_opd o', 'o.id = m.opd_id'),
+					array('master_bidang b', 'b.id = m.bidang_urusan_id'),
+				),
+				'searchable' => array('o.nama_opd', 'b.nama_bidang'),
+				'order_by' => 'o.kode_opd, b.kode_bidang',
+				'columns' => array(
+					array('field' => 'opd_nama',   'label' => 'OPD',          'order' => 'o.kode_opd'),
+					array('field' => 'kode_bidang', 'label' => 'Kode Bidang', 'order' => 'b.kode_bidang', 'width' => '130px'),
+					array('field' => 'bidang_nama', 'label' => 'Bidang Urusan'),
+					array('field' => 'is_dominant', 'label' => 'Dominan',     'render' => 'active', 'width' => '100px'),
+				),
+				'filters' => array(
+					array('name' => 'm.opd_id',          'label' => 'OPD',    'source' => 'opd'),
+					array('name' => 'm.bidang_urusan_id','label' => 'Bidang', 'source' => 'bidang'),
+				),
+				'fields' => array(
+					array('name' => 'opd_id',          'label' => 'OPD',           'type' => 'select', 'source' => 'opd',    'required' => TRUE),
+					array('name' => 'bidang_urusan_id','label' => 'Bidang Urusan', 'type' => 'select', 'source' => 'bidang', 'required' => TRUE),
+					array('name' => 'is_dominant',     'label' => 'Dominan',       'type' => 'checkbox', 'default' => 0),
 				),
 				'manage' => array('superadmin'),
 			),
@@ -336,7 +420,10 @@ class Master extends MY_Controller {
 		{
 			if ($fld['type'] === 'select' && empty($fld['depends']))
 			{
-				$field_options[$fld['name']] = $this->source_options($fld['source']);
+				if (isset($fld['options']))
+					$field_options[$fld['name']] = $fld['options'];
+				elseif (isset($fld['source']))
+					$field_options[$fld['name']] = $this->source_options($fld['source']);
 			}
 		}
 
@@ -438,6 +525,12 @@ class Master extends MY_Controller {
 			$data[$cfg['save_scope_col']] = scope_opd_id();
 		}
 
+		// Pegawai: status_kepegawaian NOT NULL, diturunkan dari jenis_kepegawaian
+		if ($entity === 'pegawai' && isset($data['jenis_kepegawaian']))
+		{
+			$data['status_kepegawaian'] = ($data['jenis_kepegawaian'] === 'NON_ASN') ? 'NON_ASN' : 'ASN';
+		}
+
 		if ($errors)
 		{
 			$this->session->set_flashdata('error', implode(' ', $errors));
@@ -478,6 +571,28 @@ class Master extends MY_Controller {
 			$this->session->set_flashdata('error', 'Data tidak dapat dihapus karena masih digunakan oleh data lain.');
 		}
 		redirect('master/' . $entity);
+	}
+
+	// ================= PEGAWAI SEARCH (untuk penerima picker) =================
+	public function pegawai_search()
+	{
+		$q = trim($this->input->get('q', TRUE));
+		if (strlen($q) < 2)
+		{
+			$this->output->set_content_type('application/json')->set_output('[]');
+			return;
+		}
+		$this->db->select('m.id, m.nama_lengkap, m.nip, m.jenis_kepegawaian, m.golongan, m.pangkat, m.npwp, o.nama_opd')
+			->from('pegawai m')
+			->join('master_opd o', 'o.id = m.opd_id', 'left')
+			->group_start()
+				->like('m.nama_lengkap', $q)
+				->or_like('m.nip', $q)
+			->group_end()
+			->order_by('m.nama_lengkap')
+			->limit(15);
+		$rows = $this->db->get()->result_array();
+		$this->output->set_content_type('application/json')->set_output(json_encode(array_values($rows)));
 	}
 
 	// ================= OPSI CASCADING =================
@@ -529,7 +644,7 @@ class Master extends MY_Controller {
 				if ($parent === NULL || $parent === '') return array(); // butuh induk (kegiatan)
 				return $this->mm->options('master_subkegiatan', 'id', "CONCAT(kode_subkegiatan,' - ',LEFT(nama_subkegiatan,60))", array('kegiatan_id' => $parent), 'kode_subkegiatan');
 			case 'opd':
-				return $this->mm->options('master_opd', 'id', "CONCAT(COALESCE(singkatan,''),' - ',nama_opd)", array(), 'nama_opd');
+				return $this->mm->options('master_opd', 'id', "CONCAT(kode_opd,' - ',COALESCE(singkatan,nama_opd))", array(), 'kode_opd');
 			case 'opd_unit':
 				$w = ($parent !== NULL && $parent !== '') ? array('opd_id' => $parent) : array();
 				return $this->mm->options('master_opd_unit', 'id', 'nama_unit', $w, 'nama_unit');

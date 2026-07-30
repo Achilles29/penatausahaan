@@ -274,10 +274,12 @@ CREATE TABLE pegawai_rekening (
 CREATE TABLE master_penerima (
   id INT NOT NULL AUTO_INCREMENT,
   nama_penerima VARCHAR(150) NOT NULL,
-  jenis_penerima ENUM('orang','badan') NOT NULL,
+  -- asn = PNS/PPPK (pajak beda), non_asn = perorangan non-ASN, badan = vendor/badan hukum
+  jenis_penerima ENUM('asn','non_asn','badan') NOT NULL,
   punya_npwp TINYINT(1) NOT NULL DEFAULT 0,
   npwp VARCHAR(30) DEFAULT NULL,
-  golongan ENUM('I','II','III','IV','NON_PNS') DEFAULT NULL,
+  -- Golongan hanya berlaku untuk ASN (menentukan tarif PPh 21)
+  golongan ENUM('I','II','III','IV') DEFAULT NULL,
   nama_bank VARCHAR(50) DEFAULT NULL,
   no_rekening VARCHAR(50) DEFAULT NULL,
   nama_rekening VARCHAR(150) DEFAULT NULL,

@@ -55,3 +55,29 @@ SEBELUMNYA SAYA SUDAH BUAT di folder C:\xampp\htdocs\literasi tapi masih banyak 
 ==============
 
 urutan tampilan data urut kode terkecil, urusan, bidang , opd dan seterusnya.
+
+
+
+mari kita lakukan beberapa penyesuaian dulu untuk user, pegawai dan penerima:
+
+user selain superadmin adalah pegawai , jadi login menggunakan NIP
+penerima bisa dari pegawai, jadi kita pisahkan antara pegawai dan penerima. penerima ini adalah penerima pembayaran, sementara pegawai adalah asn , pns dan pppk, yang bisa mempunyai jabatan. sementara penerima berguna untuk pencairan NPD, kalau asn maka pajaknya beda dengan non asn
+lakukan pengecekan dan penyesuaian untuk semua halaman terdampak.
+
+tampilan /user urut sesuai id
+
+
+/master/pemetaan nont found 404
+
+
+
+/anggaran/dpa seharusnya tampilannya bukan data mentah begitu, tapi dimulai dari opd, program kegiatan terus kebawah, yang bisa di collapse dan expand. buat tampilannya menarik dan user friendly
+
+
+
+- /anggaran/dpa formasi tampilan sudah oke, tapi data yang ditampilkan sepertinya salah, terlalu besar pagu totalnya. entah salah baca, data di tabel database salah, atau salah menarik data dari literasi? coba cek ulang. 
+- /anggaran/dpa sumber dana belum ada.  master sumber dana sudah ada tapi di dpa belum terbaca 
+- /anggaran/dpa buat tampilan beberapa tab, tab pertama seperti sekarang tinggal tambahkan sumber dana, tab kedua setelah sub kegiatan aktifitas dulu, lalu sumber dana baru rekening, tab ketiga sumber dana dulu baru program. atau cukup 1 tab, tapi sortir datanya bisa dipilih manual (seperti pada pivot). dan untuk tampilan kurang menarik, percantik lagi
+
+/master/pegawai kurang lengkap, belum ada pangkat , golongan, jabatan, eselon (jabatan struktural dan fungsional, mulai dari kepala, sekretaris, kepala bidang , kepala seksi, pelaksana dan seterusnya), jika diperlukan tambahkan master jabatan, ini nanti bisa digunakan untuk taging hak akses
+/master/penerima ketik nama ajax belum berhasil menemukan pegawai , lakukan penyesuaian terkait poin 1

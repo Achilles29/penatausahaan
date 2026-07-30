@@ -47,9 +47,11 @@ class Master_model extends CI_Model {
 		$records_filtered = $this->db->count_all_results('', FALSE); // pertahankan query
 
 		// Ordering
+		// DataTables column index includes the '#' prefix column (not in $cfg['columns']),
+		// so subtract 1 to map to the correct cfg column.
 		if ( ! empty($dt['order']) && isset($cfg['columns']))
 		{
-			$col_idx = (int) $dt['order'][0]['column'];
+			$col_idx = (int) $dt['order'][0]['column'] - 1;
 			$dir     = strtolower($dt['order'][0]['dir']) === 'desc' ? 'DESC' : 'ASC';
 			$cols    = array_values($cfg['columns']);
 			if (isset($cols[$col_idx]) && ! empty($cols[$col_idx]['order']))

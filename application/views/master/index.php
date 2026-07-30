@@ -74,6 +74,19 @@ foreach ($cols as $c) {
         </div>
         <div class="modal-body">
           <input type="hidden" name="id" id="f_id" value="">
+          <?php if ($entity === 'penerima'): ?>
+          <div class="mb-3 border rounded p-2" id="peg_picker_wrap" style="position:relative; background:#f8f9fa">
+            <label class="form-label small fw-semibold mb-1">
+              <i class="fa-solid fa-magnifying-glass me-1 text-primary"></i>Isi dari data Pegawai
+              <small class="text-muted fw-normal">(opsional)</small>
+            </label>
+            <input type="text" class="form-control form-control-sm" id="peg_search_penerima"
+                   placeholder="Ketik nama atau NIP pegawai…" autocomplete="off">
+            <div id="peg_dropdown_penerima" class="list-group shadow"
+                 style="display:none; position:absolute; z-index:1060; left:8px; right:8px; max-height:210px; overflow-y:auto; top:calc(100% - 4px)">
+            </div>
+          </div>
+          <?php endif; ?>
           <?php foreach ($cfg['fields'] as $fld): $name = $fld['name']; $req = ! empty($fld['required']) ? 'required' : ''; ?>
           <div class="mb-3" data-field="<?= $name ?>">
             <label class="form-label"><?= html_escape($fld['label']) ?><?= $req ? ' <span class="text-danger">*</span>' : '' ?></label>
@@ -128,6 +141,7 @@ $cfg_js = json_encode(array(
 	'data_url'   => site_url('master/data/'.$entity),
 	'get_url'    => site_url('master/get/'.$entity),
 	'opt_url'    => site_url('master/options'),
+	'peg_url'    => ($entity === 'penerima') ? site_url('master/pegawai_search') : NULL,
 	'order_col'  => 1,
 ));
 ?>
@@ -249,5 +263,69 @@ var MCFG = <?= $cfg_js ?>;
       child.html(html);
     });
   });
+
+  // ---- Penerima: pegawai picker ----
+  if (MCFG.peg_url) {
+    var esc2 = function (v) { return v ? $('<div>').text(v).html() : ''; };
+    var pegTimer = null;
+
+    $('#formModal').on('hide.bs.modal', function () {
+      $('#peg_dropdown_penerima').hide();
+      $('#peg_search_penerima').val('');
+    });
+
+    $('#peg_search_penerima').on('input', function () {
+      clearTimeout(pegTimer);
+      var q = $(this).val().trim();
+      if (q.length < 2) { $('#peg_dropdown_penerima').hide(); return; }
+      pegTimer = setTimeout(function () {
+        $.getJSON(MCFG.peg_url + '?q=' + encodeURIComponent(q), function (rows) {
+          var html = '';
+          if (rows.length === 0) {
+            html = '<button type="button" class="list-group-item list-group-item-action text-muted small disabled">Tidak ditemukan</button>';
+          } else {
+            rows.forEach(function (p) {
+              var jLabel = { PNS:'PNS', PPPK:'PPPK', NON_ASN:'Non ASN' }[p.jenis_kepegawaian] || p.jenis_kepegawaian;
+              var golInfo = p.golongan ? (' Gol.'+p.golongan) : '';
+              html += '<button type="button" class="list-group-item list-group-item-action peg-penerima-item small py-2"'
+                + ' data-nama="'    + esc2(p.nama_lengkap) + '"'
+                + ' data-nip="'     + esc2(p.nip) + '"'
+                + ' data-jenis="'   + esc2(p.jenis_kepegawaian) + '"'
+                + ' data-npwp="'    + esc2(p.npwp) + '"'
+                + ' data-golongan="'+ esc2(p.golongan) + '">'
+                + '<strong>' + esc2(p.nama_lengkap) + '</strong>'
+                + '<span class="text-muted ms-2">' + esc2(p.nip || '—') + '</span>'
+                + '<span class="d-block text-muted" style="font-size:.8em">'
+                  + esc2(p.nama_opd || '') + (p.nama_opd ? ' · ' : '') + jLabel + golInfo
+                + '</span>'
+                + '</button>';
+            });
+          }
+          $('#peg_dropdown_penerima').html(html).show();
+        });
+      }, 280);
+    });
+
+    $(document).on('click', '.peg-penerima-item', function () {
+      var jenis    = $(this).data('jenis');
+      var npwp     = $(this).data('npwp') || '';
+      var golFull  = $(this).data('golongan') || ''; // e.g. 'III/b'
+      var golEnum  = golFull ? golFull.replace(/\/.*/, '') : ''; // 'III'
+      var jenisVal = (jenis === 'NON_ASN') ? 'non_asn' : 'asn';
+      $('#fld_nama_penerima').val($(this).data('nama'));
+      $('#fld_jenis_penerima').val(jenisVal);
+      $('#fld_npwp').val(npwp);
+      $('#fld_punya_npwp').prop('checked', npwp !== '');
+      if (golEnum) $('#fld_golongan').val(golEnum);
+      $('#peg_search_penerima').val('');
+      $('#peg_dropdown_penerima').hide();
+    });
+
+    $(document).on('mousedown', function (e) {
+      if (!$(e.target).closest('#peg_search_penerima, #peg_dropdown_penerima').length) {
+        $('#peg_dropdown_penerima').hide();
+      }
+    });
+  }
 })();
 </script>

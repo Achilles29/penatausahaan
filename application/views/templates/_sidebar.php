@@ -66,6 +66,11 @@ $org_active  = ($seg1 === 'master' && in_array($seg3, array('opd','opd_unit','pe
       </a>
     </li>
     <li class="menu-item">
+      <a class="menu-link <?= $is('master','ref_jabatan')?'active':'' ?>" href="<?= site_url('master/ref_jabatan') ?>">
+        <i class="fa-solid fa-sitemap"></i><span>Master Jabatan</span>
+      </a>
+    </li>
+    <li class="menu-item">
       <a class="menu-link <?= $is('master','penerima')?'active':'' ?>" href="<?= site_url('master/penerima') ?>">
         <i class="fa-solid fa-hand-holding-dollar"></i><span>Penerima</span>
       </a>

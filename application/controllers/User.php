@@ -18,19 +18,20 @@ class User extends MY_Controller {
 	{
 		return array(
 			'from' => 'users u', 'alias' => 'u',
-			'select' => 'u.id, u.nama, u.nip, u.username, u.role, u.is_active, o.nama_opd AS opd_nama, ou.nama_unit AS unit_nama',
+			'select' => 'u.id, u.nama, u.nip, u.username, u.role, u.is_active, o.kode_opd, o.nama_opd AS opd_nama, ou.nama_unit AS unit_nama, p.nama_lengkap AS pegawai_nama',
 			'joins' => array(
 				array('master_opd o', 'o.id = u.opd_id'),
 				array('master_opd_unit ou', 'ou.id = u.opd_unit_id'),
+				array('pegawai p', 'p.id = u.pegawai_id'),
 			),
 			'searchable' => array('u.nama', 'u.nip', 'u.username'),
-			'order_by' => 'u.nama',
+			'order_by' => 'u.id',
 			'columns' => array(
-				array('field' => 'nama', 'label' => 'Nama', 'order' => 'u.nama'),
+				array('field' => 'nama',      'label' => 'Nama',          'order' => 'u.nama'),
 				array('field' => 'identitas', 'label' => 'NIP / Username', 'width' => '190px'),
-				array('field' => 'role', 'label' => 'Role', 'render' => 'badge', 'width' => '120px'),
-				array('field' => 'opd_nama', 'label' => 'OPD'),
-				array('field' => 'is_active', 'label' => 'Status', 'render' => 'active', 'width' => '100px'),
+				array('field' => 'role',      'label' => 'Role',          'render' => 'badge',  'width' => '120px'),
+				array('field' => 'opd_nama',  'label' => 'OPD',           'order' => 'o.kode_opd'),
+				array('field' => 'is_active', 'label' => 'Status',        'render' => 'active', 'width' => '100px'),
 			),
 		);
 	}
@@ -43,15 +44,15 @@ class User extends MY_Controller {
 			: array('admin_opd' => 'Admin OPD', 'user_opd' => 'User OPD');
 
 		$opd_opts = ($role === 'superadmin')
-			? $this->mm->options('master_opd', 'id', "CONCAT(COALESCE(singkatan,''),' - ',nama_opd)", array(), 'nama_opd')
+			? $this->mm->options('master_opd', 'id', "CONCAT(kode_opd,' - ',COALESCE(singkatan,nama_opd))", array(), 'kode_opd')
 			: array();
 
 		$this->render('user/index', array(
-			'roles'     => $roles,
-			'opd_opts'  => $opd_opts,
-			'is_super'  => is_super(),
-			'my_opd'    => scope_opd_id(),
-			'data_url'  => site_url('user/data'),
+			'roles'    => $roles,
+			'opd_opts' => $opd_opts,
+			'is_super' => is_super(),
+			'my_opd'   => scope_opd_id(),
+			'data_url' => site_url('user/data'),
 		), 'Manajemen Pengguna');
 	}
 
@@ -59,13 +60,23 @@ class User extends MY_Controller {
 	{
 		$cfg = $this->cfg();
 		$dt = array(
-			'draw' => (int) $this->input->get('draw'), 'start' => (int) $this->input->get('start'),
-			'length' => (int) $this->input->get('length'), 'search' => $this->input->get('search'),
-			'order' => $this->input->get('order'),
+			'draw'   => (int) $this->input->get('draw'),
+			'start'  => (int) $this->input->get('start'),
+			'length' => (int) $this->input->get('length'),
+			'search' => $this->input->get('search'),
+			'order'  => $this->input->get('order'),
 		);
+
+		$filters = array();
+		$v = $this->input->get('f_role');
+		if ($v !== NULL && $v !== '') $filters['u.role'] = $v;
+		$v = $this->input->get('f_opd_id');
+		if ($v !== NULL && $v !== '') $filters['u.opd_id'] = (int) $v;
+		$v = $this->input->get('f_status');
+		if ($v !== NULL && $v !== '') $filters['u.is_active'] = (int) $v;
+
 		$scope = is_super() ? NULL : array('column' => 'u.opd_id', 'ids' => array((int) scope_opd_id()));
-		$res = $this->mm->datatables($cfg, $dt, array(), $scope);
-		// bentuk kolom "identitas"
+		$res = $this->mm->datatables($cfg, $dt, $filters, $scope);
 		foreach ($res['data'] as &$r) { $r['identitas'] = $r['nip'] ? $r['nip'] : $r['username']; }
 		$this->output->set_content_type('application/json')
 			->set_output(json_encode(array('draw' => $dt['draw']) + $res));
@@ -73,7 +84,11 @@ class User extends MY_Controller {
 
 	public function get($id)
 	{
-		$row = $this->mm->get_row('users', (int) $id);
+		$row = $this->db->select('u.*, p.nama_lengkap AS pegawai_nama, p.jenis_kepegawaian AS pegawai_jenis')
+			->from('users u')
+			->join('pegawai p', 'p.id = u.pegawai_id', 'left')
+			->where('u.id', (int) $id)
+			->get()->row_array();
 		if ( ! $row) show_404();
 		if ( ! $this->can_touch($row)) show_error('Akses ditolak', 403);
 		unset($row['password']);
@@ -105,16 +120,35 @@ class User extends MY_Controller {
 		}
 		else
 		{
-			$nip = $this->input->post('nip', TRUE);
-			if ( ! $nip) $errors[] = 'NIP wajib diisi.';
-			$data['nip'] = $nip; $data['username'] = NULL;
-			// admin_opd dipaksa ke OPD sendiri
-			$opd_id = $is_super ? (int) $this->input->post('opd_id') : (int) scope_opd_id();
-			if ( ! $opd_id) $errors[] = 'OPD wajib dipilih.';
-			$data['opd_id'] = $opd_id ?: NULL;
+			$pegawai_id = (int) $this->input->post('pegawai_id');
+			if ( ! $pegawai_id)
+			{
+				$errors[] = 'Pegawai wajib dipilih.';
+			}
+			else
+			{
+				$peg_q = $this->db->select('id, nip, opd_id, opd_unit_id')
+					->from('pegawai')->where('id', $pegawai_id);
+				if ( ! $is_super) $peg_q->where('opd_id', (int) scope_opd_id());
+				$peg = $peg_q->get()->row_array();
+				if ( ! $peg)
+				{
+					$errors[] = 'Pegawai tidak valid atau di luar kewenangan.';
+				}
+				else
+				{
+					$data['pegawai_id'] = (int) $peg['id'];
+					$data['nip']        = $peg['nip'];
+					$opd_id = $is_super ? (int) $this->input->post('opd_id') : (int) scope_opd_id();
+					if ( ! $opd_id) $opd_id = (int) $peg['opd_id'];
+					$data['opd_id'] = $opd_id ?: NULL;
+					if ( ! $data['opd_id']) $errors[] = 'OPD tidak teridentifikasi.';
+					if ( ! empty($data['nip']) && ! $this->mm->is_unique_value('users', 'nip', $data['nip'], $id ?: NULL))
+						$errors[] = 'NIP sudah digunakan oleh pengguna lain.';
+				}
+			}
+			$data['username']    = NULL;
 			$data['opd_unit_id'] = $this->input->post('opd_unit_id') ? (int) $this->input->post('opd_unit_id') : NULL;
-			if ($nip && ! $this->mm->is_unique_value('users', 'nip', $nip, $id ?: NULL))
-				$errors[] = 'NIP sudah digunakan.';
 		}
 
 		if ( ! $nama) $errors[] = 'Nama wajib diisi.';
@@ -158,6 +192,29 @@ class User extends MY_Controller {
 		}
 		else { $this->session->set_flashdata('error', 'Akses ditolak.'); }
 		redirect('user');
+	}
+
+	/** Cari pegawai by nama/NIP — dipakai select2-like widget di form user. */
+	public function pegawai_search()
+	{
+		$q = trim($this->input->get('q', TRUE));
+		if (strlen($q) < 2)
+		{
+			$this->output->set_content_type('application/json')->set_output('[]');
+			return;
+		}
+		$this->db->select('m.id, m.nama_lengkap, m.nip, m.jenis_kepegawaian, m.opd_id, m.opd_unit_id, o.nama_opd')
+			->from('pegawai m')
+			->join('master_opd o', 'o.id = m.opd_id', 'left')
+			->group_start()
+				->like('m.nama_lengkap', $q)
+				->or_like('m.nip', $q)
+			->group_end()
+			->order_by('m.nama_lengkap')
+			->limit(15);
+		if ( ! is_super()) $this->db->where('m.opd_id', (int) scope_opd_id());
+		$rows = $this->db->get()->result_array();
+		$this->output->set_content_type('application/json')->set_output(json_encode(array_values($rows)));
 	}
 
 	/** Opsi unit OPD untuk cascading (dipakai form). */
