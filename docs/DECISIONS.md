@@ -54,3 +54,39 @@ tidak diturunkan dari kode rekening (dan tabel skema pajaknya kosong). Ini rawan
 - **Lookup** via `helpers/pajak_helper.php::pajak_untuk_rekening($id)` → kategori + skema + aturan.
   Jadi fondasi engine penghitungan pajak di Tahap 3 (pinbuk), tanpa hardcode.
 - Enum `jenis_pajak` ditambah `PPH4_2` (final: sewa tanah/bangunan, jasa konstruksi).
+
+## 8. PPh21 Gaji menggunakan metode TER, bukan progressive tahunan
+Sebelumnya sistem menghitung PPh21 dengan metode lama (proyeksi penghasilan setahun → tarif
+progressive). Referensi data pegawai (file Excel Dinarpus) menunjukkan metode TER (Tarif Efektif
+Rata-Rata) sesuai PMK 168/2023 / PP 58/2023 yang berlaku efektif Januari 2024.
+- Kategori A/B/C ditentukan dari PTKP (status pernikahan + tanggungan).
+- **Perempuan kawin**: diperlakukan sebagai K/0 → Kategori A (suami klaim tanggungan di tempatnya).
+- Bruto TER = komponen gaji saja (tanpa TPP).
+- Implementasi: `_hitung_pph21()` + `_ter_rate()` di `controllers/Gaji.php`.
+
+## 9. Rekening PPh21 & BPJS dari TPP tetap 5.1.01.01.xxx, bukan 5.1.01.02.xxx
+TPP menggunakan rekening `5.1.01.02.001`, tetapi pajak dan BPJS yang timbul dari TPP
+dikategorikan sebagai **Belanja Gaji dan Tunjangan** (`5.1.01.01`), bukan Tambahan Penghasilan:
+- PPh21 TPP (DTP) → `5.1.01.01.007`
+- BPJS Kes TPP (employer 4% DTP & pegawai 1%) → `5.1.01.01.009`
+Alasan: secara BAS (Bagan Akun Standar), PPh21 dan iuran BPJS adalah komponen gaji/tunjangan
+yang dicatat di rekening gaji, terlepas dari mana penghasilan dasarnya berasal.
+
+## 10. BPJS TPP 1% pegawai = tanggungan pegawai, bukan beban negara
+BPJS 1% dari TPP (iuran pegawai) dipotong dari TPP yang diterima pegawai. Ini TIDAK dihitung
+sebagai beban negara/anggaran. Berbeda dengan BPJS 4% employer (DTP = ditanggung pemerintah).
+Model anggaran belanja gaji = PPh21 DTP + BPJS 4% gaji + JKK + JKM + PPh21 TPP DTP + BPJS 4% TPP.
+
+## 11. TPP dalam slip gaji: model gross-up DTP (keluar-masuk)
+Untuk ketepatan pencatatan keuangan (rekening `5.1.01.01.007` dan `5.1.01.01.009`), item DTP
+dicatat sebagai penghasilan yang diterima lalu disetor kembali (keluar-masuk). Ini mengikuti
+pola yang sama dengan komponen gaji DTP:
+- PPh21 TPP DTP: tampil sebagai +penerimaan, lalu −setoran ke kas negara (netto 0).
+- BPJS 4% employer TPP: tampil sebagai +penerimaan, lalu −setoran ke BPJS (netto 0).
+- BPJS 1% pegawai TPP: tampil sebagai −potongan nyata dari THP pegawai (bukan DTP).
+
+## 12. Pembulatan gaji: ceil (atas), bukan round (terdekat)
+Tunjangan pembulatan harus selalu ≥ 0 (tidak pernah memotong gaji). Formula:
+`sisa = bersih_gaji_kasar % 100; pembulatan = sisa > 0 ? (100 - sisa) : 0`.
+Penggunaan `round()` sebelumnya menyebabkan ~50% pegawai tidak dapat pembulatan
+(kasus bersih berakhiran 01–49 dibulatkan ke bawah).

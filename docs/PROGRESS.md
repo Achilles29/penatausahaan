@@ -1,6 +1,6 @@
 # PROGRESS — Catatan Teknis (aman untuk pindah device)
 
-**Terakhir diperbarui:** 2026-07-30 · **Status:** Tahap 1 SELESAI & teruji (+ peningkatan UI & pajak berbasis rekening). Siap lanjut Tahap 2 (modul NPD).
+**Terakhir diperbarui:** 2026-08-03 · **Status:** Modul Gaji ASN SELESAI & teruji. Siap lanjut Tahap 2 (modul NPD).
 
 ---
 
@@ -22,19 +22,82 @@
 - ⚠️ Tarif/ketentuan masih **DRAFT** — dikoreksi via CRUD.
 
 ### [2026-07-30] Perbaikan UI kritis
-- **JS load order**: jQuery/Bootstrap/DataTables/app.js dipindah ke `<head>` → memperbaiki
-  DataTables tak tampil & tombol tambah/edit/hapus mati (akar: script view jalan sebelum jQuery).
+- **JS load order**: jQuery/Bootstrap/DataTables/app.js dipindah ke `<head>`.
 - **Ikon**: FontAwesome v5 → **v6** (cocok sintaks `fa-solid`).
-- **Logo & favicon**: `assets/img/logo.png` + `favicon.ico` dipakai di sidebar/login/favicon.
+- **Logo & favicon**: `assets/img/logo.png` + `favicon.ico`.
 
 ### [2026-07-30] Peningkatan UI
 - **Sidebar collapse** (default mini/collapsed, hover-expand, submenu toggle; state di localStorage).
-- **Skema Pajak** → controller khusus `skema_pajak`: accordion menampilkan **besaran tiap aturan**
-  (tarif, batas nilai, syarat NPWP, golongan, basis) + CRUD aturan.
-- **Filter bertingkat (cascade)** di program/kegiatan/subkegiatan + DPA + Arus Kas
-  (urusan→bidang→program→kegiatan→subkegiatan→rekening). Opsi rekening DPA/Arus Kas data-driven.
+- **Skema Pajak** → controller khusus `skema_pajak`: accordion besaran tiap aturan + CRUD aturan.
+- **Filter bertingkat (cascade)** di program/kegiatan/subkegiatan + DPA + Arus Kas.
 
 > Setelah update UI, lakukan **hard-refresh (Ctrl+Shift+R)** sekali untuk membuang cache lama.
+
+---
+
+### [2026-08-01 – 2026-08-03] Modul Gaji ASN — SELESAI
+
+#### Data & Referensi
+- 6 tabel master gaji baru: `ref_gaji_pokok` (271 baris PP5/2024), `ref_tunjangan_jabatan`,
+  `ref_kelas_jabatan`, `ref_harga_beras`, `ref_iuran_gaji`, `ref_tpp`.
+- Tabel `pegawai` diperluas: golongan, masa kerja, status pernikahan, jumlah anak, jenis kelamin,
+  jenis kepegawaian (PNS/PPPK/CPNS/NON_ASN), persen gaji, tmt_cpns/pns/pensiun.
+- **ref_tpp**: TPP per jabatan (FK → ref_jabatan_id), dari Perbup Rembang 2024.
+  Fallback → `ref_kelas_jabatan.tpp` jika belum diisi.
+- **T.Pangan**: jiwa × `harga_per_jiwa` (Rp 7.242/jiwa/bln, bukan per-kg).
+- **DB fix**: LILIK SRI DARYATI (pegawai.id=12) jabatan_struktural_id 106→105 (eselon 3A→3B).
+
+#### PPh21 — Metode TER (PMK 168/2023 / PP 58/2023, berlaku 2024)
+- **Bukan progressive tahunan** — pakai TER (Tarif Efektif Rata-Rata) per bulan.
+- Bruto TER = gapok + t_istri + t_anak + t_jabatan + t_khusus + t_pangan (**tanpa TPP**).
+- Kategori TER:
+  - **A** (PTKP ≤ 58,5 jt): TK/0, TK/1, K/0, **perempuan kawin** (suami klaim tanggungan)
+  - **B** (PTKP 63–67,5 jt): K/1, K/2, perempuan punya 2+ anak
+  - **C** (PTKP 72 jt): K/3
+- PPh21 TPP: **flat** 5% (Gol I-III) / 15% (Gol IV) — PP 80/2010, **DTP** (negara bayar).
+- Fungsi: `_hitung_pph21()` + `_ter_rate()` di `controllers/Gaji.php`.
+
+#### Aturan BPJS & Pembulatan
+| Item | Pegawai | Negara (DTP) | Basis |
+|------|---------|-------------|-------|
+| BPJS Kes gaji | 1% | 4% | GP + T.Keluarga + T.Jabatan (capped 12 jt) |
+| BPJS Kes TPP | 1% (dipotong dr TPP) | 4% | Nominal TPP |
+| JKK | — | 0,24% | Gaji Pokok |
+| JKM | — | 0,72% (PNS Taspen) / 0,30% (PPPK) | Gaji Pokok |
+| Pensiun/JHT | 4,75% (PNS) / 2% JHT + 1% JP (PPPK) | — | GP + T.Keluarga |
+
+- **Pembulatan**: `ceil` ke kelipatan Rp 100 (selalu bulatkan ke atas, tidak pernah memotong).
+- **Net TPP**: TPP − 1% BPJS pegawai (pajak DTP, tidak mengurangi penerimaan pegawai).
+- **BPJS TPP 1% pegawai**: tanggungan pegawai, **TIDAK dihitung sebagai beban negara/anggaran**.
+
+#### Rekening yang Benar untuk Komponen TPP
+| Rekening | Untuk |
+|----------|-------|
+| `5.1.01.02.001` | TPP nominal saja |
+| `5.1.01.01.007` | PPh21 TPP (DTP) — **bukan** 5.1.01.02.001 |
+| `5.1.01.01.009` | BPJS TPP (employer 4% DTP & pegawai 1%) — **bukan** 5.1.01.02.001 |
+
+#### Model Beban Negara (Anggaran)
+```
+Beban negara per pegawai =
+  PPh21 gaji (DTP)     [5.1.01.01.007]
++ BPJS 4% gaji (DTP)   [5.1.01.01.009]
++ JKK (DTP)            [5.1.01.01.010]
++ JKM (DTP)            [5.1.01.01.011]
++ PPh21 TPP (DTP)      [5.1.01.01.007]
++ BPJS 4% TPP (DTP)    [5.1.01.01.009]
+```
+TIDAK termasuk: BPJS 1% pegawai dari gaji & TPP (tanggungan pegawai).
+
+#### File yang Dimodifikasi
+| File | Perubahan |
+|------|-----------|
+| `controllers/Gaji.php` | TER PPh21, TPP rules, pembulatan ceil, initial $total lengkap |
+| `controllers/Rekap.php` | `_totals_from()`, `_zero_totals()`, `detail_months` — bersih_gaji/tpp_bersih benar |
+| `views/gaji/rekap.php` | Summary boxes, rekDef rekening benar, totalBelanjaPemda, per-pegawai loop |
+| `views/gaji/simulasi.php` | TPP slip gross-up (PPh21+BPJS DTP keluar-masuk, BPJS 1% deduction real) |
+| `views/rekap/index.php` | Kolom BPJS TPP 1%, header "BPJS TPP (1%)", JS cell mapping |
+| `views/rekap/detail.php` | BPJS TPP pegawai (5.1.01.01.009), Pajak TPP DTP (5.1.01.01.007) |
 
 ---
 
@@ -56,7 +119,6 @@
 - **A (bawa data):** ekspor+impor database `penatus` (mysqldump) + salin folder `penatausahaan`.
 - **B (rebuild dari literasi):** butuh DB `literasi`. Salin folder, lalu buka
   `http://localhost/penatausahaan/setup` → **Rebuild penuh** (atau CLI `php index.php setup rebuild`).
-  Menjalankan `docs/master/penatus_schema.sql` + `penatus_import.sql` + seed user.
   > `Setup` hanya bisa diakses dari localhost; nonaktifkan di produksi.
 
 ---
@@ -65,32 +127,30 @@
 | Komponen | File utama | Status |
 |----------|-----------|--------|
 | Config CI3 | application/config/{database,config,routes,autoload}.php | ✅ |
-| Skema DB (30 tabel) | docs/master/penatus_schema.sql | ✅ |
-| Import + klasifikasi pajak | docs/master/penatus_import.sql + controllers/Setup.php | ✅ teruji |
+| Skema DB | docs/master/penatus_schema.sql | ✅ |
+| Import + klasifikasi pajak | docs/master/penatus_import.sql + controllers/Setup.php | ✅ |
 | Helper | helpers/{format,scope,pajak}_helper.php | ✅ |
 | Base controller | core/MY_Controller.php | ✅ |
-| Auth + Dashboard | controllers/{Auth,Dashboard}.php, views/auth/login.php | ✅ |
-| Template + aset | views/templates/*, assets/{css/app.css,js/app.js,vendor,img} | ✅ |
-| Master (12 entitas) | controllers/Master.php, models/Master_model.php, views/master/index.php | ✅ CRUD teruji |
+| Auth + Dashboard | controllers/{Auth,Dashboard}.php | ✅ |
+| Template + aset | views/templates/*, assets/ | ✅ |
+| Master (13 entitas) | controllers/Master.php + views/master/index.php | ✅ CRUD |
 | Cascade filter | assets/js/app.js `initCascadeFilters` | ✅ |
-| Anggaran (DPA, Arus Kas) | controllers/Anggaran.php, views/anggaran/viewer.php | ✅ |
-| Skema Pajak (header+aturan) | controllers/Skema_pajak.php, views/skema_pajak/index.php | ✅ |
-| Pengguna | controllers/User.php, views/user/index.php | ✅ |
-
-## Hasil verifikasi
-- Import row-count cocok `literasi` (rekening 15.288, subkeg 2.057, DPA detail 1.266, arus kas 223/2.676).
-- Login superadmin → Total Pagu DPA **Rp 14.625.774.319** (data nyata). 16 halaman render 200 tanpa error.
-- RBAC/scope: admin_opd hanya data OPD-nya (user 2, unit 3, pegawai 1); nomenklatur read-only non-super; POST tak sah → 403.
-- Cascade: kegiatan urusan 2→194/urusan 1→79; DPA filter subkeg 1266→142; rekening DPA 77→17 (dipersempit subkeg).
-- Klasifikasi pajak: honorarium 14, barang 837, jasa 590, jasa_boga 2, makan_minum 8, sewa 793, konstruksi 31, modal 978, non_pajak 10.413.
+| Anggaran (DPA, Arus Kas) | controllers/Anggaran.php | ✅ |
+| Skema Pajak | controllers/Skema_pajak.php | ✅ |
+| Pengguna | controllers/User.php | ✅ |
+| **Gaji — Kalkulasi** | controllers/Gaji.php (`_hitung_gaji`, TER, BPJS, TPP) | ✅ |
+| **Gaji — Rekap per OPD** | views/gaji/rekap.php | ✅ |
+| **Gaji — Simulasi per Pegawai** | views/gaji/simulasi.php | ✅ |
+| **Gaji — Rekap per Pegawai** | controllers/Rekap.php + views/rekap/{index,detail}.php | ✅ |
+| NPD | controllers/Npd.php | ⏳ Belum dimulai |
 
 ## Utang teknis / berikutnya
-- ⚠️ **Tarif pajak masih DRAFT** — koreksi via menu Skema Pajak + kolom Kategori Pajak di menu Rekening.
+- ⚠️ **Tarif pajak Tahap 3 masih DRAFT** — koreksi via menu Skema Pajak.
+- **Ref gaji pokok**: 271 baris dari PP 15/2019 × 1,08 — perlu diverifikasi terhadap PP 5/2024 riil.
+- **Data anggaran hanya OPD 16**; 39 OPD lain baru "cangkang".
+- Detail arus kas bulanan belum ditampilkan (baru pagu tahunan).
 - Scope DPA untuk user_opd masih se-OPD (belum per subkegiatan kewenangan).
-- Detail arus kas **bulanan** (`anggaran_kas_bulanan`) belum ditampilkan (baru pagu tahunan).
-- **Data anggaran hanya OPD 16**; 39 OPD lain baru "cangkang". OPD lain terisi saat DPA-nya diimpor / dipetakan manual.
 - Tabel transaksi (npd, npd_pinbuk, dst.) sudah ada di skema, siap diisi **Tahap 2 (modul NPD)**.
-- Folder `_archive_materio_nextjs` (template Next.js) tak dipakai, boleh dihapus.
 
 ---
 Lihat **ROADMAP.md** (tahapan), **DECISIONS.md** (keputusan arsitektur), **DB_SCHEMA.md** (struktur DB).
