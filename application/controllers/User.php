@@ -225,6 +225,65 @@ class User extends MY_Controller {
 		$this->output->set_content_type('application/json')->set_output(json_encode($opts));
 	}
 
+	/** Bidang urusan yang dipetakan ke OPD tertentu (untuk modal akses). */
+	public function bidang_for_opd()
+	{
+		$opd_id = is_super() ? (int) $this->input->get('opd_id') : (int) scope_opd_id();
+		if ( ! $opd_id) { $this->output->set_content_type('application/json')->set_output('[]'); return; }
+		$rows = $this->db
+			->select('b.id, b.kode_bidang, b.nama_bidang', FALSE)
+			->from('master_bidang b')
+			->join('opd_bidang_urusan obu', 'obu.bidang_urusan_id = b.id')
+			->where('obu.opd_id', $opd_id)
+			->order_by('b.kode_bidang')
+			->get()->result_array();
+		$this->output->set_content_type('application/json')->set_output(json_encode(array_values($rows)));
+	}
+
+	/** Daftar bidang_urusan_id yang sudah di-assign ke user (user_akses). */
+	public function get_akses($user_id)
+	{
+		$user_id = (int) $user_id;
+		$row = $this->mm->get_row('users', $user_id);
+		if ( ! $row || ! $this->can_touch($row)) show_error('Akses ditolak', 403);
+		$existing = $this->db->select('bidang_urusan_id')
+			->where('user_id', $user_id)
+			->where('bidang_urusan_id IS NOT NULL', NULL, FALSE)
+			->get('user_akses')->result_array();
+		$ids = array_map('intval', array_column($existing, 'bidang_urusan_id'));
+		$this->output->set_content_type('application/json')
+			->set_output(json_encode(array('user' => $row, 'akses' => $ids)));
+	}
+
+	/** Simpan akses bidang untuk user_opd — mengganti seluruh user_akses user ini. */
+	public function save_akses()
+	{
+		$user_id    = (int) $this->input->post('user_id');
+		$bidang_raw = $this->input->post('bidang_ids');
+
+		$row = $this->mm->get_row('users', $user_id);
+		if ( ! $row || ! $this->can_touch($row)) show_error('Akses ditolak', 403);
+		if ($row['role'] !== 'user_opd')
+		{
+			$this->output->set_content_type('application/json')
+				->set_output(json_encode(array('ok' => 0, 'msg' => 'Hanya untuk user_opd')));
+			return;
+		}
+
+		$this->db->delete('user_akses', array('user_id' => $user_id));
+
+		if ($bidang_raw)
+		{
+			$ids = array_filter(array_map('intval', explode(',', $bidang_raw)));
+			foreach ($ids as $bid)
+			{
+				$this->db->insert('user_akses', array('user_id' => $user_id, 'bidang_urusan_id' => $bid));
+			}
+		}
+
+		$this->output->set_content_type('application/json')->set_output(json_encode(array('ok' => 1)));
+	}
+
 	private function can_touch($row)
 	{
 		if (is_super()) return TRUE;

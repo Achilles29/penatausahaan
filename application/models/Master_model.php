@@ -49,6 +49,7 @@ class Master_model extends CI_Model {
 		// Ordering
 		// DataTables column index includes the '#' prefix column (not in $cfg['columns']),
 		// so subtract 1 to map to the correct cfg column.
+		$order_applied = FALSE;
 		if ( ! empty($dt['order']) && isset($cfg['columns']))
 		{
 			$col_idx = (int) $dt['order'][0]['column'] - 1;
@@ -57,15 +58,18 @@ class Master_model extends CI_Model {
 			if (isset($cols[$col_idx]) && ! empty($cols[$col_idx]['order']))
 			{
 				$this->db->order_by($cols[$col_idx]['order'], $dir);
+				$order_applied = TRUE;
 			}
-			elseif (isset($cols[$col_idx]['field']))
+			elseif (isset($cols[$col_idx]) && ! empty($cols[$col_idx]['field']))
 			{
 				$this->db->order_by($cols[$col_idx]['field'], $dir);
+				$order_applied = TRUE;
 			}
 		}
-		elseif ( ! empty($cfg['order_by']))
+		if ( ! $order_applied && ! empty($cfg['order_by']))
 		{
-			$this->db->order_by($cfg['order_by']);
+			$escape = ! empty($cfg['order_by_raw']) ? FALSE : NULL;
+			$this->db->order_by($cfg['order_by'], '', $escape);
 		}
 
 		// Paging

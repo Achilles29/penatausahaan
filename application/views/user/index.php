@@ -138,12 +138,47 @@
   <input type="hidden" name="id" id="del_id">
 </form>
 
+<!-- Modal Akses Bidang (user_opd) -->
+<div class="modal fade" id="aksesModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fa-solid fa-shield-halved me-2"></i>Akses Bidang Urusan</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="akses_user_id">
+        <p class="text-muted small mb-3" id="akses_user_info"></p>
+        <div id="akses_loading" class="text-center py-3"><i class="fa-solid fa-spinner fa-spin"></i> Memuat…</div>
+        <div id="akses_list" style="display:none">
+          <p class="small mb-2 fw-semibold">Centang bidang urusan yang boleh diakses user ini:</p>
+          <div id="akses_checks"></div>
+          <p class="text-muted small mt-3 mb-0">
+            <i class="fa-solid fa-circle-info me-1"></i>
+            Akses ini berlaku tambahan di atas akses unit OPD yang sudah dipetakan.
+          </p>
+        </div>
+        <div id="akses_empty" style="display:none" class="text-muted small">
+          Tidak ada bidang urusan yang dipetakan ke OPD ini. Tambahkan di menu <strong>Pemetaan OPD</strong> terlebih dahulu.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Batal</button>
+        <button type="button" class="btn btn-primary" id="btnSaveAkses"><i class="fa-solid fa-floppy-disk me-1"></i> Simpan Akses</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 var UCFG = {
   data_url    : '<?= $data_url ?>',
   get_url     : '<?= site_url('user/get') ?>',
   unit_url    : '<?= site_url('user/unit_options') ?>',
   peg_url     : '<?= site_url('user/pegawai_search') ?>',
+  akses_url   : '<?= site_url('user/get_akses') ?>',
+  akses_save  : '<?= site_url('user/save_akses') ?>',
+  bidang_url  : '<?= site_url('user/bidang_for_opd') ?>',
   is_super    : <?= $is_super ? 'true' : 'false' ?>,
   my_opd      : '<?= $my_opd ?>'
 };
@@ -176,10 +211,14 @@ var UCFG = {
         render: function (v) { return Number(v)
           ? '<span class="badge badge-soft-success">Aktif</span>'
           : '<span class="badge badge-soft-secondary">Nonaktif</span>'; } },
-      { data: 'id', orderable: false, searchable: false, className: 'text-end',
-        render: function (id) {
-          return '<button class="btn btn-sm btn-icon btn-outline-primary me-1 btn-edit" data-id="' + id + '" title="Edit"><i class="fa-solid fa-pen"></i></button>'
-               + '<button class="btn btn-sm btn-icon btn-outline-danger btn-del" data-id="' + id + '" title="Hapus"><i class="fa-solid fa-trash"></i></button>';
+      { data: null, orderable: false, searchable: false, className: 'text-end',
+        render: function (d, t, r) {
+          var b = '<button class="btn btn-sm btn-icon btn-outline-primary me-1 btn-edit" data-id="' + r.id + '" title="Edit"><i class="fa-solid fa-pen"></i></button>';
+          if (r.role === 'user_opd') {
+            b += '<button class="btn btn-sm btn-icon btn-outline-info me-1 btn-akses" data-id="' + r.id + '" title="Kelola Akses Bidang"><i class="fa-solid fa-shield-halved"></i></button>';
+          }
+          b += '<button class="btn btn-sm btn-icon btn-outline-danger btn-del" data-id="' + r.id + '" title="Hapus"><i class="fa-solid fa-trash"></i></button>';
+          return b;
         }}
     ],
     pageLength  : 25,
@@ -342,6 +381,58 @@ var UCFG = {
   $('#tbl').on('click', '.btn-del', function () {
     $('#del_id').val($(this).data('id'));
     if (confirm('Yakin ingin menghapus pengguna ini?')) document.getElementById('deleteForm').submit();
+  });
+
+  // ---- Akses Bidang ----
+  var aksesModal = new bootstrap.Modal('#aksesModal');
+
+  $('#tbl').on('click', '.btn-akses', function () {
+    var uid = $(this).data('id');
+    $('#akses_user_id').val(uid);
+    $('#akses_loading').show(); $('#akses_list').hide(); $('#akses_empty').hide();
+    $('#akses_user_info').text('');
+    aksesModal.show();
+
+    $.getJSON(UCFG.akses_url + '/' + uid, function (res) {
+      var u = res.user;
+      var checked = res.akses;
+      $('#akses_user_info').text(u.nama + (u.nip ? ' — NIP ' + u.nip : ''));
+
+      var opdId = u.opd_id || UCFG.my_opd;
+      var url = UCFG.bidang_url + (UCFG.is_super ? '?opd_id=' + encodeURIComponent(opdId) : '');
+      $.getJSON(url, function (bidangs) {
+        $('#akses_loading').hide();
+        if (bidangs.length === 0) { $('#akses_empty').show(); return; }
+        var html = '';
+        bidangs.forEach(function (b) {
+          var chk = checked.indexOf(b.id) >= 0 ? ' checked' : '';
+          html += '<div class="form-check mb-2">'
+            + '<input class="form-check-input akses-cb" type="checkbox" value="' + b.id + '" id="cb_b' + b.id + '"' + chk + '>'
+            + '<label class="form-check-label" for="cb_b' + b.id + '">'
+            + '<code class="small me-1">' + esc(b.kode_bidang) + '</code>' + esc(b.nama_bidang)
+            + '</label></div>';
+        });
+        $('#akses_checks').html(html);
+        $('#akses_list').show();
+      });
+    });
+  });
+
+  $('#btnSaveAkses').on('click', function () {
+    var uid = $('#akses_user_id').val();
+    var ids = [];
+    $('.akses-cb:checked').each(function () { ids.push($(this).val()); });
+    $.post(UCFG.akses_save, { user_id: uid, bidang_ids: ids.join(',') }, function (res) {
+      if (res.ok) {
+        aksesModal.hide();
+        table.ajax.reload(null, false);
+        // brief toast-style feedback
+        var t = $('<div class="alert alert-success alert-dismissible position-fixed bottom-0 end-0 m-3" style="z-index:1100">'
+          + '<i class="fa-solid fa-check-circle me-2"></i>Akses bidang disimpan.'
+          + '<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>');
+        $('body').append(t); setTimeout(function () { t.alert('close'); }, 3000);
+      }
+    }, 'json');
   });
 })();
 </script>

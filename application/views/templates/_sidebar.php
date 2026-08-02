@@ -13,7 +13,8 @@ $is = function ($c, $entity = NULL) use ($seg1, $seg3) {
 	return ($seg1 === 'master' && $seg3 === $entity);
 };
 $nom_active  = ($seg1 === 'master' && in_array($seg3, array('urusan','bidang','program','kegiatan','subkegiatan','rekening','sumber_dana'), TRUE));
-$org_active  = ($seg1 === 'master' && in_array($seg3, array('opd','opd_unit','pemetaan'), TRUE));
+$org_active  = ($seg1 === 'master' && in_array($seg3, array('opd','opd_unit','pemetaan','unit_pemetaan'), TRUE));
+$gaji_active = ($seg1 === 'gaji' || $seg1 === 'rekap' || ($seg1 === 'master' && in_array($seg3, array('ref_gaji_pokok','ref_tunjangan_jabatan','ref_kelas_jabatan','ref_harga_beras','ref_iuran_gaji','ref_tpp','ref_tunjangan_fungsional','ref_tunjangan_khusus','ref_gaji_ke'), TRUE)));
 ?>
 <aside class="layout-sidebar">
   <div class="sidebar-brand">
@@ -56,6 +57,7 @@ $org_active  = ($seg1 === 'master' && in_array($seg3, array('opd','opd_unit','pe
         <li class="menu-item"><a class="menu-link <?= $is('master','opd_unit')?'active':'' ?>" href="<?= site_url('master/opd_unit') ?>">Unit OPD</a></li>
         <?php if ($role === 'superadmin'): ?>
         <li class="menu-item"><a class="menu-link <?= $is('master','pemetaan')?'active':'' ?>" href="<?= site_url('master/pemetaan') ?>">Pemetaan OPD</a></li>
+        <li class="menu-item"><a class="menu-link <?= $is('master','unit_pemetaan')?'active':'' ?>" href="<?= site_url('master/unit_pemetaan') ?>">Pemetaan Unit OPD</a></li>
         <?php endif; ?>
       </ul>
     </li>
@@ -79,6 +81,30 @@ $org_active  = ($seg1 === 'master' && in_array($seg3, array('opd','opd_unit','pe
       <a class="menu-link <?= $is('skema_pajak')?'active':'' ?>" href="<?= site_url('skema_pajak') ?>">
         <i class="fa-solid fa-percent"></i><span>Skema Pajak</span>
       </a>
+    </li>
+
+    <li class="menu-header">Kepegawaian & Gaji</li>
+    <li class="menu-item <?= $gaji_active ? 'open' : '' ?>">
+      <a class="menu-link menu-toggle" href="javascript:void(0)">
+        <i class="fa-solid fa-money-bill-wave"></i><span>Gaji ASN</span>
+        <i class="fa-solid fa-chevron-right arrow"></i>
+      </a>
+      <ul class="menu-sub">
+        <li class="menu-item"><a class="menu-link <?= $seg1==='gaji'&&$seg2==='simulasi'?'active':'' ?>" href="<?= site_url('gaji/simulasi') ?>">Simulasi Slip Gaji</a></li>
+        <li class="menu-item"><a class="menu-link <?= $seg1==='gaji'&&$seg2==='rekap'?'active':'' ?>" href="<?= site_url('gaji/rekap') ?>">Rekap Gaji per OPD</a></li>
+        <li class="menu-item"><a class="menu-link <?= $seg1==='rekap'?'active':'' ?>" href="<?= site_url('rekap') ?>">Rekap Tahunan &amp; TPP</a></li>
+        <?php if ($role === 'superadmin'): ?>
+        <li class="menu-item"><a class="menu-link <?= $is('master','ref_tpp')?'active':'' ?>" href="<?= site_url('master/ref_tpp') ?>">TPP per Jabatan</a></li>
+        <li class="menu-item"><a class="menu-link <?= $is('master','ref_gaji_pokok')?'active':'' ?>" href="<?= site_url('master/ref_gaji_pokok') ?>">Tabel Gaji Pokok</a></li>
+        <li class="menu-item"><a class="menu-link <?= $is('master','ref_tunjangan_jabatan')?'active':'' ?>" href="<?= site_url('master/ref_tunjangan_jabatan') ?>">Tunjangan Jabatan</a></li>
+        <li class="menu-item"><a class="menu-link <?= $is('master','ref_kelas_jabatan')?'active':'' ?>" href="<?= site_url('master/ref_kelas_jabatan') ?>">Kelas Jabatan</a></li>
+        <li class="menu-item"><a class="menu-link <?= $is('master','ref_harga_beras')?'active':'' ?>" href="<?= site_url('master/ref_harga_beras') ?>">Tunjangan Pangan</a></li>
+        <li class="menu-item"><a class="menu-link <?= $is('master','ref_iuran_gaji')?'active':'' ?>" href="<?= site_url('master/ref_iuran_gaji') ?>">Iuran & Potongan</a></li>
+        <li class="menu-item"><a class="menu-link <?= $is('master','ref_tunjangan_fungsional')?'active':'' ?>" href="<?= site_url('master/ref_tunjangan_fungsional') ?>">Tunjangan Fungsional</a></li>
+        <li class="menu-item"><a class="menu-link <?= $is('master','ref_tunjangan_khusus')?'active':'' ?>" href="<?= site_url('master/ref_tunjangan_khusus') ?>">Tunjangan Khusus</a></li>
+        <li class="menu-item"><a class="menu-link <?= $is('master','ref_gaji_ke')?'active':'' ?>" href="<?= site_url('master/ref_gaji_ke') ?>">Gaji Ke-13/14</a></li>
+        <?php endif; ?>
+      </ul>
     </li>
 
     <li class="menu-header">Anggaran</li>

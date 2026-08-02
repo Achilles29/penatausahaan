@@ -44,15 +44,17 @@ class Anggaran extends MY_Controller {
 			          k.id AS keg_id, k.kode_kegiatan, k.nama_kegiatan,
 			          sk.id AS subkeg_id, sk.kode_subkegiatan, sk.nama_subkegiatan,
 			          r.id AS rek_id, r.kode_rekening, r.uraian AS rek_uraian,
-			          dd.sumber_dana_id, dd.sumber_dana_text,
+			          dd.sumber_dana_id,
+			          COALESCE(msd.nama, dd.sumber_dana_text) AS sumber_dana_text,
 			          dd.paket_belanja, dd.koefisien, dd.harga_satuan, dd.total_harga', FALSE)
 			->from('dpa d')
-			->join('dpa_detail dd', 'dd.dpa_id = d.id')
-			->join('master_opd o',        'o.id = d.opd_id')
-			->join('master_program p',    'p.id = dd.program_id')
-			->join('master_kegiatan k',   'k.id = dd.kegiatan_id')
-			->join('master_subkegiatan sk', 'sk.id = dd.subkegiatan_id')
-			->join('master_rekening r',   'r.id = dd.rekening_id')
+			->join('dpa_detail dd',         'dd.dpa_id = d.id')
+			->join('master_opd o',           'o.id = d.opd_id')
+			->join('master_program p',       'p.id = dd.program_id')
+			->join('master_kegiatan k',      'k.id = dd.kegiatan_id')
+			->join('master_subkegiatan sk',  'sk.id = dd.subkegiatan_id')
+			->join('master_rekening r',      'r.id = dd.rekening_id')
+			->join('master_sumber_dana msd', 'msd.id = dd.sumber_dana_id', 'left')
 			->where('d.opd_id', (int) $opd_id)
 			->order_by('p.kode_program, k.kode_kegiatan, sk.kode_subkegiatan, r.kode_rekening, dd.no_urut')
 			->get()->result_array();

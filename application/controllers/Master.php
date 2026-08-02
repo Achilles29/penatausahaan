@@ -234,43 +234,91 @@ class Master extends MY_Controller {
 
 			'pegawai' => array(
 				'title' => 'Pegawai', 'table' => 'pegawai', 'from' => 'pegawai m', 'alias' => 'm',
-				'select' => 'm.id, m.nama_lengkap, m.jenis_kepegawaian, m.nip, m.golongan, m.pangkat,'
+				'modal_size' => 'lg',
+				'select' => 'm.id, m.nama_lengkap, m.jenis_kelamin, m.jenis_kepegawaian, m.nip,'
+					. ' m.golongan, m.pangkat, m.status_pernikahan, m.jumlah_anak,'
+					. ' m.masa_kerja_golongan, m.tgl_lahir, m.tgl_cpns, m.tgl_pns,'
+					. ' m.tmt_kenaikan_pangkat, m.tmt_kgb, m.ref_tpp_id,'
+					. ' m.jabatan_struktural_id, m.jabatan_penatausahaan_id, m.jabatan_fungsional_id,'
 					. ' o.nama_opd AS opd_nama, o.kode_opd,'
-					. ' (SELECT rj.nama_jabatan FROM pegawai_jabatan pj'
-					. '  JOIN ref_jabatan rj ON rj.id = pj.jabatan_id'
-					. '  WHERE pj.pegawai_id = m.id AND pj.is_active = 1'
-					. '  ORDER BY pj.id DESC LIMIT 1) AS jabatan_nama',
-				'joins' => array(array('master_opd o', 'o.id = m.opd_id')),
+					. ' rjs.nama_jabatan AS jabatan_struktural_nama, rjs.eselon,'
+					. ' rjp.nama_jabatan AS jabatan_penatausahaan_nama,'
+					. ' rjf.nama_jabatan AS jabatan_fungsional_nama',
+				'joins' => array(
+					array('master_opd o',   'o.id = m.opd_id'),
+					array('ref_jabatan rjs', 'rjs.id = m.jabatan_struktural_id',    'left'),
+					array('ref_jabatan rjp', 'rjp.id = m.jabatan_penatausahaan_id', 'left'),
+					array('ref_jabatan rjf', 'rjf.id = m.jabatan_fungsional_id',    'left'),
+				),
 				'searchable' => array('m.nama_lengkap', 'm.nip', 'm.pangkat'),
-				'order_by' => 'o.kode_opd, m.nama_lengkap',
+				'order_by' => "o.kode_opd ASC, CASE m.jenis_kepegawaian WHEN 'PNS' THEN 1 WHEN 'PPPK' THEN 2 ELSE 3 END ASC, CASE COALESCE(rjs.eselon,'') WHEN '2A' THEN 1 WHEN '2B' THEN 2 WHEN '3A' THEN 3 WHEN '3B' THEN 4 WHEN '4A' THEN 5 WHEN '4B' THEN 6 ELSE 99 END ASC, FIELD(m.golongan,'I/a','I/b','I/c','I/d','II/a','II/b','II/c','II/d','III/a','III/b','III/c','III/d','IV/a','IV/b','IV/c','IV/d','IV/e','I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII','XIII','XIV','XV','XVI','XVII') DESC, m.tgl_lahir ASC",
+				'order_by_raw' => TRUE,
 				'columns' => array(
-					array('field' => 'nama_lengkap', 'label' => 'Nama', 'order' => 'm.nama_lengkap'),
-					array('field' => 'nip', 'label' => 'NIP', 'width' => '190px'),
-					array('field' => 'golongan', 'label' => 'Gol.', 'width' => '60px'),
-					array('field' => 'jenis_kepegawaian', 'label' => 'Jenis', 'render' => 'badge', 'width' => '80px'),
-					array('field' => 'jabatan_nama', 'label' => 'Jabatan'),
-					array('field' => 'opd_nama', 'label' => 'OPD', 'order' => 'o.kode_opd'),
+					array('field' => 'nama_lengkap',              'label' => 'Nama',              'order' => 'm.nama_lengkap'),
+					array('field' => 'nip',                       'label' => 'NIP',               'width' => '185px'),
+					array('field' => 'golongan',                  'label' => 'Gol.',              'width' => '60px'),
+					array('field' => 'masa_kerja_golongan',       'label' => 'MKG',              'width' => '50px'),
+					array('field' => 'tmt_kgb',                   'label' => 'TMT KGB Yad',      'width' => '110px', 'order' => 'm.tmt_kgb'),
+					array('field' => 'eselon',                    'label' => 'Eselon',            'width' => '70px'),
+					array('field' => 'jabatan_struktural_nama',   'label' => 'Jab. Struktural'),
+					array('field' => 'jabatan_fungsional_nama',   'label' => 'Jab. Fungsional'),
+					array('field' => 'opd_nama',                  'label' => 'OPD',              'order' => 'o.kode_opd'),
 				),
 				'filters' => array(
 					array('name' => 'm.jenis_kepegawaian', 'label' => 'Jenis', 'options' => array('PNS'=>'PNS','PPPK'=>'PPPK','NON_ASN'=>'Non ASN')),
 					array('name' => 'm.opd_id', 'label' => 'OPD', 'source' => 'opd'),
 				),
 				'fields' => array(
-					array('name' => 'nama_lengkap', 'label' => 'Nama Lengkap', 'type' => 'text', 'required' => TRUE),
-					array('name' => 'jenis_kepegawaian', 'label' => 'Jenis Kepegawaian', 'type' => 'enum',
-						'options' => array('PNS'=>'PNS (Pegawai Negeri Sipil)','PPPK'=>'PPPK (Pegawai Pemerintah Dengan Perjanjian Kerja)','NON_ASN'=>'Non ASN'), 'required' => TRUE),
-					array('name' => 'nip', 'label' => 'NIP / NI PPPK', 'type' => 'text'),
-					array('name' => 'golongan', 'label' => 'Golongan', 'type' => 'select',
+					// -- Tab: Identitas --
+					array('name' => 'nama_lengkap',   'tab' => 'Identitas', 'label' => 'Nama Lengkap', 'type' => 'text', 'required' => TRUE),
+					array('name' => 'jenis_kelamin',  'tab' => 'Identitas', 'label' => 'Jenis Kelamin', 'type' => 'enum',
+						'options' => array('L'=>'Laki-laki','P'=>'Perempuan'), 'default' => 'L'),
+					array('name' => 'jenis_kepegawaian', 'tab' => 'Identitas', 'label' => 'Jenis Kepegawaian', 'type' => 'enum',
+						'options' => array('PNS'=>'PNS','PPPK'=>'PPPK','NON_ASN'=>'Non ASN'), 'required' => TRUE),
+					array('name' => 'nip',  'tab' => 'Identitas', 'label' => 'NIP / NI PPPK', 'type' => 'text', 'placeholder' => '18 digit'),
+					array('name' => 'npwp', 'tab' => 'Identitas', 'label' => 'NPWP', 'type' => 'text'),
+					// -- Tab: Kepangkatan --
+					array('name' => 'golongan', 'tab' => 'Kepangkatan', 'label' => 'Golongan / Ruang', 'type' => 'enum',
 						'options' => array(
-							'I/a'=>'I/a','I/b'=>'I/b','I/c'=>'I/c','I/d'=>'I/d',
-							'II/a'=>'II/a','II/b'=>'II/b','II/c'=>'II/c','II/d'=>'II/d',
-							'III/a'=>'III/a','III/b'=>'III/b','III/c'=>'III/c','III/d'=>'III/d',
-							'IV/a'=>'IV/a','IV/b'=>'IV/b','IV/c'=>'IV/c','IV/d'=>'IV/d','IV/e'=>'IV/e',
+							'PNS' => array(
+								'I/a'=>'I/a — Juru Muda','I/b'=>'I/b — Juru Muda Tk.I','I/c'=>'I/c — Juru','I/d'=>'I/d — Juru Tk.I',
+								'II/a'=>'II/a — Pengatur Muda','II/b'=>'II/b — Pengatur Muda Tk.I','II/c'=>'II/c — Pengatur','II/d'=>'II/d — Pengatur Tk.I',
+								'III/a'=>'III/a — Penata Muda','III/b'=>'III/b — Penata Muda Tk.I','III/c'=>'III/c — Penata','III/d'=>'III/d — Penata Tk.I',
+								'IV/a'=>'IV/a — Pembina','IV/b'=>'IV/b — Pembina Tk.I','IV/c'=>'IV/c — Pembina Utama Muda',
+								'IV/d'=>'IV/d — Pembina Utama Madya','IV/e'=>'IV/e — Pembina Utama',
+							),
+							'PPPK' => array(
+								'I'=>'Gol. I','II'=>'Gol. II','III'=>'Gol. III','IV'=>'Gol. IV',
+								'V'=>'Gol. V','VI'=>'Gol. VI','VII'=>'Gol. VII','VIII'=>'Gol. VIII','IX'=>'Gol. IX',
+								'X'=>'Gol. X','XI'=>'Gol. XI','XII'=>'Gol. XII','XIII'=>'Gol. XIII',
+								'XIV'=>'Gol. XIV','XV'=>'Gol. XV','XVI'=>'Gol. XVI','XVII'=>'Gol. XVII',
+							),
 						)),
-					array('name' => 'pangkat', 'label' => 'Pangkat', 'type' => 'text'),
-					array('name' => 'npwp', 'label' => 'NPWP', 'type' => 'text'),
-					array('name' => 'opd_id', 'label' => 'OPD', 'type' => 'select', 'source' => 'opd', 'required' => TRUE),
-					array('name' => 'opd_unit_id', 'label' => 'Unit OPD', 'type' => 'select', 'source' => 'opd_unit', 'depends' => 'opd_id'),
+					array('name' => 'pangkat', 'tab' => 'Kepangkatan', 'label' => 'Pangkat', 'type' => 'text'),
+					array('name' => 'masa_kerja_golongan', 'tab' => 'Kepangkatan', 'label' => 'Masa Kerja Golongan (MKG, tahun)', 'type' => 'number', 'min' => 0, 'max' => 40, 'placeholder' => '0'),
+					array('name' => 'tgl_cpns',  'tab' => 'Kepangkatan', 'label' => 'TMT CPNS',       'type' => 'date'),
+					array('name' => 'tgl_pns',   'tab' => 'Kepangkatan', 'label' => 'TMT PNS / PPPK', 'type' => 'date'),
+					array('name' => 'tmt_kenaikan_pangkat', 'tab' => 'Kepangkatan', 'label' => 'TMT Kenaikan Pangkat YAD', 'type' => 'date'),
+				array('name' => 'tmt_kgb', 'tab' => 'Kepangkatan', 'label' => 'TMT KGB Berikutnya (fallback jika TMT PNS kosong)', 'type' => 'date'),
+					array('name' => 'persen_gaji', 'tab' => 'Kepangkatan', 'label' => 'Persentase Gaji (%)', 'type' => 'enum',
+						'options' => array('100' => '100% — Normal', '80' => '80% — CPNS', '50' => '50% — Hukuman Disiplin'), 'default' => '100'),
+					// -- Tab: Jabatan --
+					array('name' => 'jabatan_struktural_id',    'tab' => 'Jabatan', 'label' => 'Jabatan Struktural',         'type' => 'select', 'source' => 'jabatan_struktural'),
+					array('name' => 'jabatan_fungsional_id',    'tab' => 'Jabatan', 'label' => 'Jabatan Fungsional',         'type' => 'select', 'source' => 'jabatan_fungsional'),
+					array('name' => 'jabatan_penatausahaan_id', 'tab' => 'Jabatan', 'label' => 'Jabatan Penatausahaan Keu.', 'type' => 'select', 'source' => 'jabatan_penatausahaan'),
+					array('name' => 'ref_tpp_id', 'tab' => 'Jabatan', 'label' => 'Kategori TPP (Perbup)', 'type' => 'select', 'source' => 'ref_tpp'),
+					array('name' => 'kd_jabatan_fungsional', 'tab' => 'Jabatan', 'label' => 'Tunjangan Fungsional', 'type' => 'select', 'source' => 'tunjangan_fungsional'),
+					array('name' => 'kd_tunjangan_khusus', 'tab' => 'Jabatan', 'label' => 'Tunjangan Khusus (opsional)', 'type' => 'select', 'source' => 'tunjangan_khusus'),
+					// -- Tab: Keluarga --
+					array('name' => 'tgl_lahir', 'tab' => 'Keluarga', 'label' => 'Tanggal Lahir', 'type' => 'date'),
+					array('name' => 'status_pernikahan', 'tab' => 'Keluarga', 'label' => 'Status Pernikahan', 'type' => 'enum',
+						'options' => array('BELUM_KAWIN'=>'Belum Kawin','KAWIN'=>'Kawin','JANDA'=>'Janda','DUDA'=>'Duda'), 'default' => 'BELUM_KAWIN'),
+					array('name' => 'terima_tunjangan_keluarga', 'tab' => 'Keluarga', 'label' => 'Terima Tunjangan Istri/Suami', 'type' => 'checkbox', 'default' => 1,
+						'hint' => 'Centang jika pegawai ini yang menerima tunjangan keluarga. Hapus centang jika pasangan adalah ASN dengan gapok lebih tinggi (tunjangan mengikuti pasangan).'),
+					array('name' => 'jumlah_anak', 'tab' => 'Keluarga', 'label' => 'Jumlah Anak (tanggungan)', 'type' => 'number', 'min' => 0, 'max' => 10, 'placeholder' => '0'),
+					// -- Tab: Penempatan --
+					array('name' => 'opd_id',      'tab' => 'Penempatan', 'label' => 'OPD',      'type' => 'select', 'source' => 'opd',      'required' => TRUE),
+					array('name' => 'opd_unit_id', 'tab' => 'Penempatan', 'label' => 'Unit OPD', 'type' => 'select', 'source' => 'opd_unit', 'depends' => 'opd_id'),
 				),
 				'manage' => array('superadmin', 'admin_opd'),
 				'scope_col' => 'm.opd_id',
@@ -301,9 +349,10 @@ class Master extends MY_Controller {
 					array('name' => 'jenis_jabatan', 'label' => 'Jenis Jabatan', 'type' => 'enum',
 						'options' => array('STRUKTURAL'=>'Struktural','FUNGSIONAL'=>'Fungsional','PENATAUSAHAAN'=>'Penatausahaan','LAINNYA'=>'Lainnya'), 'required' => TRUE),
 					array('name' => 'eselon', 'label' => 'Eselon', 'type' => 'select',
-						'options' => array('I'=>'Eselon I','IIa'=>'Eselon IIa','IIb'=>'Eselon IIb',
-							'IIIa'=>'Eselon IIIa','IIIb'=>'Eselon IIIb','IVa'=>'Eselon IVa','IVb'=>'Eselon IVb',
-							'Va'=>'Eselon Va','Vb'=>'Eselon Vb','NON'=>'Non Eselon')),
+						'options' => array('1A'=>'Eselon 1A','1B'=>'Eselon 1B','2A'=>'Eselon 2A','2B'=>'Eselon 2B',
+							'3A'=>'Eselon 3A','3B'=>'Eselon 3B','4A'=>'Eselon 4A','4B'=>'Eselon 4B',
+							'5A'=>'Eselon 5A','5B'=>'Eselon 5B','NON'=>'Non Eselon')),
+					array('name' => 'kelas_jabatan', 'label' => 'Kelas Jabatan (1–17)', 'type' => 'number', 'min' => 1, 'max' => 17),
 					array('name' => 'is_active', 'label' => 'Status Aktif', 'type' => 'checkbox', 'default' => 1),
 				),
 				'manage' => array('superadmin', 'admin_opd'),
@@ -388,6 +437,261 @@ class Master extends MY_Controller {
 					array('name' => 'opd_id',          'label' => 'OPD',           'type' => 'select', 'source' => 'opd',    'required' => TRUE),
 					array('name' => 'bidang_urusan_id','label' => 'Bidang Urusan', 'type' => 'select', 'source' => 'bidang', 'required' => TRUE),
 					array('name' => 'is_dominant',     'label' => 'Dominan',       'type' => 'checkbox', 'default' => 0),
+				),
+				'manage' => array('superadmin'),
+			),
+
+			'unit_pemetaan' => array(
+				'title' => 'Pemetaan Unit OPD – Bidang Urusan', 'table' => 'opd_unit_bidang_urusan', 'from' => 'opd_unit_bidang_urusan m', 'alias' => 'm',
+				'select' => 'm.id, o.kode_opd, ou.nama_unit, b.kode_bidang, b.nama_bidang AS bidang_nama',
+				'joins' => array(
+					array('master_opd_unit ou', 'ou.id = m.opd_unit_id'),
+					array('master_opd o', 'o.id = ou.opd_id'),
+					array('master_bidang b', 'b.id = m.bidang_urusan_id'),
+				),
+				'searchable' => array('ou.nama_unit', 'b.nama_bidang', 'o.nama_opd'),
+				'order_by' => 'o.kode_opd, ou.nama_unit, b.kode_bidang',
+				'columns' => array(
+					array('field' => 'kode_opd',    'label' => 'OPD',           'order' => 'o.kode_opd',  'width' => '90px'),
+					array('field' => 'nama_unit',   'label' => 'Unit OPD',      'order' => 'ou.nama_unit'),
+					array('field' => 'kode_bidang', 'label' => 'Kode Bidang',   'order' => 'b.kode_bidang','width' => '130px'),
+					array('field' => 'bidang_nama', 'label' => 'Bidang Urusan'),
+				),
+				'filters' => array(
+					array('name' => 'ou.opd_id',         'label' => 'OPD',    'source' => 'opd'),
+					array('name' => 'm.bidang_urusan_id','label' => 'Bidang', 'source' => 'bidang'),
+				),
+				'fields' => array(
+					array('name' => 'opd_unit_id',     'label' => 'Unit OPD',      'type' => 'select', 'source' => 'opd_unit', 'required' => TRUE),
+					array('name' => 'bidang_urusan_id','label' => 'Bidang Urusan', 'type' => 'select', 'source' => 'bidang',   'required' => TRUE),
+				),
+				'manage' => array('superadmin'),
+			),
+
+			// =================== MODUL GAJI ===================
+
+			'ref_gaji_pokok' => array(
+				'title' => 'Tabel Gaji Pokok', 'table' => 'ref_gaji_pokok', 'from' => 'ref_gaji_pokok m', 'alias' => 'm',
+				'select' => 'm.id, m.jenis, m.golongan, m.masa_kerja, m.gaji_pokok, m.pp_nomor, m.berlaku_mulai, m.is_active',
+				'searchable' => array('m.golongan', 'm.pp_nomor'),
+				'order_by' => 'm.jenis, m.golongan, m.masa_kerja, m.berlaku_mulai DESC',
+				'columns' => array(
+					array('field' => 'jenis',        'label' => 'Jenis ASN',  'render' => 'badge', 'width' => '80px'),
+					array('field' => 'golongan',     'label' => 'Golongan',   'width' => '80px'),
+					array('field' => 'masa_kerja',   'label' => 'MKG',        'width' => '60px'),
+					array('field' => 'gaji_pokok',   'label' => 'Gaji Pokok (Rp)', 'render' => 'money'),
+					array('field' => 'pp_nomor',     'label' => 'Dasar Hukum','width' => '140px'),
+					array('field' => 'berlaku_mulai','label' => 'Berlaku',    'width' => '110px'),
+					array('field' => 'is_active',    'label' => 'Aktif',      'render' => 'active', 'width' => '70px'),
+				),
+				'filters' => array(
+					array('name' => 'm.jenis', 'label' => 'Jenis', 'options' => array('PNS'=>'PNS','PPPK'=>'PPPK')),
+				),
+				'fields' => array(
+					array('name' => 'jenis',        'label' => 'Jenis ASN', 'type' => 'enum', 'options' => array('PNS'=>'PNS','PPPK'=>'PPPK'), 'required' => TRUE),
+					array('name' => 'golongan',     'label' => 'Golongan', 'type' => 'text', 'required' => TRUE, 'placeholder' => 'PNS: I/a–IV/e  |  PPPK: I–XVII'),
+					array('name' => 'masa_kerja',   'label' => 'Masa Kerja Golongan (tahun)', 'type' => 'number', 'min' => 0, 'max' => 40, 'required' => TRUE),
+					array('name' => 'gaji_pokok',   'label' => 'Gaji Pokok (Rp)', 'type' => 'number', 'min' => 0, 'required' => TRUE),
+					array('name' => 'pp_nomor',     'label' => 'Dasar PP', 'type' => 'text', 'placeholder' => 'mis. PP 5/2024'),
+					array('name' => 'berlaku_mulai','label' => 'Berlaku Mulai', 'type' => 'date', 'required' => TRUE),
+					array('name' => 'is_active',    'label' => 'Aktif', 'type' => 'checkbox', 'default' => 1),
+				),
+				'manage' => array('superadmin'),
+			),
+
+			'ref_tunjangan_jabatan' => array(
+				'title' => 'Tunjangan Jabatan', 'table' => 'ref_tunjangan_jabatan', 'from' => 'ref_tunjangan_jabatan m', 'alias' => 'm',
+				'select' => 'm.id, m.jenis, m.nama, m.kode, m.nominal, m.pp_nomor, m.berlaku_mulai, m.is_active',
+				'searchable' => array('m.nama', 'm.kode'),
+				'order_by' => 'm.jenis, m.nominal DESC',
+				'columns' => array(
+					array('field' => 'jenis',        'label' => 'Jenis',        'render' => 'badge', 'width' => '110px'),
+					array('field' => 'nama',         'label' => 'Nama Tunjangan'),
+					array('field' => 'kode',         'label' => 'Kode',         'width' => '100px'),
+					array('field' => 'nominal',      'label' => 'Nominal (Rp)', 'render' => 'money'),
+					array('field' => 'pp_nomor',     'label' => 'Dasar Hukum',  'width' => '140px'),
+					array('field' => 'is_active',    'label' => 'Aktif',        'render' => 'active', 'width' => '70px'),
+				),
+				'filters' => array(
+					array('name' => 'm.jenis', 'label' => 'Jenis', 'options' => array('STRUKTURAL'=>'Struktural','FUNGSIONAL'=>'Fungsional','UMUM'=>'Umum')),
+					array('name' => 'm.is_active', 'label' => 'Status', 'options' => array('1'=>'Aktif','0'=>'Nonaktif')),
+				),
+				'fields' => array(
+					array('name' => 'jenis',        'label' => 'Jenis', 'type' => 'enum', 'options' => array('STRUKTURAL'=>'Struktural','FUNGSIONAL'=>'Fungsional','UMUM'=>'Umum'), 'required' => TRUE),
+					array('name' => 'nama',         'label' => 'Nama Tunjangan', 'type' => 'text', 'required' => TRUE),
+					array('name' => 'kode',         'label' => 'Kode', 'type' => 'text', 'placeholder' => 'mis. ES_4A'),
+					array('name' => 'nominal',      'label' => 'Nominal (Rp)', 'type' => 'number', 'min' => 0, 'required' => TRUE),
+					array('name' => 'pp_nomor',     'label' => 'Dasar Hukum', 'type' => 'text'),
+					array('name' => 'berlaku_mulai','label' => 'Berlaku Mulai', 'type' => 'date', 'required' => TRUE),
+					array('name' => 'is_active',    'label' => 'Aktif', 'type' => 'checkbox', 'default' => 1),
+				),
+				'manage' => array('superadmin'),
+			),
+
+			'ref_kelas_jabatan' => array(
+				'title' => 'Kelas Jabatan', 'table' => 'ref_kelas_jabatan', 'from' => 'ref_kelas_jabatan m', 'alias' => 'm',
+				'select' => 'm.id, m.kelas, m.nama, m.berlaku_mulai, m.is_active',
+				'searchable' => array('m.nama'),
+				'order_by' => 'm.kelas',
+				'columns' => array(
+					array('field' => 'kelas',        'label' => 'Kelas', 'width' => '60px'),
+					array('field' => 'nama',         'label' => 'Nama Kelas'),
+					array('field' => 'berlaku_mulai','label' => 'Berlaku',  'width' => '110px'),
+					array('field' => 'is_active',    'label' => 'Aktif',   'render' => 'active', 'width' => '70px'),
+				),
+				'fields' => array(
+					array('name' => 'kelas',        'label' => 'Kelas Jabatan (1-17)', 'type' => 'number', 'min' => 1, 'max' => 17, 'required' => TRUE),
+					array('name' => 'nama',         'label' => 'Keterangan', 'type' => 'text'),
+					array('name' => 'berlaku_mulai','label' => 'Berlaku Mulai', 'type' => 'date', 'required' => TRUE),
+					array('name' => 'is_active',    'label' => 'Aktif', 'type' => 'checkbox', 'default' => 1),
+				),
+				'manage' => array('superadmin'),
+			),
+
+			'ref_harga_beras' => array(
+				'title' => 'Harga Beras (Tunjangan Pangan)', 'table' => 'ref_harga_beras', 'from' => 'ref_harga_beras m', 'alias' => 'm',
+				'select' => 'm.id, m.harga_per_kg, m.berlaku_mulai',
+				'searchable' => array(),
+				'order_by' => 'm.berlaku_mulai DESC',
+				'columns' => array(
+					array('field' => 'harga_per_kg', 'label' => 'Harga per Kg (Rp)', 'render' => 'money'),
+					array('field' => 'berlaku_mulai','label' => 'Berlaku Mulai'),
+				),
+				'fields' => array(
+					array('name' => 'harga_per_kg', 'label' => 'Harga Beras per Kg (Rp)', 'type' => 'number', 'min' => 0, 'required' => TRUE, 'placeholder' => 'mis. 7242'),
+					array('name' => 'berlaku_mulai','label' => 'Berlaku Mulai', 'type' => 'date', 'required' => TRUE),
+				),
+				'manage' => array('superadmin'),
+			),
+
+			'ref_tpp' => array(
+				'title' => 'TPP Perbup Rembang', 'table' => 'ref_tpp', 'from' => 'ref_tpp m', 'alias' => 'm',
+				'select' => 'm.id, rkj.kelas, m.uraian, m.nominal, m.perbup, m.berlaku_mulai, m.is_active',
+				'joins' => array(
+					array('ref_kelas_jabatan rkj', 'rkj.id = m.kelas_jabatan_id', 'left'),
+				),
+				'searchable' => array('m.uraian', 'm.perbup'),
+				'order_by' => 'rkj.kelas DESC, m.uraian',
+				'columns' => array(
+					array('field' => 'kelas',        'label' => 'Kelas', 'order' => 'rkj.kelas', 'width' => '65px'),
+					array('field' => 'uraian',       'label' => 'Uraian Jabatan',  'order' => 'm.uraian'),
+					array('field' => 'nominal',      'label' => 'Nominal TPP (Rp)', 'render' => 'money'),
+					array('field' => 'perbup',       'label' => 'Perbup',          'width' => '160px'),
+					array('field' => 'berlaku_mulai','label' => 'Berlaku',          'width' => '110px'),
+					array('field' => 'is_active',    'label' => 'Aktif',            'render' => 'active', 'width' => '70px'),
+				),
+				'filters' => array(
+					array('name' => 'm.is_active', 'label' => 'Status', 'options' => array('1'=>'Aktif','0'=>'Nonaktif')),
+				),
+				'fields' => array(
+					array('name' => 'kelas_jabatan_id', 'label' => 'Kelas Jabatan', 'type' => 'select', 'source' => 'kelas_jabatan', 'required' => FALSE),
+					array('name' => 'uraian',           'label' => 'Uraian Jabatan (sesuai Perbup)', 'type' => 'text', 'required' => TRUE, 'placeholder' => 'mis. JF Ahli Muda - Dinas/Badan'),
+					array('name' => 'nominal',          'label' => 'Nominal TPP (Rp)', 'type' => 'number', 'min' => 0, 'required' => TRUE),
+					array('name' => 'perbup',           'label' => 'Dasar Hukum (Perbup)', 'type' => 'text', 'placeholder' => 'mis. Perbup Rembang 45/2024'),
+					array('name' => 'berlaku_mulai',    'label' => 'Berlaku Mulai', 'type' => 'date', 'required' => TRUE),
+					array('name' => 'is_active',        'label' => 'Aktif', 'type' => 'checkbox', 'default' => 1),
+				),
+				'manage' => array('superadmin'),
+			),
+
+			'ref_iuran_gaji' => array(
+				'title' => 'Iuran & Potongan Gaji', 'table' => 'ref_iuran_gaji', 'from' => 'ref_iuran_gaji m', 'alias' => 'm',
+				'select' => 'm.id, m.kode, m.nama, m.jenis_asn, m.persen_pegawai, m.persen_employer, m.keterangan, m.berlaku_mulai, m.is_active',
+				'searchable' => array('m.kode', 'm.nama'),
+				'order_by' => 'm.jenis_asn, m.kode',
+				'columns' => array(
+					array('field' => 'kode',            'label' => 'Kode',         'width' => '110px'),
+					array('field' => 'nama',            'label' => 'Nama Iuran'),
+					array('field' => 'jenis_asn',       'label' => 'Berlaku',      'render' => 'badge', 'width' => '80px'),
+					array('field' => 'persen_pegawai',  'label' => '% Pegawai',    'width' => '100px'),
+					array('field' => 'persen_employer', 'label' => '% Pemberi Kerja', 'width' => '120px'),
+					array('field' => 'is_active',       'label' => 'Aktif',        'render' => 'active', 'width' => '70px'),
+				),
+				'filters' => array(
+					array('name' => 'm.jenis_asn', 'label' => 'Jenis', 'options' => array('PNS'=>'PNS','PPPK'=>'PPPK','SEMUA'=>'Semua')),
+				),
+				'fields' => array(
+					array('name' => 'kode',            'label' => 'Kode',            'type' => 'text', 'required' => TRUE, 'unique' => FALSE),
+					array('name' => 'nama',            'label' => 'Nama Iuran',      'type' => 'text', 'required' => TRUE),
+					array('name' => 'jenis_asn',       'label' => 'Berlaku Untuk',   'type' => 'enum', 'options' => array('PNS'=>'PNS','PPPK'=>'PPPK','SEMUA'=>'Semua ASN'), 'default' => 'SEMUA'),
+					array('name' => 'persen_pegawai',  'label' => '% Potongan Pegawai', 'type' => 'text', 'placeholder' => 'mis. 1.000'),
+					array('name' => 'persen_employer', 'label' => '% Tanggungan Pemberi Kerja', 'type' => 'text', 'placeholder' => 'mis. 4.000'),
+					array('name' => 'keterangan',      'label' => 'Keterangan / Dasar Pengenaan', 'type' => 'text'),
+					array('name' => 'berlaku_mulai',   'label' => 'Berlaku Mulai', 'type' => 'date', 'required' => TRUE),
+					array('name' => 'is_active',       'label' => 'Aktif', 'type' => 'checkbox', 'default' => 1),
+				),
+				'manage' => array('superadmin'),
+			),
+
+			'ref_tunjangan_fungsional' => array(
+				'title' => 'Tunjangan Jabatan Fungsional', 'table' => 'ref_tunjangan_fungsional', 'from' => 'ref_tunjangan_fungsional m', 'alias' => 'm',
+				'select' => 'm.id, m.kdjabatan, m.nama_jabatan, m.nominal, m.bup_usia, m.kategori, m.is_active',
+				'searchable' => array('m.kdjabatan', 'm.nama_jabatan'),
+				'order_by' => 'm.nama_jabatan',
+				'columns' => array(
+					array('field' => 'kdjabatan',    'label' => 'Kode',           'width' => '80px'),
+					array('field' => 'nama_jabatan', 'label' => 'Nama Jabatan Fungsional'),
+					array('field' => 'nominal',      'label' => 'Tunjangan (Rp)', 'render' => 'money'),
+					array('field' => 'bup_usia',     'label' => 'BUP (thn)',      'width' => '90px'),
+					array('field' => 'is_active',    'label' => 'Aktif',          'render' => 'active', 'width' => '70px'),
+				),
+				'filters' => array(
+					array('name' => 'm.is_active', 'label' => 'Status', 'options' => array('1'=>'Aktif','0'=>'Nonaktif')),
+				),
+				'fields' => array(
+					array('name' => 'kdjabatan',    'label' => 'Kode Jabatan (5 digit)', 'type' => 'text', 'required' => TRUE, 'unique' => TRUE),
+					array('name' => 'nama_jabatan', 'label' => 'Nama Jabatan Fungsional', 'type' => 'text', 'required' => TRUE),
+					array('name' => 'nominal',      'label' => 'Tunjangan (Rp)', 'type' => 'number', 'min' => 0, 'required' => TRUE),
+					array('name' => 'bup_usia',     'label' => 'BUP Usia (tahun)', 'type' => 'number', 'min' => 50, 'max' => 70),
+					array('name' => 'kategori',     'label' => 'Kategori (0=umum)', 'type' => 'number', 'min' => 0),
+					array('name' => 'is_active',    'label' => 'Aktif', 'type' => 'checkbox', 'default' => 1),
+				),
+				'manage' => array('superadmin'),
+			),
+
+			'ref_tunjangan_khusus' => array(
+				'title' => 'Tunjangan Khusus', 'table' => 'ref_tunjangan_khusus', 'from' => 'ref_tunjangan_khusus m', 'alias' => 'm',
+				'select' => 'm.id, m.kdjabatan, m.nama_jabatan, m.nominal, m.bup_usia, m.is_active',
+				'searchable' => array('m.kdjabatan', 'm.nama_jabatan'),
+				'order_by' => 'm.nama_jabatan',
+				'columns' => array(
+					array('field' => 'kdjabatan',    'label' => 'Kode',         'width' => '80px'),
+					array('field' => 'nama_jabatan', 'label' => 'Nama Tunjangan Khusus'),
+					array('field' => 'nominal',      'label' => 'Nominal (Rp)', 'render' => 'money'),
+					array('field' => 'bup_usia',     'label' => 'BUP (thn)',    'width' => '90px'),
+					array('field' => 'is_active',    'label' => 'Aktif',        'render' => 'active', 'width' => '70px'),
+				),
+				'filters' => array(
+					array('name' => 'm.is_active', 'label' => 'Status', 'options' => array('1'=>'Aktif','0'=>'Nonaktif')),
+				),
+				'fields' => array(
+					array('name' => 'kdjabatan',    'label' => 'Kode Jabatan (5 digit)', 'type' => 'text', 'required' => TRUE, 'unique' => TRUE),
+					array('name' => 'nama_jabatan', 'label' => 'Nama Tunjangan Khusus', 'type' => 'text', 'required' => TRUE),
+					array('name' => 'nominal',      'label' => 'Nominal (Rp)', 'type' => 'number', 'min' => 0, 'required' => TRUE),
+					array('name' => 'bup_usia',     'label' => 'BUP Usia (tahun)', 'type' => 'number', 'min' => 50, 'max' => 70),
+					array('name' => 'is_active',    'label' => 'Aktif', 'type' => 'checkbox', 'default' => 1),
+				),
+				'manage' => array('superadmin'),
+			),
+
+			'ref_gaji_ke' => array(
+				'title' => 'Konfigurasi Gaji Ke-13/14', 'table' => 'ref_gaji_ke', 'from' => 'ref_gaji_ke m', 'alias' => 'm',
+				'select' => 'm.id, m.no, m.nama, m.bulan_basis, m.keterangan, m.is_active',
+				'searchable' => array('m.nama'),
+				'order_by' => 'm.no',
+				'columns' => array(
+					array('field' => 'no',          'label' => 'No',          'width' => '60px'),
+					array('field' => 'nama',        'label' => 'Nama'),
+					array('field' => 'bulan_basis', 'label' => 'Bulan Basis', 'width' => '120px'),
+					array('field' => 'keterangan',  'label' => 'Keterangan'),
+					array('field' => 'is_active',   'label' => 'Aktif',       'render' => 'active', 'width' => '70px'),
+				),
+				'fields' => array(
+					array('name' => 'no',          'label' => 'Nomor Gaji (13 atau 14)', 'type' => 'number', 'min' => 13, 'max' => 14, 'required' => TRUE),
+					array('name' => 'nama',        'label' => 'Nama', 'type' => 'text', 'required' => TRUE),
+					array('name' => 'bulan_basis', 'label' => 'Bulan Basis (1-12)', 'type' => 'number', 'min' => 1, 'max' => 12, 'required' => TRUE),
+					array('name' => 'keterangan',  'label' => 'Keterangan', 'type' => 'text'),
+					array('name' => 'is_active',   'label' => 'Aktif', 'type' => 'checkbox', 'default' => 1),
 				),
 				'manage' => array('superadmin'),
 			),
@@ -525,10 +829,12 @@ class Master extends MY_Controller {
 			$data[$cfg['save_scope_col']] = scope_opd_id();
 		}
 
-		// Pegawai: status_kepegawaian NOT NULL, diturunkan dari jenis_kepegawaian
-		if ($entity === 'pegawai' && isset($data['jenis_kepegawaian']))
+		// Pegawai: nama_lengkap selalu UPPERCASE; status_kepegawaian dari jenis_kepegawaian
+		if ($entity === 'pegawai')
 		{
-			$data['status_kepegawaian'] = ($data['jenis_kepegawaian'] === 'NON_ASN') ? 'NON_ASN' : 'ASN';
+			if (isset($data['nama_lengkap'])) $data['nama_lengkap'] = strtoupper($data['nama_lengkap']);
+			if (isset($data['jenis_kepegawaian']))
+				$data['status_kepegawaian'] = ($data['jenis_kepegawaian'] === 'NON_ASN') ? 'NON_ASN' : 'ASN';
 		}
 
 		if ($errors)
@@ -582,9 +888,12 @@ class Master extends MY_Controller {
 			$this->output->set_content_type('application/json')->set_output('[]');
 			return;
 		}
-		$this->db->select('m.id, m.nama_lengkap, m.nip, m.jenis_kepegawaian, m.golongan, m.pangkat, m.npwp, o.nama_opd')
+		$this->db->select('m.id, m.nama_lengkap, m.nip, m.jenis_kepegawaian, m.golongan, m.pangkat, m.npwp,'
+				. ' o.nama_opd, rjs.nama_jabatan AS jabatan_struktural, rjp.nama_jabatan AS jabatan_penatausahaan', FALSE)
 			->from('pegawai m')
-			->join('master_opd o', 'o.id = m.opd_id', 'left')
+			->join('master_opd o',    'o.id = m.opd_id', 'left')
+			->join('ref_jabatan rjs', 'rjs.id = m.jabatan_struktural_id', 'left')
+			->join('ref_jabatan rjp', 'rjp.id = m.jabatan_penatausahaan_id', 'left')
 			->group_start()
 				->like('m.nama_lengkap', $q)
 				->or_like('m.nip', $q)
@@ -648,6 +957,52 @@ class Master extends MY_Controller {
 			case 'opd_unit':
 				$w = ($parent !== NULL && $parent !== '') ? array('opd_id' => $parent) : array();
 				return $this->mm->options('master_opd_unit', 'id', 'nama_unit', $w, 'nama_unit');
+			case 'jabatan_struktural':
+				$opts = array();
+				$jrows = $this->db
+					->select("id, eselon, nama_jabatan", FALSE)
+					->from('ref_jabatan')
+					->where('jenis_jabatan', 'STRUKTURAL')->where('is_active', 1)
+					->order_by('eselon, nama_jabatan')->get()->result_array();
+				foreach ($jrows as $jr) {
+					$opts[$jr['id']] = array(
+						'label'  => ($jr['eselon'] ? 'Eselon '.$jr['eselon'].' \xe2\x80\x94 ' : '').$jr['nama_jabatan'],
+						'eselon' => $jr['eselon'] ?? '',
+					);
+				}
+				return $opts;
+			case 'jabatan_penatausahaan':
+				return $this->mm->options('ref_jabatan', 'id', 'nama_jabatan', array('jenis_jabatan' => 'PENATAUSAHAAN', 'is_active' => 1), 'nama_jabatan');
+			case 'jabatan_fungsional':
+				return $this->mm->options('ref_jabatan', 'id', 'nama_jabatan', array('jenis_jabatan' => 'FUNGSIONAL', 'is_active' => 1), 'nama_jabatan');
+			case 'jabatan_semua':
+				return $this->mm->options('ref_jabatan', 'id', "CONCAT('[',jenis_jabatan,'] ',nama_jabatan)", array('is_active' => 1), 'jenis_jabatan, nama_jabatan');
+			case 'kelas_jabatan':
+				$opts = array('' => '— (tidak ada) —');
+				$opts += $this->mm->options('ref_kelas_jabatan', 'id', "CONCAT('Kelas ',kelas,IF(nama IS NOT NULL AND nama!='',CONCAT(' \xe2\x80\x94 ',nama),''))", array('is_active' => 1), 'kelas');
+				return $opts;
+			case 'ref_tpp':
+				$opts = array('' => '— (tidak ada) —');
+				$rows = $this->db
+					->select('rt.id, rkj.kelas, rt.uraian, rt.nominal', FALSE)
+					->from('ref_tpp rt')
+					->join('ref_kelas_jabatan rkj', 'rkj.id = rt.kelas_jabatan_id', 'left')
+					->where('rt.is_active', 1)
+					->order_by('rkj.kelas DESC, rt.uraian')
+					->get()->result_array();
+				foreach ($rows as $r) {
+					$kelas = $r['kelas'] !== NULL ? 'Kelas '.$r['kelas'].' \xe2\x80\x94 ' : '';
+					$opts[$r['id']] = $kelas.$r['uraian'].' (Rp '.number_format((int)$r['nominal'],0,',','.').')';
+				}
+				return $opts;
+			case 'tunjangan_fungsional':
+				$opts = array('' => '— (tidak ada) —');
+				$opts += $this->mm->options('ref_tunjangan_fungsional', 'kdjabatan', "CONCAT(kdjabatan,' \xe2\x80\x94 ',nama_jabatan,' (Rp ',FORMAT(nominal,0),')')", array('is_active' => 1), 'nama_jabatan');
+				return $opts;
+			case 'tunjangan_khusus':
+				$opts = array('' => '— (tidak ada) —');
+				$opts += $this->mm->options('ref_tunjangan_khusus', 'kdjabatan', "CONCAT(kdjabatan,' \xe2\x80\x94 ',nama_jabatan,' (Rp ',FORMAT(nominal,0),')')", array('is_active' => 1), 'nama_jabatan');
+				return $opts;
 		}
 		return array();
 	}

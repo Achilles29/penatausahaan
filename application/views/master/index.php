@@ -3,6 +3,86 @@
  * View generik master. Variabel: $entity, $cfg, $can_manage, $filter_options, $field_options
  */
 $cols = $cfg['columns'];
+
+// Deteksi tab dan ukuran modal
+$modal_size_class = isset($cfg['modal_size']) ? 'modal-'.$cfg['modal_size'] : '';
+$form_tabs = array();
+foreach ($cfg['fields'] as $_fld) {
+    if (!empty($_fld['tab']) && !in_array($_fld['tab'], $form_tabs)) $form_tabs[] = $_fld['tab'];
+}
+$has_tabs = !empty($form_tabs);
+
+// Helper closure untuk render satu field
+$renderField = function($fld) use ($field_options) {
+    $name = $fld['name'];
+    $req  = !empty($fld['required']) ? 'required' : '';
+    $lreq = $req ? ' <span class="text-danger">*</span>' : '';
+    echo '<div class="mb-3" data-field="'.htmlspecialchars($name).'">';
+    echo '<label class="form-label">'.htmlspecialchars($fld['label']).$lreq.'</label>';
+    $type = $fld['type'];
+    if ($type === 'text') {
+        echo '<input type="text" class="form-control" name="'.htmlspecialchars($name).'" id="fld_'.htmlspecialchars($name).'" '.$req.' placeholder="'.htmlspecialchars($fld['placeholder'] ?? '').'">';
+    } elseif ($type === 'date') {
+        echo '<input type="date" class="form-control" name="'.htmlspecialchars($name).'" id="fld_'.htmlspecialchars($name).'" '.$req.'>';
+    } elseif ($type === 'number') {
+        $min  = isset($fld['min'])  ? 'min="'.(int)$fld['min'].'"'  : '';
+        $max  = isset($fld['max'])  ? 'max="'.(int)$fld['max'].'"'  : '';
+        $step = 'step="'.($fld['step'] ?? 1).'"';
+        echo '<input type="number" class="form-control" name="'.htmlspecialchars($name).'" id="fld_'.htmlspecialchars($name).'" '.$min.' '.$max.' '.$step.' placeholder="'.htmlspecialchars($fld['placeholder'] ?? '').'" '.$req.'>';
+    } elseif ($type === 'textarea') {
+        echo '<textarea class="form-control" name="'.htmlspecialchars($name).'" id="fld_'.htmlspecialchars($name).'" rows="2" '.$req.'></textarea>';
+    } elseif ($type === 'checkbox') {
+        $chk = !empty($fld['default']) ? 'checked' : '';
+        echo '<div class="form-check form-switch">';
+        echo '<input type="checkbox" class="form-check-input" name="'.htmlspecialchars($name).'" id="fld_'.htmlspecialchars($name).'" value="1" '.$chk.'>';
+        echo '<label class="form-check-label" for="fld_'.htmlspecialchars($name).'">Ya</label></div>';
+    } elseif ($type === 'enum') {
+        echo '<select class="form-select" name="'.htmlspecialchars($name).'" id="fld_'.htmlspecialchars($name).'" '.$req.'>';
+        foreach ($fld['options'] as $ov => $ol) {
+            if (is_array($ol)) {
+                // $ov = group label, $ol = array of options
+                echo '<optgroup label="'.htmlspecialchars($ov).'">';
+                foreach ($ol as $gv => $gl) {
+                    $sel = (isset($fld['default']) && $fld['default'] == $gv) ? 'selected' : '';
+                    echo '<option value="'.htmlspecialchars($gv).'" '.$sel.'>'.htmlspecialchars($gl).'</option>';
+                }
+                echo '</optgroup>';
+            } else {
+                $sel = (isset($fld['default']) && $fld['default'] == $ov) ? 'selected' : '';
+                echo '<option value="'.htmlspecialchars($ov).'" '.$sel.'>'.htmlspecialchars($ol).'</option>';
+            }
+        }
+        echo '</select>';
+    } elseif ($type === 'select') {
+        $dep = !empty($fld['depends']) ? 'data-depends="'.htmlspecialchars($fld['depends']).'" data-source="'.htmlspecialchars($fld['source']).'"' : '';
+        echo '<select class="form-select" name="'.htmlspecialchars($name).'" id="fld_'.htmlspecialchars($name).'" '.$req.' '.$dep.'>';
+        echo '<option value="">— Pilih —</option>';
+        if (empty($fld['depends']) && isset($field_options[$name])) {
+            foreach ($field_options[$name] as $k => $v) {
+                if (is_array($v)) {
+                    // Rich option: ['label' => '...', 'eselon' => '...', ...]
+                    $extra = '';
+                    foreach ($v as $dk => $dv) {
+                        if ($dk === 'label') continue;
+                        $extra .= ' data-'.htmlspecialchars($dk).'="'.htmlspecialchars((string)$dv).'"';
+                    }
+                    echo '<option value="'.htmlspecialchars($k).'"'.$extra.'>'.htmlspecialchars($v['label']).'</option>';
+                } else {
+                    echo '<option value="'.htmlspecialchars($k).'">'.htmlspecialchars($v).'</option>';
+                }
+            }
+        }
+        echo '</select>';
+        // Eselon badge for jabatan_struktural_id field
+        if ($name === 'jabatan_struktural_id') {
+            echo '<div class="mt-1" id="eselon_badge_wrap"><small class="text-muted">Eselon: </small><span id="eselon_badge" class="badge bg-info">—</span></div>';
+        }
+    }
+    if (!empty($fld['hint'])) {
+        echo '<div class="form-text text-muted small">'.htmlspecialchars($fld['hint']).'</div>';
+    }
+    echo '</div>';
+};
 // susun definisi kolom utk JS
 $js_cols = array();
 foreach ($cols as $c) {
@@ -65,7 +145,7 @@ foreach ($cols as $c) {
 <?php if ($can_manage): ?>
 <!-- Modal Form -->
 <div class="modal fade" id="formModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable <?= $modal_size_class ?>">
     <div class="modal-content">
       <form action="<?= site_url('master/save/'.$entity) ?>" method="post">
         <div class="modal-header">
@@ -87,35 +167,34 @@ foreach ($cols as $c) {
             </div>
           </div>
           <?php endif; ?>
-          <?php foreach ($cfg['fields'] as $fld): $name = $fld['name']; $req = ! empty($fld['required']) ? 'required' : ''; ?>
-          <div class="mb-3" data-field="<?= $name ?>">
-            <label class="form-label"><?= html_escape($fld['label']) ?><?= $req ? ' <span class="text-danger">*</span>' : '' ?></label>
-            <?php if ($fld['type'] === 'text'): ?>
-              <input type="text" class="form-control" name="<?= $name ?>" id="fld_<?= $name ?>" <?= $req ?>>
-            <?php elseif ($fld['type'] === 'textarea'): ?>
-              <textarea class="form-control" name="<?= $name ?>" id="fld_<?= $name ?>" rows="2" <?= $req ?>></textarea>
-            <?php elseif ($fld['type'] === 'checkbox'): ?>
-              <div class="form-check form-switch">
-                <input type="checkbox" class="form-check-input" name="<?= $name ?>" id="fld_<?= $name ?>" value="1" <?= ! empty($fld['default']) ? 'checked' : '' ?>>
-                <label class="form-check-label" for="fld_<?= $name ?>">Ya</label>
-              </div>
-            <?php elseif ($fld['type'] === 'enum'): ?>
-              <select class="form-select" name="<?= $name ?>" id="fld_<?= $name ?>" <?= $req ?>>
-                <?php foreach ($fld['options'] as $ov => $ol): ?>
-                  <option value="<?= html_escape($ov) ?>" <?= (isset($fld['default']) && $fld['default']==$ov)?'selected':'' ?>><?= html_escape($ol) ?></option>
-                <?php endforeach; ?>
-              </select>
-            <?php elseif ($fld['type'] === 'select'): ?>
-              <select class="form-select" name="<?= $name ?>" id="fld_<?= $name ?>" <?= $req ?>
-                      <?= ! empty($fld['depends']) ? 'data-depends="'.$fld['depends'].'" data-source="'.$fld['source'].'"' : '' ?>>
-                <option value="">— Pilih —</option>
-                <?php if (empty($fld['depends']) && isset($field_options[$name])): foreach ($field_options[$name] as $k => $v): ?>
-                  <option value="<?= html_escape($k) ?>"><?= html_escape($v) ?></option>
-                <?php endforeach; endif; ?>
-              </select>
-            <?php endif; ?>
+
+          <?php if ($has_tabs): ?>
+          <!-- Tabbed form -->
+          <ul class="nav nav-pills mb-3 flex-wrap gap-1" role="tablist">
+            <?php foreach ($form_tabs as $_ti => $_tn): ?>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link <?= $_ti===0?'active':'' ?> px-3 py-1 small fw-semibold"
+                      type="button" role="tab"
+                      data-bs-toggle="tab" data-bs-target="#ftab_<?= md5($_tn) ?>"
+                      id="ftab_btn_<?= md5($_tn) ?>">
+                <?= html_escape($_tn) ?>
+              </button>
+            </li>
+            <?php endforeach; ?>
+          </ul>
+          <div class="tab-content">
+            <?php foreach ($form_tabs as $_ti => $_tn): ?>
+            <div class="tab-pane fade <?= $_ti===0?'show active':'' ?>" id="ftab_<?= md5($_tn) ?>" role="tabpanel">
+              <?php foreach ($cfg['fields'] as $_fld): if (($_fld['tab'] ?? '') !== $_tn) continue; $renderField($_fld); endforeach; ?>
+            </div>
+            <?php endforeach; ?>
           </div>
-          <?php endforeach; ?>
+
+          <?php else: ?>
+          <!-- Flat form (tanpa tab) -->
+          <?php foreach ($cfg['fields'] as $fld): $renderField($fld); endforeach; ?>
+          <?php endif; ?>
+
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Batal</button>
@@ -142,7 +221,7 @@ $cfg_js = json_encode(array(
 	'get_url'    => site_url('master/get/'.$entity),
 	'opt_url'    => site_url('master/options'),
 	'peg_url'    => ($entity === 'penerima') ? site_url('master/pegawai_search') : NULL,
-	'order_col'  => 1,
+	'order_col'  => !empty($cfg['order_by_raw']) ? 0 : 1,
 ));
 ?>
 <script>
@@ -264,6 +343,21 @@ var MCFG = <?= $cfg_js ?>;
     });
   });
 
+  // ── Eselon sync untuk jabatan_struktural_id ──────────────────────────
+  function updateEselonBadge() {
+    var sel = document.getElementById('fld_jabatan_struktural_id');
+    if (!sel) return;
+    var opt = sel.options[sel.selectedIndex];
+    var eselon = (opt && opt.dataset && opt.dataset.eselon) ? opt.dataset.eselon : '';
+    var badge = document.getElementById('eselon_badge');
+    if (badge) {
+      badge.textContent = eselon || '—';
+      badge.className = eselon ? 'badge bg-info' : 'badge bg-secondary';
+    }
+  }
+  $('#formModal').on('change', '#fld_jabatan_struktural_id', updateEselonBadge);
+  $('#formModal').on('shown.bs.modal', updateEselonBadge);
+
   // ---- Penerima: pegawai picker ----
   if (MCFG.peg_url) {
     var esc2 = function (v) { return v ? $('<div>').text(v).html() : ''; };
@@ -287,6 +381,7 @@ var MCFG = <?= $cfg_js ?>;
             rows.forEach(function (p) {
               var jLabel = { PNS:'PNS', PPPK:'PPPK', NON_ASN:'Non ASN' }[p.jenis_kepegawaian] || p.jenis_kepegawaian;
               var golInfo = p.golongan ? (' Gol.'+p.golongan) : '';
+              var jabInfo = p.jabatan_penatausahaan || p.jabatan_struktural || '';
               html += '<button type="button" class="list-group-item list-group-item-action peg-penerima-item small py-2"'
                 + ' data-nama="'    + esc2(p.nama_lengkap) + '"'
                 + ' data-nip="'     + esc2(p.nip) + '"'
@@ -297,6 +392,7 @@ var MCFG = <?= $cfg_js ?>;
                 + '<span class="text-muted ms-2">' + esc2(p.nip || '—') + '</span>'
                 + '<span class="d-block text-muted" style="font-size:.8em">'
                   + esc2(p.nama_opd || '') + (p.nama_opd ? ' · ' : '') + jLabel + golInfo
+                  + (jabInfo ? ' · <em>'+esc2(jabInfo)+'</em>' : '')
                 + '</span>'
                 + '</button>';
             });

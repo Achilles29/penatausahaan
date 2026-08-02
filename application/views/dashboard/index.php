@@ -41,9 +41,9 @@ $stats = array(
   <?php endforeach; ?>
 </div>
 
-<div class="row">
+<div class="row mb-4">
   <div class="col-lg-8">
-    <div class="card">
+    <div class="card h-100">
       <div class="card-header d-flex align-items-center justify-content-between">
         <span><i class="fa-solid fa-wallet me-2 text-primary"></i>Total Pagu DPA (sesuai kewenangan)</span>
       </div>
@@ -54,7 +54,7 @@ $stats = array(
     </div>
   </div>
   <div class="col-lg-4">
-    <div class="card">
+    <div class="card h-100">
       <div class="card-header"><i class="fa-solid fa-bolt me-2 text-primary"></i>Akses Cepat</div>
       <div class="card-body d-grid gap-2">
         <a href="<?= site_url('anggaran/dpa') ?>" class="btn btn-outline-primary text-start"><i class="fa-solid fa-file-invoice-dollar me-2"></i>Lihat DPA</a>
@@ -64,3 +64,66 @@ $stats = array(
     </div>
   </div>
 </div>
+
+<?php if ($breakdown['type'] !== 'none' && count($breakdown['rows'])): ?>
+<div class="card">
+  <div class="card-header">
+    <?php if ($breakdown['type'] === 'opd'): ?>
+      <i class="fa-solid fa-building me-2 text-primary"></i>Ringkasan DPA per OPD
+    <?php elseif ($breakdown['type'] === 'program'): ?>
+      <i class="fa-solid fa-diagram-project me-2 text-primary"></i>Ringkasan DPA per Program
+    <?php else: ?>
+      <i class="fa-solid fa-list-check me-2 text-primary"></i>Sub Kegiatan dalam Kewenangan
+    <?php endif; ?>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-sm table-hover mb-0">
+        <thead class="table-light">
+          <tr>
+            <th style="width:40px">#</th>
+            <?php if ($breakdown['type'] === 'opd'): ?>
+              <th style="width:110px">Kode OPD</th><th>Nama OPD</th>
+            <?php elseif ($breakdown['type'] === 'program'): ?>
+              <th style="width:150px">Kode Program</th><th>Nama Program</th>
+            <?php else: ?>
+              <th style="width:180px">Kode Sub Kegiatan</th><th>Nama Sub Kegiatan</th>
+            <?php endif; ?>
+            <?php if ($breakdown['type'] !== 'subkegiatan'): ?>
+              <th style="width:90px" class="text-center">Sub Keg</th>
+            <?php endif; ?>
+            <th style="width:190px" class="text-end">Pagu (Rp)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <?php $no = 1; $grand = 0; foreach ($breakdown['rows'] as $r): $grand += (float)$r['total_pagu']; ?>
+          <tr>
+            <td class="text-muted small"><?= $no++ ?></td>
+            <?php if ($breakdown['type'] === 'opd'): ?>
+              <td><code class="small"><?= html_escape($r['kode_opd']) ?></code></td>
+              <td><?= html_escape($r['nama']) ?></td>
+            <?php elseif ($breakdown['type'] === 'program'): ?>
+              <td><code class="small"><?= html_escape($r['kode_program']) ?></code></td>
+              <td><?= html_escape($r['nama_program']) ?></td>
+            <?php else: ?>
+              <td><code class="small"><?= html_escape($r['kode_subkegiatan']) ?></code></td>
+              <td><?= html_escape($r['nama_subkegiatan']) ?></td>
+            <?php endif; ?>
+            <?php if ($breakdown['type'] !== 'subkegiatan'): ?>
+              <td class="text-center"><?= number_format($r['jml_subkeg'], 0, ',', '.') ?></td>
+            <?php endif; ?>
+            <td class="text-end fw-semibold <?= (float)$r['total_pagu'] > 0 ? '' : 'text-muted' ?>"><?= rupiah((float)$r['total_pagu']) ?></td>
+          </tr>
+          <?php endforeach; ?>
+        </tbody>
+        <tfoot class="table-light">
+          <tr>
+            <td colspan="<?= $breakdown['type'] === 'subkegiatan' ? 3 : 4 ?>" class="fw-bold text-end">Total</td>
+            <td class="text-end fw-bold text-primary"><?= rupiah($grand) ?></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+</div>
+<?php endif; ?>
