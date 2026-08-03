@@ -53,6 +53,10 @@ $route['default_controller'] = 'dashboard';
 $route['404_override'] = '';
 $route['translate_uri_dashes'] = FALSE;
 
+// Endpoint metode 1-segmen HARUS didaftarkan sebelum catch-all di bawah,
+// jika tidak akan dibajak menjadi master/index/<segmen>.
+$route['master/pegawai_search'] = 'master/pegawai_search';
+
 // URL bersih master: master/<entity> -> Master::index('<entity>')
-// (master/data|get|save|delete|options/... tetap ke method default CI)
+// (master/data|get|save|delete|options/... tetap ke method default CI karena >1 segmen)
 $route['master/([a-z_]+)'] = 'master/index/$1';

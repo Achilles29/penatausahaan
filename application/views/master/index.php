@@ -15,6 +15,11 @@ $has_tabs = !empty($form_tabs);
 // Helper closure untuk render satu field
 $renderField = function($fld) use ($field_options) {
     $name = $fld['name'];
+    // Field tersembunyi (mis. pegawai_id) — tanpa wrapper/label
+    if (($fld['type'] ?? '') === 'hidden') {
+        echo '<input type="hidden" name="'.htmlspecialchars($name).'" id="fld_'.htmlspecialchars($name).'">';
+        return;
+    }
     $req  = !empty($fld['required']) ? 'required' : '';
     $lreq = $req ? ' <span class="text-danger">*</span>' : '';
     echo '<div class="mb-3" data-field="'.htmlspecialchars($name).'">';
@@ -229,7 +234,8 @@ var MCFG = <?= $cfg_js ?>;
 (function () {
   var renderers = {
     active: function (v) { return Number(v) ? '<span class="badge badge-soft-success">Aktif</span>' : '<span class="badge badge-soft-secondary">Nonaktif</span>'; },
-    badge:  function (v) { return v ? '<span class="badge badge-soft-primary text-uppercase">'+$('<div>').text(v).html()+'</span>' : '-'; }
+    badge:  function (v) { return v ? '<span class="badge badge-soft-primary text-uppercase">'+$('<div>').text(v).html()+'</span>' : '-'; },
+    pegawai_badge: function (v) { return Number(v) ? '<span class="badge badge-soft-primary"><i class="fa-solid fa-user-tie me-1"></i>Pegawai</span>' : '<span class="badge badge-soft-secondary">Manual</span>'; }
   };
   var columns = [{ data: null, orderable:false, searchable:false, title:'#', width:'52px',
       render: function(d,t,r,meta){ return meta.row + meta.settings._iDisplayStart + 1; } }];
@@ -383,6 +389,7 @@ var MCFG = <?= $cfg_js ?>;
               var golInfo = p.golongan ? (' Gol.'+p.golongan) : '';
               var jabInfo = p.jabatan_penatausahaan || p.jabatan_struktural || '';
               html += '<button type="button" class="list-group-item list-group-item-action peg-penerima-item small py-2"'
+                + ' data-id="'      + esc2(p.id) + '"'
                 + ' data-nama="'    + esc2(p.nama_lengkap) + '"'
                 + ' data-nip="'     + esc2(p.nip) + '"'
                 + ' data-jenis="'   + esc2(p.jenis_kepegawaian) + '"'
@@ -408,6 +415,7 @@ var MCFG = <?= $cfg_js ?>;
       var golFull  = $(this).data('golongan') || ''; // e.g. 'III/b'
       var golEnum  = golFull ? golFull.replace(/\/.*/, '') : ''; // 'III'
       var jenisVal = (jenis === 'NON_ASN') ? 'non_asn' : 'asn';
+      $('#fld_pegawai_id').val($(this).data('id'));   // TAUTKAN ke pegawai (data live)
       $('#fld_nama_penerima').val($(this).data('nama'));
       $('#fld_jenis_penerima').val(jenisVal);
       $('#fld_npwp').val(npwp);
@@ -415,6 +423,10 @@ var MCFG = <?= $cfg_js ?>;
       if (golEnum) $('#fld_golongan').val(golEnum);
       $('#peg_search_penerima').val('');
       $('#peg_dropdown_penerima').hide();
+    });
+    // Ketik nama manual => lepas tautan pegawai (jadi entri manual)
+    $(document).on('input', '#fld_nama_penerima', function () {
+      if (document.activeElement === this) $('#fld_pegawai_id').val('');
     });
 
     $(document).on('mousedown', function (e) {

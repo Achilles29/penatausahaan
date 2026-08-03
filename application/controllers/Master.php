@@ -360,16 +360,21 @@ class Master extends MY_Controller {
 
 			'penerima' => array(
 				'title' => 'Penerima Pembayaran', 'table' => 'master_penerima', 'from' => 'master_penerima m', 'alias' => 'm',
-				'select' => 'm.id, m.nama_penerima, m.jenis_penerima, m.golongan, m.punya_npwp, m.npwp, m.nama_bank, m.no_rekening, m.is_active',
-				'searchable' => array('m.nama_penerima', 'm.npwp', 'm.no_rekening'),
-				'order_by' => 'm.jenis_penerima, m.nama_penerima',
+				'select' => 'm.id, m.pegawai_id, COALESCE(pg.nama_lengkap, m.nama_penerima) AS nama_penerima, m.jenis_penerima,'
+					. ' COALESCE(pg.golongan, m.golongan) AS golongan, m.punya_npwp, COALESCE(pg.npwp, m.npwp) AS npwp,'
+					. ' m.nama_bank, m.no_rekening, m.is_active,'
+					. ' CASE WHEN m.pegawai_id IS NOT NULL THEN 1 ELSE 0 END AS is_pegawai',
+				'joins' => array(array('pegawai pg', 'pg.id = m.pegawai_id', 'left')),
+				'searchable' => array('m.nama_penerima', 'pg.nama_lengkap', 'm.npwp', 'm.no_rekening'),
+				'order_by' => 'm.jenis_penerima, nama_penerima',
 				'columns' => array(
 					array('field' => 'nama_penerima', 'label' => 'Nama Penerima', 'order' => 'm.nama_penerima'),
+					array('field' => 'is_pegawai', 'label' => 'Sumber', 'render' => 'pegawai_badge', 'width' => '90px'),
 					array('field' => 'jenis_penerima', 'label' => 'Jenis', 'render' => 'badge', 'width' => '100px'),
 					array('field' => 'golongan', 'label' => 'Gol.', 'width' => '60px'),
-					array('field' => 'npwp', 'label' => 'NPWP', 'width' => '180px'),
+					array('field' => 'npwp', 'label' => 'NPWP', 'width' => '160px'),
 					array('field' => 'nama_bank', 'label' => 'Bank'),
-					array('field' => 'no_rekening', 'label' => 'No. Rekening', 'width' => '150px'),
+					array('field' => 'no_rekening', 'label' => 'No. Rekening', 'width' => '140px'),
 					array('field' => 'is_active', 'label' => 'Status', 'render' => 'active', 'width' => '80px'),
 				),
 				'filters' => array(
@@ -377,6 +382,7 @@ class Master extends MY_Controller {
 					array('name' => 'm.is_active', 'label' => 'Status', 'options' => array('1'=>'Aktif','0'=>'Nonaktif')),
 				),
 				'fields' => array(
+					array('name' => 'pegawai_id', 'type' => 'hidden'),
 					array('name' => 'nama_penerima', 'label' => 'Nama Penerima', 'type' => 'text', 'required' => TRUE),
 					array('name' => 'jenis_penerima', 'label' => 'Jenis Penerima', 'type' => 'enum',
 						'options' => array('asn'=>'ASN (PNS/PPPK)','non_asn'=>'Non ASN (perorangan)','badan'=>'Badan / Vendor'), 'required' => TRUE),
@@ -953,7 +959,7 @@ class Master extends MY_Controller {
 				if ($parent === NULL || $parent === '') return array(); // butuh induk (kegiatan)
 				return $this->mm->options('master_subkegiatan', 'id', "CONCAT(kode_subkegiatan,' - ',LEFT(nama_subkegiatan,60))", array('kegiatan_id' => $parent), 'kode_subkegiatan');
 			case 'opd':
-				return $this->mm->options('master_opd', 'id', "CONCAT(kode_opd,' - ',COALESCE(singkatan,nama_opd))", array(), 'kode_opd');
+				return $this->mm->options('master_opd', 'id', "CONCAT(kode_opd,' - ',nama_opd)", array(), 'kode_opd');
 			case 'opd_unit':
 				$w = ($parent !== NULL && $parent !== '') ? array('opd_id' => $parent) : array();
 				return $this->mm->options('master_opd_unit', 'id', 'nama_unit', $w, 'nama_unit');

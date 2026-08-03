@@ -26,6 +26,14 @@ class MY_Controller extends CI_Controller {
 		}
 
 		$this->user = current_user();
+
+		// Enforcement hak akses menu (role matrix). superadmin selalu lolos;
+		// endpoint utility/tak-terpetakan -> NULL -> diizinkan.
+		$mkey = current_menu_key();
+		if ($mkey !== NULL && ! menu_allowed($mkey))
+		{
+			show_error('Menu ini tidak tersedia untuk akun Anda. Hubungi admin.', 403, 'Akses Ditolak');
+		}
 	}
 
 	/**

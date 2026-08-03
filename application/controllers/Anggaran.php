@@ -19,7 +19,7 @@ class Anggaran extends MY_Controller {
 	public function dpa()
 	{
 		$opd_opts = is_super()
-			? $this->mm->options('master_opd', 'id', "CONCAT(kode_opd,' - ',COALESCE(singkatan,nama_opd))", array(), 'kode_opd')
+			? $this->mm->options('master_opd', 'id', "CONCAT(kode_opd,' - ',nama_opd)", array(), 'kode_opd')
 			: array();
 		$this->render('anggaran/dpa', array(
 			'opd_opts'  => $opd_opts,

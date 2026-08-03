@@ -1,6 +1,6 @@
 # PROGRESS — Catatan Teknis (aman untuk pindah device)
 
-**Terakhir diperbarui:** 2026-08-03 · **Status:** Modul Gaji ASN SELESAI & teruji. Siap lanjut Tahap 2 (modul NPD).
+**Terakhir diperbarui:** 2026-08-03 · **Status:** NPD 2a–2d lengkap + **Role Matrix (manajemen menu per role)** + penerima⇄pegawai live. Teruji.
 
 ---
 
@@ -101,6 +101,80 @@ TIDAK termasuk: BPJS 1% pegawai dari gaji & TPP (tanggungan pegawai).
 
 ---
 
+### [2026-08-03] Tahap 2a — Modul NPD (inti) — SELESAI
+Alur sinkron DPA→NPD: pilih sub kegiatan (yang ber-DPA) → tabel rekening tampil
+**pagu / terpakai / sisa** → isi jumlah cair (validasi ≤ sisa).
+- **Sisa anggaran** = pagu (Σ dpa_detail.total_harga) − realisasi (Σ npd_detail.jumlah),
+  per (opd, subkegiatan, rekening). `Npd_model` (rekening_sisa, pagu_map, realisasi_map).
+- **Nomor NPD** auto (`900.1.11/<urut>/NPD/<singkatan>/<romawi bln>/<tahun>`), bisa diedit.
+- **Scope**: superadmin pilih OPD; admin_opd → OPD-nya; user_opd → subkegiatan kewenangan
+  (`scope_subkegiatan_ids()`). Validasi sisa & otorisasi di server (authoritative).
+- File: `controllers/Npd.php`, `models/Npd_model.php`, `views/npd/{index,form,view}.php`,
+  menu sidebar "Penatausahaan → NPD".
+- **Teruji (superadmin)**: buat (sisa berkurang tepat), edit (exclude-self), over-limit
+  ditolak, hapus cascade. Data uji sudah dibersihkan (tabel npd kosong).
+- Catatan: uji login user_opd tertunda krn password seed berubah di sesi sebelumnya
+  (bukan bug NPD; scope memakai helper yang sama & sudah terbukti).
+
+### [2026-08-03] Tahap 2b — Daftar Penerima per baris NPD — SELESAI
+- Tabel baru **`npd_penerima`** (npd_detail_id, penerima_id, nama, uraian, volume,
+  harga_satuan, jumlah). Ditambahkan ke `penatus_schema.sql`.
+- Dikelola di **halaman detail NPD** (`npd/view`): tiap baris rekening bisa punya daftar
+  penerima; `jumlah = volume × harga_satuan`; **validasi Σ penerima ≤ jumlah baris**
+  (indikator "sisa alokasi"). Autocomplete cari `master_penerima` (`npd/penerima_search`).
+- Method: `penerima_search/get/save/delete` di `Npd.php`; view `npd/view.php` ditulis ulang.
+- **Teruji**: tambah (auto 5×300rb=1,5jt), over-alokasi ditolak, render, cascade delete.
+
+### [2026-08-03] Bug fix
+- **Pencarian pegawai di modal Penerima tidak keluar** → `master/pegawai_search` dibajak
+  route catch-all `master/([a-z_]+)`. Fix: daftarkan `master/pegawai_search` **sebelum**
+  catch-all di `routes.php`. (Berlaku juga untuk endpoint metode 1-segmen lain di masa depan.)
+- **NPD gagal simpan bila `pekerjaan` kosong** → kolom NOT NULL. Fix: coalesce
+  perihal/pekerjaan ke string di `Npd::save()` (+ guard `trim`/`str_replace` dari null utk PHP 8).
+- **terbilang() warning float→int (PHP 8.1)** → `floor()` input di `format_helper`.
+
+### [2026-08-03] Penerima ⇄ Pegawai (data live)
+- Kolom **`npd_penerima.pegawai_id`** (FK pegawai, ON DELETE SET NULL). Bila penerima adalah
+  pegawai, disimpan pegawai_id → nama/NIP/NPWP/golongan diambil **live** (perubahan data
+  pegawai otomatis terpantul di NPD). Autocomplete gabungan **pegawai + master_penerima**
+  (`Npd::penerima_search`, tag `source`). **Propagasi terbukti** (ubah nama pegawai → view berubah).
+
+### [2026-08-03] Tahap 2c — Pindah Buku + Pajak Otomatis — SELESAI
+- **Engine pajak** `hitung_pajak_rekening($rekening_id, $bruto, $ctx)` di `pajak_helper.php`:
+  kategori rekening → skema → aturan; menghitung PPh21/22/23/PPh4(2)/PPN sesuai **NPWP &
+  golongan**; urutan PPN dulu agar DPP PPh benar. `+ label_jenis_pajak()`, `golongan_roman()`.
+- NPD `view` menampilkan **Bruto / Pajak (rincian) / Netto** per penerima + ringkasan pajak NPD.
+- **Teruji**: barang bruto 2jt (NPWP) → PPN 198.198 + PPh22 27.027 = pajak 225.225, netto
+  1.774.775; honorarium PNS Gol III/d 1jt → PPh21 5% = 50.000, netto 950.000.
+
+### [2026-08-03] Tahap 2d — Cetak — SELESAI
+- Cetak **NPD**, **Pindah Buku** (per penerima: bruto/pajak/netto + rekap pajak disetor),
+  **C5** (daftar penerimaan/tanda terima). Layout cetak sendiri (`_print_head.php`, A4, tombol
+  cetak). Diakses dari tombol di halaman detail NPD (`npd/cetak|pindah_buku|c5/<id>`).
+- **Menu/role**: cetak = aksi kontekstual per NPD (bukan menu baru), ikut guard scope NPD.
+  Menu **NPD** sudah ada di sidebar (semua role, ter-scope). Tidak ada menu top-level baru.
+
+---
+
+### [2026-08-03] Role Matrix + penerima⇄pegawai + tampilan OPD
+- **master_penerima.pegawai_id** (FK, ON DELETE SET NULL): bila penerima adalah pegawai,
+  nama/NPWP/golongan diambil **live** (COALESCE pegawai). Prefill di modal Penerima menautkan
+  `pegawai_id`; ketik nama manual = lepas tautan. **Propagasi terbukti**.
+- **Tampilan OPD** diseragamkan ke **kode + nama** (bukan singkatan) di dropdown Master/NPD/
+  Anggaran/User/Gaji. Pedoman: selalu tampilkan OPD sebagai `kode_opd - nama_opd`.
+- **Role Matrix / Manajemen Menu** (BARU):
+  - Tabel `role_menu` (override) + katalog menu di `helpers/menu_helper.php`
+    (`menu_allowed`, `current_menu_key`, `menu_group_visible`). Default = perilaku bawaan.
+  - Sidebar kini **data-driven** (visibilitas per role). superadmin selalu penuh.
+  - **Enforcement** di `MY_Controller` (403 bila menu ditolak; endpoint utility dikecualikan,
+    fail-open). Menu **Pengaturan → Hak Akses Menu** (`controllers/Akses.php`, superadmin):
+    matrix menu × role dengan centang + Reset Default.
+  - **Teruji**: user_opd (npd ditolak) → npd **403**, dashboard/rekening 200 (tak over-block),
+    NPD hilang dari sidebar; simpan/reset override OK.
+- ⚠️ **`docs/master/penatus_schema.sql` sudah DIVERGEN dari DB live** (sesi-sesi lain meng-ALTER
+  tanpa update file: enum jenis_penerima, banyak kolom pegawai, ref_* gaji, dll). Untuk jalur
+  **rebuild** yang akurat, **dump ulang** skema live: `mysqldump -u root --no-data penatus`.
+
 ## Cara menjalankan (device yang sudah ada XAMPP)
 1. Start **Apache** + **MySQL** dari XAMPP Control Panel.
 2. Pastikan folder app ada di `C:\xampp\htdocs\penatausahaan`.
@@ -142,7 +216,10 @@ TIDAK termasuk: BPJS 1% pegawai dari gaji & TPP (tanggungan pegawai).
 | **Gaji — Rekap per OPD** | views/gaji/rekap.php | ✅ |
 | **Gaji — Simulasi per Pegawai** | views/gaji/simulasi.php | ✅ |
 | **Gaji — Rekap per Pegawai** | controllers/Rekap.php + views/rekap/{index,detail}.php | ✅ |
-| NPD | controllers/Npd.php | ⏳ Belum dimulai |
+| **NPD inti (2a)** | controllers/Npd.php, models/Npd_model.php, views/npd/{index,form,view}.php | ✅ CRUD + validasi sisa teruji |
+| **NPD penerima (2b) + tautan pegawai** | tabel npd_penerima(+pegawai_id), Npd::penerima_* | ✅ data live teruji |
+| **NPD pajak otomatis (2c)** | pajak_helper::hitung_pajak_rekening | ✅ PPh/PPN teruji |
+| **NPD cetak (2d)** | Npd::{cetak,pindah_buku,c5}, views/npd/cetak_* | ✅ NPD/pindah buku/C5 |
 
 ## Utang teknis / berikutnya
 - ⚠️ **Tarif pajak Tahap 3 masih DRAFT** — koreksi via menu Skema Pajak.
@@ -150,7 +227,15 @@ TIDAK termasuk: BPJS 1% pegawai dari gaji & TPP (tanggungan pegawai).
 - **Data anggaran hanya OPD 16**; 39 OPD lain baru "cangkang".
 - Detail arus kas bulanan belum ditampilkan (baru pagu tahunan).
 - Scope DPA untuk user_opd masih se-OPD (belum per subkegiatan kewenangan).
-- Tabel transaksi (npd, npd_pinbuk, dst.) sudah ada di skema, siap diisi **Tahap 2 (modul NPD)**.
+- **NPD 2a–2d SELESAI** (modul NPD lengkap: inti, penerima+pegawai, pajak, cetak).
+- ⚠️ **Tarif pajak masih DRAFT** — koreksi via menu Skema Pajak agar sesuai regulasi final.
+- **Format C5** memakai interpretasi "daftar penerimaan/tanda terima" — sesuaikan bila daerah
+  Anda punya template C5 resmi yang berbeda (kirim contohnya).
+- Pajak honorarium: PNS/CPNS diperlakukan final per golongan; PPPK/NON_ASN sebagai non-PNS
+  (tarif Ps.17) — verifikasi bila perlu.
+- Tabel `npd_pinbuk*` lama belum dipakai (pindah buku dihitung live dari npd_penerima); bisa
+  dipakai nanti bila perlu persist nomor/status pindah buku.
+- Lanjutan modul berikutnya: **kelengkapan SPJ** & **laporan realisasi** (Tahap 5 roadmap).
 
 ---
 Lihat **ROADMAP.md** (tahapan), **DECISIONS.md** (keputusan arsitektur), **DB_SCHEMA.md** (struktur DB).

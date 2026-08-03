@@ -13,6 +13,7 @@ DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS npd_pinbuk_pajak;
 DROP TABLE IF EXISTS npd_pinbuk_rincian;
 DROP TABLE IF EXISTS npd_pinbuk;
+DROP TABLE IF EXISTS npd_penerima;
 DROP TABLE IF EXISTS npd_detail;
 DROP TABLE IF EXISTS npd;
 DROP TABLE IF EXISTS anggaran_kas_bulanan;
@@ -454,6 +455,28 @@ CREATE TABLE npd_detail (
   CONSTRAINT fk_npd_detail_npd FOREIGN KEY (npd_id) REFERENCES npd (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+-- Daftar penerima per baris rekening NPD (Tahap 2b)
+CREATE TABLE npd_penerima (
+  id INT NOT NULL AUTO_INCREMENT,
+  npd_detail_id INT NOT NULL,
+  pegawai_id BIGINT(20) DEFAULT NULL,     -- bila penerima adalah pegawai (data live)
+  penerima_id INT DEFAULT NULL,           -- bila penerima dari master_penerima
+  nama_penerima VARCHAR(150) NOT NULL,    -- snapshot/fallback nama
+  uraian VARCHAR(255) DEFAULT NULL,
+  volume DECIMAL(15,2) NOT NULL DEFAULT 1.00,
+  harga_satuan DECIMAL(20,2) NOT NULL DEFAULT 0.00,
+  jumlah DECIMAL(20,2) NOT NULL DEFAULT 0.00,
+  keterangan VARCHAR(255) DEFAULT NULL,
+  created_at DATETIME DEFAULT current_timestamp(),
+  PRIMARY KEY (id),
+  KEY idx_np_detail (npd_detail_id),
+  KEY idx_np_pegawai (pegawai_id),
+  KEY idx_np_penerima (penerima_id),
+  CONSTRAINT fk_np_detail FOREIGN KEY (npd_detail_id) REFERENCES npd_detail (id) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT fk_np_pegawai FOREIGN KEY (pegawai_id) REFERENCES pegawai (id) ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT fk_np_penerima FOREIGN KEY (penerima_id) REFERENCES master_penerima (id) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 CREATE TABLE npd_pinbuk (
   id INT NOT NULL AUTO_INCREMENT,
   nomor VARCHAR(50) NOT NULL,
@@ -544,6 +567,18 @@ CREATE TABLE user_akses (
   CONSTRAINT fk_user_akses_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT fk_user_akses_unit FOREIGN KEY (opd_unit_id) REFERENCES master_opd_unit (id) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT fk_user_akses_bidang FOREIGN KEY (bidang_urusan_id) REFERENCES master_bidang (id) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- Override hak akses menu per role (role matrix). Kosong = pakai default katalog (menu_helper).
+DROP TABLE IF EXISTS role_menu;
+CREATE TABLE role_menu (
+  id INT NOT NULL AUTO_INCREMENT,
+  role ENUM('superadmin','admin_opd','user_opd') NOT NULL,
+  menu_key VARCHAR(60) NOT NULL,
+  allowed TINYINT(1) NOT NULL DEFAULT 1,
+  updated_at DATETIME DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_role_menu (role, menu_key)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 SET FOREIGN_KEY_CHECKS = 1;

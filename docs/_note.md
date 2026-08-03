@@ -256,3 +256,21 @@ PPH dan BPJS kode rekeningnya salah, harusnya 5.1.01.01.xxx bukan 5.1.01.02.xxx 
 
 kemudian, untuk logika model simulasi sudah benar, sekarang tinggal terapkan ke logika /rekap/detail/, /rekap, /gaji/rekap. harusnya modelnya sama.
 
+
+
+- cek KGB apakah sudah diperhitungkan? bagaimana mengitung gaji berkala? apakah dari hitungan masa kerja atau dari kolom KGB yad ?
+
+
+buat tampilan /rekap turun ke bawah per rekening, bulannya ke kanan. dan pastikan rekening mengikuti kodifikasi. pembulatan dijumlahkan berdasarkan hitungan pembulatan per pegawai per orang.
+
+
+sesuaikan lagi hak akses menu:
+- ubah polanya seperti pola hak akses C:\xampp\htdocs\pustaka, dimana ada ijin CRUD nya, bukan hanya ijin modul
+- lalu kecuali superadmin, masing masing user hanya bisa mengakses opd nya masing masing
+- untuk crud user opd bisa di set di masing masing hak akses, apakah hanya bisa CRUD sesuai bidangnya atau untuk semua bidang.
+paham maksud saya nggak?
+
+
+lalu untuk management sidebar juga cotoh pola nya di C:\xampp\htdocs\pustaka
+
+Lakukan penyesuaian dan penataan ulang sidebar agar lebih rapi dan sesuai klasifikasinya

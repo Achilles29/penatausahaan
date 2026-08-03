@@ -64,7 +64,7 @@ if ( ! function_exists('terbilang'))
 	 */
 	function terbilang($angka)
 	{
-		$angka = (float) $angka;
+		$angka = floor((float) $angka); // terbilang untuk nilai bulat (hindari float % di PHP 8)
 		if ($angka < 0)
 		{
 			return 'minus ' . trim(terbilang(abs($angka)));

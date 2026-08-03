@@ -66,7 +66,7 @@ class Gaji extends MY_Controller {
 
 	public function rekap()
 	{
-		$opd_options = $this->db->select('id, CONCAT(kode_opd," — ",COALESCE(singkatan,nama_opd)) AS label', FALSE)
+		$opd_options = $this->db->select('id, CONCAT(kode_opd," — ",nama_opd) AS label', FALSE)
 			->from('master_opd')->where('is_active', 1)->order_by('kode_opd')->get()->result_array();
 		$opd_list = array();
 		foreach ($opd_options as $o) $opd_list[$o['id']] = $o['label'];

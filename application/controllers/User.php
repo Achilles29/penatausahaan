@@ -44,7 +44,7 @@ class User extends MY_Controller {
 			: array('admin_opd' => 'Admin OPD', 'user_opd' => 'User OPD');
 
 		$opd_opts = ($role === 'superadmin')
-			? $this->mm->options('master_opd', 'id', "CONCAT(kode_opd,' - ',COALESCE(singkatan,nama_opd))", array(), 'kode_opd')
+			? $this->mm->options('master_opd', 'id', "CONCAT(kode_opd,' - ',nama_opd)", array(), 'kode_opd')
 			: array();
 
 		$this->render('user/index', array(
