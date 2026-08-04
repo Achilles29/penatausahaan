@@ -102,7 +102,7 @@ foreach ($cols as $c) {
 <div class="card">
   <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
     <span><i class="fa-solid fa-table-list me-2 text-primary"></i><?= html_escape($cfg['title']) ?></span>
-    <?php if ($can_manage): ?>
+    <?php if (!empty($can_create)): ?>
       <button class="btn btn-primary btn-sm" id="btnAdd"><i class="fa-solid fa-plus me-1"></i> Tambah</button>
     <?php endif; ?>
   </div>
@@ -222,6 +222,8 @@ $cfg_js = json_encode(array(
 	'entity'     => $entity,
 	'columns'    => $js_cols,
 	'can_manage' => (bool) $can_manage,
+	'can_edit'   => ! empty($can_edit),
+	'can_delete' => ! empty($can_delete),
 	'data_url'   => site_url('master/data/'.$entity),
 	'get_url'    => site_url('master/get/'.$entity),
 	'opt_url'    => site_url('master/options'),
@@ -232,10 +234,20 @@ $cfg_js = json_encode(array(
 <script>
 var MCFG = <?= $cfg_js ?>;
 (function () {
+  function _esc(x){ return x==null?'':$('<div>').text(String(x)).html(); }
   var renderers = {
     active: function (v) { return Number(v) ? '<span class="badge badge-soft-success">Aktif</span>' : '<span class="badge badge-soft-secondary">Nonaktif</span>'; },
-    badge:  function (v) { return v ? '<span class="badge badge-soft-primary text-uppercase">'+$('<div>').text(v).html()+'</span>' : '-'; },
-    pegawai_badge: function (v) { return Number(v) ? '<span class="badge badge-soft-primary"><i class="fa-solid fa-user-tie me-1"></i>Pegawai</span>' : '<span class="badge badge-soft-secondary">Manual</span>'; }
+    badge:  function (v) { return v ? '<span class="badge badge-soft-primary text-uppercase">'+_esc(v)+'</span>' : '-'; },
+    pegawai_badge: function (v) { return Number(v) ? '<span class="badge badge-soft-primary"><i class="fa-solid fa-user-tie me-1"></i>Pegawai</span>' : '<span class="badge badge-soft-secondary">Manual</span>'; },
+    // Gabungan jabatan (struktural / keuangan / fungsional) ditumpuk ke bawah
+    jabatan_multi: function (v, row) {
+      var out = [];
+      function add(nm, tag, cls){ if (nm) out.push('<div class="mb-1">'+_esc(nm)+' <span class="badge badge-soft-'+cls+'" style="font-size:8px;vertical-align:middle">'+tag+'</span></div>'); }
+      add(row.jabatan_struktural_nama,    'STRUKTURAL', 'primary');
+      add(row.jabatan_penatausahaan_nama, 'KEUANGAN',   'warning');
+      add(row.jabatan_fungsional_nama,    'FUNGSIONAL', 'info');
+      return out.length ? out.join('') : '<span class="text-muted">-</span>';
+    }
   };
   var columns = [{ data: null, orderable:false, searchable:false, title:'#', width:'52px',
       render: function(d,t,r,meta){ return meta.row + meta.settings._iDisplayStart + 1; } }];
@@ -243,18 +255,20 @@ var MCFG = <?= $cfg_js ?>;
   MCFG.columns.forEach(function (c) {
     columns.push({
       data: c.data, title: c.title, orderable: c.order !== false,
-      render: function (v) {
-        if (c.render && renderers[c.render]) return renderers[c.render](v);
+      render: function (v, t, row) {
+        if (c.render && renderers[c.render]) return renderers[c.render](v, row);
         return v === null || v === undefined ? '-' : $('<div>').text(v).html();
       }
     });
   });
 
-  if (MCFG.can_manage) {
+  if (MCFG.can_edit || MCFG.can_delete) {
     columns.push({ data:'id', orderable:false, searchable:false, className:'text-end',
       render: function (id, t, row) {
-        return '<button class="btn btn-sm btn-icon btn-outline-primary me-1 btn-edit" data-id="'+id+'" title="Edit"><i class="fa-solid fa-pen"></i></button>'
-             + '<button class="btn btn-sm btn-icon btn-outline-danger btn-del" data-id="'+id+'" title="Hapus"><i class="fa-solid fa-trash"></i></button>';
+        var h = '';
+        if (MCFG.can_edit)   h += '<button class="btn btn-sm btn-icon btn-outline-primary me-1 btn-edit" data-id="'+id+'" title="Edit"><i class="fa-solid fa-pen"></i></button>';
+        if (MCFG.can_delete) h += '<button class="btn btn-sm btn-icon btn-outline-danger btn-del" data-id="'+id+'" title="Hapus"><i class="fa-solid fa-trash"></i></button>';
+        return h;
       }});
   }
 

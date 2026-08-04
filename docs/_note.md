@@ -271,6 +271,38 @@ sesuaikan lagi hak akses menu:
 paham maksud saya nggak?
 
 
+
 lalu untuk management sidebar juga cotoh pola nya di C:\xampp\htdocs\pustaka
 
+
 Lakukan penyesuaian dan penataan ulang sidebar agar lebih rapi dan sesuai klasifikasinya
+
+
+setelah itu lanjut cek taging program dan turunannya di /npd , karena opd yang dipilih dan program dan turunannya tidak sesuai. harusnya program dan turunannya sesuai data DPA opd yang dipilih
+
+saya ijinkan kamu pegang kendali full, dan pilih opsi yang menurutmu terbaik, karena akan saya tinggal keluar dulu.
+
+
+untuk template nomor npd nya  900 / 0001/ 06 / 2026 , 0001 nya nomer urut
+
+
+buatkan form cetak npd di aksi /npd dan pindbuk , template seperti di C:\xampp\htdocs\penatausahaan\docs\master\npd_bertutur_dak.xlsx
+pilihan download file berupa pdf,excel dan word
+
+form input pinbuk sudah ada di npd/view/ , tapi halaman pinbuk nya belum ada. buatkan
+
+
+
+
+- di database ada master_penerima ada npd_penerima. penerima baru belum masuk ke master_penerima, dan penerima_id masih kosong. seharusnya ketika penerima belum ada di master_penerima, maka ketika disimpan tambahkan ke master_penerima, jika dari pegawai jangan lupa id pegawainya. dan jangan sampai penerima yang sama terinput lebih dari 1 kali di master penerima
+
+sesuaikan halaman /master/pegawai, kolom jabatan dijadikan 1, jika menjabat lebih dari 1 maka tampilkan dibawahnya , misal struktural dan keuangan
+
+/npd/cetak/* semuanya harus variabel, tidak ada yang hard code.
+Nama adalah Nama PPTK pengampu sub kegiatan, nip adalah nip pptk, jabatan adalah PPTK Bidang sesuai program
+Kepada Bendahara Pengeluran OPD
+Program sampai dengan kode rekening, sesuai npd
+PPK adalah Pejabat Penatausahaan Keuangan Sesuai data opd
+Bendahara Pengeluaran Sesuai data opd
+PPTK sesuai PPTK OPD sesuai sub kegiatan yang dipilih
+hasil download tidak sesuai template

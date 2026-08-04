@@ -56,6 +56,7 @@ class Auth extends CI_Controller {
 						'opd_id'      => $user->opd_id !== NULL ? (int) $user->opd_id : NULL,
 						'opd_unit_id' => $user->opd_unit_id !== NULL ? (int) $user->opd_unit_id : NULL,
 						'pegawai_id'  => $user->pegawai_id !== NULL ? (int) $user->pegawai_id : NULL,
+						'akses_semua_bidang' => (int) $user->akses_semua_bidang,
 						'opd_nama'    => $user->opd_nama,
 						'unit_nama'   => $user->unit_nama,
 					));

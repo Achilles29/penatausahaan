@@ -54,7 +54,9 @@ foreach ($cols as $c) $js_cols[] = array('data' => $c['field'], 'render' => isse
 
 <script>
 var NCFG = { columns: <?= json_encode($js_cols) ?>, data_url: '<?= $data_url ?>',
-             view_url: '<?= site_url('npd/view') ?>', form_url: '<?= site_url('npd/form') ?>' };
+             view_url: '<?= site_url('npd/view') ?>', form_url: '<?= site_url('npd/form') ?>',
+             cetak_url: '<?= site_url('npd/cetak') ?>', pinbuk_url: '<?= site_url('npd/pindah_buku') ?>',
+             c5_url: '<?= site_url('npd/c5') ?>' };
 (function () {
   function money(v){ return '<span class="text-nowrap">Rp '+Number(v||0).toLocaleString('id-ID')+'</span>'; }
   function tgl(v){ if(!v) return '-'; var p=String(v).split('-'); return p.length===3? p[2]+'/'+p[1]+'/'+p[0] : v; }
@@ -69,9 +71,17 @@ var NCFG = { columns: <?= json_encode($js_cols) ?>, data_url: '<?= $data_url ?>'
       render:function(v){ if(c.render==='money')return money(v); if(c.render==='date')return tgl(v); if(c.render==='status')return statusBadge(v); return esc(v); } });
   });
   columns.push({ data:'id', orderable:false, searchable:false, className:'text-end', render:function(id){
-    return '<a href="'+NCFG.view_url+'/'+id+'" class="btn btn-sm btn-outline-secondary me-1" title="Lihat"><i class="fa-solid fa-eye"></i></a>'
-         + '<a href="'+NCFG.form_url+'/'+id+'" class="btn btn-sm btn-outline-primary me-1" title="Edit"><i class="fa-solid fa-pen"></i></a>'
-         + '<button class="btn btn-sm btn-outline-danger btn-del" data-id="'+id+'" title="Hapus"><i class="fa-solid fa-trash"></i></button>'; }});
+    return '<div class="btn-group">'
+         +   '<a href="'+NCFG.view_url+'/'+id+'" class="btn btn-sm btn-outline-secondary" title="Lihat"><i class="fa-solid fa-eye"></i></a>'
+         +   '<a href="'+NCFG.form_url+'/'+id+'" class="btn btn-sm btn-outline-primary" title="Edit"><i class="fa-solid fa-pen"></i></a>'
+         +   '<button type="button" class="btn btn-sm btn-outline-info dropdown-toggle" data-bs-toggle="dropdown" data-bs-boundary="viewport" title="Cetak"><i class="fa-solid fa-print"></i></button>'
+         +   '<ul class="dropdown-menu dropdown-menu-end">'
+         +     '<li><a class="dropdown-item" target="_blank" href="'+NCFG.cetak_url+'/'+id+'"><i class="fa-solid fa-file-lines me-2"></i>Cetak NPD</a></li>'
+         +     '<li><a class="dropdown-item" target="_blank" href="'+NCFG.pinbuk_url+'/'+id+'"><i class="fa-solid fa-right-left me-2"></i>Pindah Buku</a></li>'
+         +     '<li><a class="dropdown-item" target="_blank" href="'+NCFG.c5_url+'/'+id+'"><i class="fa-solid fa-receipt me-2"></i>Cetak C5</a></li>'
+         +   '</ul>'
+         +   '<button class="btn btn-sm btn-outline-danger btn-del" data-id="'+id+'" title="Hapus"><i class="fa-solid fa-trash"></i></button>'
+         + '</div>'; }});
 
   var table=$('#tbl').DataTable({
     processing:true, serverSide:true, order:[[2,'desc']],

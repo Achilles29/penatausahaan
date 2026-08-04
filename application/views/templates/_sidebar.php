@@ -104,15 +104,11 @@ $gaji_active = ($seg1 === 'gaji' || $seg1 === 'rekap' || ($seg1 === 'master' && 
     </li>
     <?php endif; ?>
 
-    <?php if (menu_group_visible(array('anggaran.dpa','anggaran.arus_kas'))): ?>
-    <li class="menu-header">Anggaran</li>
+    <?php if (menu_group_visible(array('anggaran.dpa','anggaran.arus_kas','npd'))): ?>
+    <li class="menu-header">Anggaran & Penatausahaan</li>
     <?php if (menu_allowed('anggaran.dpa')): ?><li class="menu-item"><a class="menu-link <?= $is('anggaran') && $seg2==='dpa' ? 'active':'' ?>" href="<?= site_url('anggaran/dpa') ?>"><i class="fa-solid fa-file-invoice-dollar"></i><span>DPA</span></a></li><?php endif; ?>
     <?php if (menu_allowed('anggaran.arus_kas')): ?><li class="menu-item"><a class="menu-link <?= $is('anggaran') && $seg2==='arus_kas' ? 'active':'' ?>" href="<?= site_url('anggaran/arus_kas') ?>"><i class="fa-solid fa-money-bill-trend-up"></i><span>Arus Kas</span></a></li><?php endif; ?>
-    <?php endif; ?>
-
-    <?php if (menu_allowed('npd')): ?>
-    <li class="menu-header">Penatausahaan</li>
-    <li class="menu-item"><a class="menu-link <?= $is('npd') ? 'active':'' ?>" href="<?= site_url('npd') ?>"><i class="fa-solid fa-file-invoice"></i><span>NPD</span></a></li>
+    <?php if (menu_allowed('npd')): ?><li class="menu-item"><a class="menu-link <?= $is('npd') ? 'active':'' ?>" href="<?= site_url('npd') ?>"><i class="fa-solid fa-file-invoice"></i><span>NPD</span></a></li><?php endif; ?>
     <?php endif; ?>
 
     <?php if (menu_group_visible(array('user','hak_akses'))): ?>

@@ -100,18 +100,28 @@ if ( ! function_exists('scope_bidang_urusan_ids'))
 		}
 		elseif ($u['role'] === 'user_opd')
 		{
-			if ( ! empty($u['opd_unit_id']))
+			// Opsi di hak akses user: akses SEMUA bidang OPD-nya
+			if ( ! empty($u['akses_semua_bidang']) && ! empty($u['opd_id']))
 			{
 				$rows = $CI->db->select('bidang_urusan_id')
-					->get_where('opd_unit_bidang_urusan', array('opd_unit_id' => (int) $u['opd_unit_id']))->result();
+					->get_where('opd_bidang_urusan', array('opd_id' => (int) $u['opd_id']))->result();
 				foreach ($rows as $r) $ids[] = (int) $r->bidang_urusan_id;
 			}
-			// Tag tambahan di user_akses
-			$rows = $CI->db->select('bidang_urusan_id')
-				->where('user_id', (int) $u['id'])
-				->where('bidang_urusan_id IS NOT NULL', NULL, FALSE)
-				->get('user_akses')->result();
-			foreach ($rows as $r) $ids[] = (int) $r->bidang_urusan_id;
+			else
+			{
+				// Hanya bidang unit-nya + tag tambahan di user_akses
+				if ( ! empty($u['opd_unit_id']))
+				{
+					$rows = $CI->db->select('bidang_urusan_id')
+						->get_where('opd_unit_bidang_urusan', array('opd_unit_id' => (int) $u['opd_unit_id']))->result();
+					foreach ($rows as $r) $ids[] = (int) $r->bidang_urusan_id;
+				}
+				$rows = $CI->db->select('bidang_urusan_id')
+					->where('user_id', (int) $u['id'])
+					->where('bidang_urusan_id IS NOT NULL', NULL, FALSE)
+					->get('user_akses')->result();
+				foreach ($rows as $r) $ids[] = (int) $r->bidang_urusan_id;
+			}
 		}
 
 		$cache = array_values(array_unique($ids));

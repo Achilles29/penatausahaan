@@ -260,8 +260,7 @@ class Master extends MY_Controller {
 					array('field' => 'masa_kerja_golongan',       'label' => 'MKG',              'width' => '50px'),
 					array('field' => 'tmt_kgb',                   'label' => 'TMT KGB Yad',      'width' => '110px', 'order' => 'm.tmt_kgb'),
 					array('field' => 'eselon',                    'label' => 'Eselon',            'width' => '70px'),
-					array('field' => 'jabatan_struktural_nama',   'label' => 'Jab. Struktural'),
-					array('field' => 'jabatan_fungsional_nama',   'label' => 'Jab. Fungsional'),
+					array('field' => 'jabatan_struktural_nama',   'label' => 'Jabatan', 'render' => 'jabatan_multi'),
 					array('field' => 'opd_nama',                  'label' => 'OPD',              'order' => 'o.kode_opd'),
 				),
 				'filters' => array(
@@ -737,10 +736,14 @@ class Master extends MY_Controller {
 			}
 		}
 
+		$key = $this->pkey($entity);
 		$data = array(
 			'entity'         => $entity,
 			'cfg'            => $cfg,
-			'can_manage'     => $this->can_manage($cfg),
+			'can_create'     => can_create($key),
+			'can_edit'       => can_edit($key),
+			'can_delete'     => can_delete($key),
+			'can_manage'     => (can_create($key) || can_edit($key) || can_delete($key)),
 			'filter_options' => $filter_options,
 			'field_options'  => $field_options,
 		);
@@ -788,7 +791,7 @@ class Master extends MY_Controller {
 		$cfg = $this->registry($entity);
 		$row = $this->mm->get_row($cfg['table'], (int) $id);
 		if ( ! $row) show_404();
-		if ( ! $this->can_manage($cfg, $row)) show_error('Akses ditolak', 403);
+		if ( ! can_edit($this->pkey($entity)) || ! $this->scope_ok($cfg, $row)) show_error('Akses ditolak', 403);
 		$this->output->set_content_type('application/json')->set_output(json_encode($row));
 	}
 
@@ -796,9 +799,10 @@ class Master extends MY_Controller {
 	public function save($entity)
 	{
 		$cfg = $this->registry($entity);
-		if ( ! $this->can_manage($cfg)) show_error('Akses ditolak', 403);
-
 		$id   = (int) $this->input->post('id');
+		$key  = $this->pkey($entity);
+		if ( ! can($id > 0 ? 'edit' : 'create', $key)) show_error('Akses ditolak', 403);
+
 		$data = array();
 		$errors = array();
 
@@ -866,11 +870,11 @@ class Master extends MY_Controller {
 	public function delete($entity)
 	{
 		$cfg = $this->registry($entity);
-		if ( ! $this->can_manage($cfg)) show_error('Akses ditolak', 403);
+		if ( ! can_delete($this->pkey($entity))) show_error('Akses ditolak', 403);
 		$id = (int) $this->input->post('id');
 
 		$row = $this->mm->get_row($cfg['table'], $id);
-		if ($row && ! $this->can_manage($cfg, $row)) show_error('Akses ditolak', 403);
+		if ($row && ! $this->scope_ok($cfg, $row)) show_error('Akses ditolak', 403);
 
 		$this->db->db_debug = FALSE;
 		$ok = $this->mm->delete($cfg['table'], $id);
@@ -939,6 +943,14 @@ class Master extends MY_Controller {
 		);
 	}
 
+	/** Konversi result rows (k,v) -> map [k=>v]. */
+	private function kv($rows)
+	{
+		$o = array();
+		foreach ($rows as $r) $o[$r->k] = $r->v;
+		return $o;
+	}
+
 	/** Opsi [id=>label] untuk sebuah source entitas, opsional difilter parent. */
 	private function source_options($source, $parent = NULL)
 	{
@@ -947,17 +959,35 @@ class Master extends MY_Controller {
 			case 'urusan':
 				return $this->mm->options('master_urusan', 'id', "CONCAT(kode_urusan,' - ',nama_urusan)", array(), 'kode_urusan');
 			case 'bidang':
-				$w = ($parent !== NULL && $parent !== '') ? array('urusan_id' => $parent) : array();
-				return $this->mm->options('master_bidang', 'id', "CONCAT(kode_bidang,' - ',nama_bidang)", $w, 'kode_bidang');
+				// non-super: hanya bidang-urusan kewenangan OPD-nya (hitung scope DULU)
+				$bu = is_super() ? NULL : scope_bidang_urusan_ids();
+				if ($bu !== NULL && empty($bu)) return array();
+				$this->db->select("id AS k, CONCAT(kode_bidang,' - ',nama_bidang) AS v", FALSE)->from('master_bidang');
+				if ($parent !== NULL && $parent !== '') $this->db->where('urusan_id', $parent);
+				if ($bu !== NULL) $this->db->where_in('id', $bu);
+				return $this->kv($this->db->order_by('kode_bidang')->get()->result());
 			case 'program':
-				$w = ($parent !== NULL && $parent !== '') ? array('bidang_id' => $parent) : array();
-				return $this->mm->options('master_program', 'id', "CONCAT(kode_program,' - ',nama_program)", $w, 'kode_program');
+				$bu = is_super() ? NULL : scope_bidang_urusan_ids();
+				if ($bu !== NULL && empty($bu)) return array();
+				$this->db->select("id AS k, CONCAT(kode_program,' - ',nama_program) AS v", FALSE)->from('master_program');
+				if ($parent !== NULL && $parent !== '') $this->db->where('bidang_id', $parent);
+				if ($bu !== NULL) $this->db->where_in('bidang_id', $bu);
+				return $this->kv($this->db->order_by('kode_program')->get()->result());
 			case 'kegiatan':
-				$w = ($parent !== NULL && $parent !== '') ? array('program_id' => $parent) : array();
-				return $this->mm->options('master_kegiatan', 'id', "CONCAT(kode_kegiatan,' - ',nama_kegiatan)", $w, 'kode_kegiatan');
+				$bu = is_super() ? NULL : scope_bidang_urusan_ids();
+				if ($bu !== NULL && empty($bu)) return array();
+				$this->db->select("k.id AS k, CONCAT(k.kode_kegiatan,' - ',k.nama_kegiatan) AS v", FALSE)->from('master_kegiatan k');
+				if ($parent !== NULL && $parent !== '') $this->db->where('k.program_id', $parent);
+				if ($bu !== NULL) $this->db->join('master_program p', 'p.id = k.program_id')->where_in('p.bidang_id', $bu);
+				return $this->kv($this->db->order_by('k.kode_kegiatan')->get()->result());
 			case 'subkegiatan':
 				if ($parent === NULL || $parent === '') return array(); // butuh induk (kegiatan)
-				return $this->mm->options('master_subkegiatan', 'id', "CONCAT(kode_subkegiatan,' - ',LEFT(nama_subkegiatan,60))", array('kegiatan_id' => $parent), 'kode_subkegiatan');
+				$sk = is_super() ? NULL : scope_subkegiatan_ids();
+				if ($sk !== NULL && empty($sk)) return array();
+				$this->db->select("id AS k, CONCAT(kode_subkegiatan,' - ',LEFT(nama_subkegiatan,60)) AS v", FALSE)
+					->from('master_subkegiatan')->where('kegiatan_id', $parent);
+				if ($sk !== NULL) $this->db->where_in('id', $sk);
+				return $this->kv($this->db->order_by('kode_subkegiatan')->get()->result());
 			case 'opd':
 				return $this->mm->options('master_opd', 'id', "CONCAT(kode_opd,' - ',nama_opd)", array(), 'kode_opd');
 			case 'opd_unit':
@@ -1027,13 +1057,21 @@ class Master extends MY_Controller {
 	}
 
 	/** Apakah user boleh mengelola entitas (opsional cek baris utk scope OPD). */
-	private function can_manage($cfg, $row = NULL)
+	/** Page key untuk hak akses. gaji ref -> 'gaji.ref', lainnya 'master.<entity>'. */
+	private function pkey($entity)
 	{
-		if ( ! has_role($cfg['manage'])) return FALSE;
-		if ($row !== NULL && ! empty($cfg['save_scope_col']) && current_role() === 'admin_opd')
-		{
+		$gaji_refs = array('ref_tpp','ref_gaji_pokok','ref_tunjangan_jabatan','ref_kelas_jabatan',
+			'ref_harga_beras','ref_iuran_gaji','ref_tunjangan_fungsional','ref_tunjangan_khusus','ref_gaji_ke');
+		if (in_array($entity, $gaji_refs, TRUE)) return 'gaji.ref';
+		return 'master.' . $entity;
+	}
+
+	/** Batasan kepemilikan baris per-OPD (admin_opd hanya baris OPD-nya). */
+	private function scope_ok($cfg, $row = NULL)
+	{
+		if ($row === NULL || is_super() || empty($cfg['save_scope_col'])) return TRUE;
+		if (current_role() === 'admin_opd')
 			return (int) $row[$cfg['save_scope_col']] === (int) scope_opd_id();
-		}
 		return TRUE;
 	}
 }

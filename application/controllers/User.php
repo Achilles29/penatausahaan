@@ -149,6 +149,8 @@ class User extends MY_Controller {
 			}
 			$data['username']    = NULL;
 			$data['opd_unit_id'] = $this->input->post('opd_unit_id') ? (int) $this->input->post('opd_unit_id') : NULL;
+			// user_opd: akses semua bidang OPD atau hanya bidangnya
+			$data['akses_semua_bidang'] = ($role === 'user_opd' && $this->input->post('akses_semua_bidang')) ? 1 : 0;
 		}
 
 		if ( ! $nama) $errors[] = 'Nama wajib diisi.';

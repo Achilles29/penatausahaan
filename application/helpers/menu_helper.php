@@ -2,114 +2,130 @@
 defined('BASEPATH') OR exit('No direct script access allowed');
 
 /**
- * Katalog menu + hak akses menu per role (role matrix).
- * Default = perilaku bawaan (agar tidak ada yang berubah tanpa konfigurasi).
- * Override disimpan di tabel role_menu (role, menu_key, allowed).
- * superadmin selalu punya akses penuh.
+ * Katalog halaman/menu + hak akses per role dengan izin CRUD
+ * (view/create/edit/delete) — pola seperti pustaka (auth_role_permission).
+ * Default = perilaku bawaan; override disimpan di role_permission.
+ * superadmin selalu akses penuh.
  */
 
 if ( ! function_exists('menu_catalog'))
 {
-	/** key => [label, grup, default_roles[]]. */
+	/** key => [label, grup, view_roles[], crud_roles[]] (selain superadmin). */
 	function menu_catalog()
 	{
-		$A  = array('superadmin', 'admin_opd', 'user_opd');
+		$A = array('superadmin', 'admin_opd', 'user_opd');
 		$SA = array('superadmin', 'admin_opd');
 		$S  = array('superadmin');
+		$N  = array();
 		return array(
-			'dashboard'            => array('Dashboard', 'Umum', $A),
+			'dashboard'            => array('Dashboard', 'Umum', $A, $N),
 
-			'master.urusan'        => array('Urusan', 'Master · Nomenklatur', $A),
-			'master.bidang'        => array('Bidang Urusan', 'Master · Nomenklatur', $A),
-			'master.program'       => array('Program', 'Master · Nomenklatur', $A),
-			'master.kegiatan'      => array('Kegiatan', 'Master · Nomenklatur', $A),
-			'master.subkegiatan'   => array('Sub Kegiatan', 'Master · Nomenklatur', $A),
-			'master.rekening'      => array('Rekening', 'Master · Nomenklatur', $A),
-			'master.sumber_dana'   => array('Sumber Dana', 'Master · Nomenklatur', $A),
+			'master.urusan'        => array('Urusan', 'Master · Nomenklatur', $A, $N),
+			'master.bidang'        => array('Bidang Urusan', 'Master · Nomenklatur', $A, $N),
+			'master.program'       => array('Program', 'Master · Nomenklatur', $A, $N),
+			'master.kegiatan'      => array('Kegiatan', 'Master · Nomenklatur', $A, $N),
+			'master.subkegiatan'   => array('Sub Kegiatan', 'Master · Nomenklatur', $A, $N),
+			'master.rekening'      => array('Rekening', 'Master · Nomenklatur', $A, $N),
+			'master.sumber_dana'   => array('Sumber Dana', 'Master · Nomenklatur', $A, $N),
 
-			'master.opd'           => array('OPD', 'Master · Organisasi', $A),
-			'master.opd_unit'      => array('Unit OPD', 'Master · Organisasi', $A),
-			'master.pemetaan'      => array('Pemetaan OPD', 'Master · Organisasi', $S),
-			'master.unit_pemetaan' => array('Pemetaan Unit OPD', 'Master · Organisasi', $S),
+			'master.opd'           => array('OPD', 'Master · Organisasi', $A, $N),
+			'master.opd_unit'      => array('Unit OPD', 'Master · Organisasi', $A, array('admin_opd')),
+			'master.pemetaan'      => array('Pemetaan OPD', 'Master · Organisasi', $S, $N),
+			'master.unit_pemetaan' => array('Pemetaan Unit OPD', 'Master · Organisasi', $S, $N),
 
-			'master.pegawai'       => array('Pegawai', 'Master · Data', $A),
-			'master.ref_jabatan'   => array('Master Jabatan', 'Master · Data', $A),
-			'master.penerima'      => array('Penerima', 'Master · Data', $A),
-			'skema_pajak'          => array('Skema Pajak', 'Master · Data', $A),
+			'master.pegawai'       => array('Pegawai', 'Master · Data', $A, array('admin_opd')),
+			'master.ref_jabatan'   => array('Master Jabatan', 'Master · Data', $A, $N),
+			'master.penerima'      => array('Penerima', 'Master · Data', $A, array('admin_opd', 'user_opd')),
+			'skema_pajak'          => array('Skema Pajak', 'Master · Data', $A, $N),
 
-			'gaji.simulasi'        => array('Simulasi Slip Gaji', 'Kepegawaian & Gaji', $A),
-			'gaji.rekap'           => array('Rekap Gaji per OPD', 'Kepegawaian & Gaji', $A),
-			'rekap'                => array('Rekap Tahunan & TPP', 'Kepegawaian & Gaji', $A),
-			'gaji.ref'             => array('Referensi Gaji (TPP, Tabel, dll)', 'Kepegawaian & Gaji', $S),
+			'gaji.simulasi'        => array('Simulasi Slip Gaji', 'Kepegawaian & Gaji', $A, $N),
+			'gaji.rekap'           => array('Rekap Gaji per OPD', 'Kepegawaian & Gaji', $A, $N),
+			'rekap'                => array('Rekap Tahunan & TPP', 'Kepegawaian & Gaji', $A, $N),
+			'gaji.ref'             => array('Referensi Gaji', 'Kepegawaian & Gaji', $S, $N),
 
-			'anggaran.dpa'         => array('DPA', 'Anggaran', $A),
-			'anggaran.arus_kas'    => array('Arus Kas', 'Anggaran', $A),
+			'anggaran.dpa'         => array('DPA', 'Anggaran', $A, $N),
+			'anggaran.arus_kas'    => array('Arus Kas', 'Anggaran', $A, $N),
 
-			'npd'                  => array('NPD', 'Penatausahaan', $A),
+			'npd'                  => array('NPD', 'Penatausahaan', $A, array('admin_opd', 'user_opd')),
 
-			'user'                 => array('Pengguna', 'Pengaturan', $SA),
-			'hak_akses'            => array('Hak Akses Menu', 'Pengaturan', $S),
+			'user'                 => array('Pengguna', 'Pengaturan', $SA, array('admin_opd')),
+			'hak_akses'            => array('Hak Akses & Menu', 'Pengaturan', $S, $N),
 		);
 	}
 }
 
-if ( ! function_exists('menu_default_roles'))
+if ( ! function_exists('role_perms'))
 {
-	function menu_default_roles($key)
-	{
-		$c = menu_catalog();
-		return isset($c[$key]) ? $c[$key][2] : array();
-	}
-}
-
-if ( ! function_exists('role_menu_overrides'))
-{
-	/** [menu_key => 0|1] override untuk sebuah role (cache per-request). */
-	function role_menu_overrides($role)
+	/** [page_key => ['can_view'=>,'can_create'=>,'can_edit'=>,'can_delete'=>]] override untuk role. */
+	function role_perms($role)
 	{
 		static $cache = array();
 		if ( ! isset($cache[$role]))
 		{
 			$CI =& get_instance();
-			$rows = $CI->db->get_where('role_menu', array('role' => $role))->result();
+			$rows = $CI->db->get_where('role_permission', array('role' => $role))->result();
 			$m = array();
-			foreach ($rows as $r) $m[$r->menu_key] = (int) $r->allowed;
+			foreach ($rows as $r)
+			{
+				$m[$r->page_key] = array(
+					'can_view'   => (int) $r->can_view,
+					'can_create' => (int) $r->can_create,
+					'can_edit'   => (int) $r->can_edit,
+					'can_delete' => (int) $r->can_delete,
+				);
+			}
 			$cache[$role] = $m;
 		}
 		return $cache[$role];
 	}
 }
 
-if ( ! function_exists('menu_allowed'))
+if ( ! function_exists('can'))
 {
-	/** Apakah role boleh mengakses menu $key. */
-	function menu_allowed($key, $role = NULL)
+	/**
+	 * Izin akses. $action = view|create|edit|delete.
+	 * superadmin selalu TRUE. Cek override role_permission; jika tak ada -> default katalog.
+	 */
+	function can($action, $key, $role = NULL)
 	{
 		if ($role === NULL) $role = current_role();
-		if ($role === 'superadmin') return TRUE;      // akses penuh
+		if ($role === 'superadmin') return TRUE;
 		if ($role === NULL) return FALSE;
-		$ov = role_menu_overrides($role);
-		if (array_key_exists($key, $ov)) return $ov[$key] === 1;
-		return in_array($role, menu_default_roles($key), TRUE);
+
+		$ov = role_perms($role);
+		if (isset($ov[$key])) return ! empty($ov[$key]['can_' . $action]);
+
+		$c = menu_catalog();
+		if ( ! isset($c[$key])) return FALSE;
+		return ($action === 'view')
+			? in_array($role, $c[$key][2], TRUE)   // view_roles
+			: in_array($role, $c[$key][3], TRUE);  // crud_roles
 	}
+}
+
+if ( ! function_exists('can_view'))   { function can_view($k, $r = NULL)   { return can('view', $k, $r); } }
+if ( ! function_exists('can_create')) { function can_create($k, $r = NULL) { return can('create', $k, $r); } }
+if ( ! function_exists('can_edit'))   { function can_edit($k, $r = NULL)   { return can('edit', $k, $r); } }
+if ( ! function_exists('can_delete')) { function can_delete($k, $r = NULL) { return can('delete', $k, $r); } }
+
+if ( ! function_exists('menu_allowed'))
+{
+	/** Visibilitas menu = izin view. (kompatibilitas nama lama) */
+	function menu_allowed($key, $role = NULL) { return can('view', $key, $role); }
 }
 
 if ( ! function_exists('menu_group_visible'))
 {
-	/** Apakah minimal satu key dalam grup boleh diakses (utk header grup sidebar). */
 	function menu_group_visible($keys)
 	{
-		foreach ($keys as $k) if (menu_allowed($k)) return TRUE;
+		foreach ($keys as $k) if (can('view', $k)) return TRUE;
 		return FALSE;
 	}
 }
 
 if ( ! function_exists('current_menu_key'))
 {
-	/**
-	 * Petakan URI saat ini ke menu_key untuk enforcement.
-	 * NULL = tidak dipetakan (utility/publik) -> selalu diizinkan.
-	 */
+	/** Petakan URI saat ini ke page key untuk enforcement. NULL = utility -> diizinkan. */
 	function current_menu_key()
 	{
 		$CI =& get_instance();
@@ -118,7 +134,6 @@ if ( ! function_exists('current_menu_key'))
 
 		if ($s1 === 'master')
 		{
-			// endpoint utility bersama (cascade dropdown, dsb) -> jangan diblok
 			if (in_array($s2, array('options','pegawai_search'), TRUE)) return NULL;
 			$methods = array('index','data','get','save','delete');
 			$entity  = in_array($s2, $methods, TRUE) ? $s3 : $s2;
@@ -128,14 +143,36 @@ if ( ! function_exists('current_menu_key'))
 			if (in_array($entity, $gaji_refs, TRUE)) return 'gaji.ref';
 			return 'master.' . $entity;
 		}
-		if ($s1 === 'anggaran')  return (strpos((string)$s2, 'arus_kas') === 0 || strpos((string)$s2, 'ak_') === 0) ? 'anggaran.arus_kas' : 'anggaran.dpa';
-		if ($s1 === 'gaji')      return ($s2 === 'rekap') ? 'gaji.rekap' : 'gaji.simulasi';
-		if ($s1 === 'rekap')     return 'rekap';
-		if ($s1 === 'npd')       return 'npd';
+		if ($s1 === 'anggaran')    return (strpos((string)$s2, 'arus_kas') === 0 || strpos((string)$s2, 'ak_') === 0) ? 'anggaran.arus_kas' : 'anggaran.dpa';
+		if ($s1 === 'gaji')        return ($s2 === 'rekap') ? 'gaji.rekap' : 'gaji.simulasi';
+		if ($s1 === 'rekap')       return 'rekap';
+		if ($s1 === 'npd')         return 'npd';
 		if ($s1 === 'skema_pajak') return 'skema_pajak';
-		if ($s1 === 'user')      return 'user';
-		if ($s1 === 'akses')     return 'hak_akses';
+		if ($s1 === 'user')        return 'user';
+		if ($s1 === 'akses')       return 'hak_akses';
+		if ($s1 === 'sidebar')     return 'hak_akses';
 		if ($s1 === 'dashboard' || $s1 === '') return 'dashboard';
 		return NULL;
+	}
+}
+
+if ( ! function_exists('current_menu_action'))
+{
+	/** Aksi CRUD dari method URI (untuk enforcement granular). */
+	function current_menu_action()
+	{
+		$CI =& get_instance();
+		$s1 = $CI->uri->segment(1); $s2 = (string) $CI->uri->segment(2);
+		// master: master/save|delete/<entity>
+		if ($s1 === 'master')
+		{
+			if ($s2 === 'save') return 'create'; // create/edit dibedakan via id di controller
+			if ($s2 === 'delete') return 'delete';
+			return 'view';
+		}
+		if (in_array($s2, array('save','store','create'), TRUE)) return 'create';
+		if (in_array($s2, array('delete','destroy'), TRUE)) return 'delete';
+		if (in_array($s2, array('update','edit'), TRUE)) return 'edit';
+		return 'view';
 	}
 }

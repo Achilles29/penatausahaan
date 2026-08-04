@@ -41,29 +41,40 @@ URL lokal: `http://localhost/penatausahaan`
 - [x] Rekap per pegawai — akumulasi range bulan + detail per bulan.
 - [x] Rekening komponen TPP yang benar: PPh21 → 5.1.01.01.007, BPJS → 5.1.01.01.009.
 
-## Tahap 2 — Modul NPD (Nota Pencairan Dana)
-- [ ] Viewer sisa anggaran DPA (pagu − realisasi) per subkegiatan/rekening.
-- [ ] Buat NPD: pilih program/kegiatan/subkegiatan/pekerjaan/rekening dari sisa DPA,
-      isi pagu sesuai kewenangan bidang OPD.
-- [ ] NPD detail per rekening + daftar penerima.
-- [ ] Status workflow: draft → diajukan → disetujui → ditolak.
-- [ ] Pemetaan filter bertingkat penuh (urusan→bidang→program→kegiatan→subkegiatan).
+## Tahap 2 — Modul NPD (Nota Pencairan Dana)  ✅ SELESAI
+- [x] Buat NPD dari sisa DPA (pagu − realisasi), cascade OPD→Program→Kegiatan→SubKegiatan
+      dari DPA, validasi jumlah ≤ sisa, nomor auto.
+- [x] NPD detail per rekening + daftar penerima (tertaut pegawai/master_penerima, data live).
+- [x] Filter index NPD DPA-scoped + scope program non-super ke urusan OPD-nya.
 
-## Tahap 3 — Pindah Buku + Engine Pajak
-- [ ] Pindah buku (pinbuk) dari NPD detail.
-- [ ] Engine penghitungan pajak memakai `pajak_untuk_rekening()`:
-      rekening → kategori → skema → hitung PPh21/22/23/4(2), PPN, PDRD sesuai NPWP/golongan.
-- [ ] Finalisasi tarif/ketentuan draft agar sesuai regulasi.
-- [ ] Rincian pajak & netto per penerima.
+## Tahap 3 — Pindah Buku + Engine Pajak  ✅ SELESAI
+- [x] Engine pajak `hitung_pajak_rekening()`: rekening→kategori→skema→PPh21/22/23/4(2)/PPN
+      sesuai NPWP/golongan. Tampil bruto/pajak/netto per penerima + ringkasan.
+- [ ] ⚠️ Finalisasi tarif/ketentuan **draft** agar sesuai regulasi (data — via menu Skema Pajak).
+- [ ] Persist pindah buku (nomor/status) — kini dihitung live dari npd_penerima.
 
-## Tahap 4 — Cetak
-- [ ] Cetak NPD.
-- [ ] Cetak Pindah Buku.
-- [ ] Cetak C5.
+## Tahap 4 — Cetak  ✅ SELESAI
+- [x] Cetak NPD (surat resmi + kop + PPTK + 3 ttd, sesuai template `npd_bertutur_dak.xlsx`).
+- [x] Cetak Pindah Buku (DAFTAR PEMINDAHBUKUAN: nama, no rek bank, jumlah, keterangan + rekap pajak).
+- [x] Cetak C5 (tanda terima).
+- [x] **Unduh PDF (print), Excel (.xls), Word (.doc)** tiap dokumen — tanpa dependensi. Dropdown Cetak di /npd.
+- [x] Kop surat via `config/instansi.php` (pemda, alamat, logo, pejabat) — disesuaikan per daerah.
+- [ ] Sesuaikan **format C5** bila daerah punya template resmi berbeda.
 
-## Tahap 5 — SPJ & Laporan
-- [ ] Kelengkapan SPJ.
-- [ ] Laporan realisasi anggaran.
+## RBAC v2 (Hak Akses CRUD, pola pustaka)  ✅ SELESAI (2026-08-04)
+- [x] `role_permission` (view/create/edit/delete per halaman/role) + UI matrix Hak Akses.
+- [x] Enforcement view + CRUD granular di engine Master + gate tombol.
+- [x] Scope OPD non-super + flag `akses_semua_bidang` untuk user_opd.
+
+## Tahap 5 — SPJ & Laporan  ⏳ BERIKUTNYA
+- [ ] **Laporan Realisasi Anggaran (LRA)**: pagu vs realisasi (NPD) per OPD/program/keg/subkeg/rekening.
+- [ ] **Kelengkapan SPJ**: dokumen pertanggungjawaban (kwitansi, SPTB, daftar penerima, bukti pajak).
+- [ ] **Buku Kas Umum / register**: rekap pencairan & pajak per periode.
+- [ ] NPD status workflow (draft → diajukan → disetujui → dibayar) bila diperlukan.
+
+## Utang teknis
+- [ ] **Manajemen Sidebar penuh** (`sys_menu` ala pustaka: drag-reorder, ikon, rename).
+- [ ] **Re-dump `penatus_schema.sql`** (sudah divergen dari DB live) agar jalur rebuild akurat.
 
 ---
 

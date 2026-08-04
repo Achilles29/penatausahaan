@@ -4,7 +4,11 @@ $edit = $row ? TRUE : FALSE;
 $preset = array(
   'id'             => $edit ? $row->id : '',
   'opd_id'         => $edit ? $row->opd_id : ($is_super ? '' : $my_opd_id),
+  'program_id'     => $edit ? $row->program_id : '',
+  'kegiatan_id'    => $edit ? $row->kegiatan_id : '',
   'subkegiatan_id' => $edit ? $row->subkegiatan_id : '',
+  'perihal'        => $edit ? $row->perihal : '',
+  'sumber_dana_id' => $edit ? $row->sumber_dana_id : '',
   'details'        => array(),
 );
 if ($edit) foreach ($row->details as $d) $preset['details'][(int)$d->rekening_id] = (float)$d->jumlah;
@@ -43,28 +47,44 @@ if ($edit) foreach ($row->details as $d) $preset['details'][(int)$d->rekening_id
           </div>
         </div>
 
-        <div class="col-md-12">
-          <label class="form-label">Sub Kegiatan <span class="text-danger">*</span></label>
-          <select class="form-select" name="subkegiatan_id" id="subkegiatan_id" required <?= ($is_super && !$edit)?'disabled':'' ?>>
+        <div class="col-md-12"><hr class="my-1"><small class="text-muted"><i class="fa-solid fa-diagram-project me-1"></i>Pilih dari DPA OPD (Program → Kegiatan → Sub Kegiatan sesuai data DPA):</small></div>
+        <div class="col-md-6">
+          <label class="form-label">Program <span class="text-danger">*</span></label>
+          <select class="form-select" name="program_id" id="program_id" <?= ($is_super && !$edit)?'disabled':'' ?>>
             <option value="">— Pilih OPD dulu —</option>
           </select>
-          <div class="form-text">Hanya sub kegiatan yang memiliki DPA <?= $is_super?'':'dan dalam kewenangan Anda' ?>.</div>
         </div>
-
-        <div class="col-md-8">
-          <label class="form-label">Perihal / Uraian Pekerjaan <span class="text-danger">*</span></label>
-          <input type="text" class="form-control" name="perihal" id="perihal" value="<?= $edit ? html_escape($row->perihal) : '' ?>" required>
-        </div>
-        <div class="col-md-4">
-          <label class="form-label">Sumber Dana</label>
-          <select class="form-select" name="sumber_dana_id" id="sumber_dana_id">
-            <option value="">— (opsional) —</option>
-            <?php foreach ($sumber_opts as $k=>$v): ?><option value="<?= $k ?>" <?= ($edit && $row->sumber_dana_id==$k)?'selected':'' ?>><?= html_escape($v) ?></option><?php endforeach; ?>
+        <div class="col-md-6">
+          <label class="form-label">Kegiatan <span class="text-danger">*</span></label>
+          <select class="form-select" name="kegiatan_id" id="kegiatan_id" disabled>
+            <option value="">— Pilih Program dulu —</option>
           </select>
         </div>
+        <div class="col-md-12">
+          <label class="form-label">Sub Kegiatan <span class="text-danger">*</span></label>
+          <select class="form-select" name="subkegiatan_id" id="subkegiatan_id" required disabled>
+            <option value="">— Pilih Kegiatan dulu —</option>
+          </select>
+          <div class="form-text">Hanya program/kegiatan/sub kegiatan yang memiliki DPA <?= $is_super?'pada OPD terpilih':'dan dalam kewenangan Anda' ?>.</div>
+        </div>
+
+        <div class="col-md-12">
+          <label class="form-label">Pekerjaan (Perihal) <span class="text-danger">*</span></label>
+          <select class="form-select" name="perihal" id="perihal" required disabled>
+            <option value="">— Pilih Sub Kegiatan dulu —</option>
+          </select>
+          <div class="form-text">Daftar paket/pekerjaan sesuai DPA sub kegiatan terpilih.</div>
+        </div>
+        <div class="col-md-12">
+          <label class="form-label">Sumber Dana <span class="text-danger">*</span></label>
+          <select class="form-select" name="sumber_dana_id" id="sumber_dana_id" required disabled>
+            <option value="">— Pilih Pekerjaan dulu —</option>
+          </select>
+          <div class="form-text">Sumber dana sesuai pekerjaan yang dipilih di DPA.</div>
+        </div>
         <div class="col-md-8">
-          <label class="form-label">Rincian Pekerjaan</label>
-          <textarea class="form-control" name="pekerjaan" id="pekerjaan" rows="2"><?= $edit ? html_escape($row->pekerjaan) : '' ?></textarea>
+          <label class="form-label">Catatan / Keterangan <small class="text-muted">(opsional)</small></label>
+          <textarea class="form-control" name="pekerjaan" id="pekerjaan" rows="2" placeholder="Catatan tambahan bila perlu…"><?= $edit ? html_escape($row->pekerjaan) : '' ?></textarea>
         </div>
         <div class="col-md-4">
           <label class="form-label">Status</label>
@@ -116,32 +136,84 @@ if ($edit) foreach ($row->details as $d) $preset['details'][(int)$d->rekening_id
 <script>
 var PRESET = <?= json_encode($preset) ?>;
 var IS_SUPER = <?= $is_super ? 'true':'false' ?>, IS_EDIT = <?= $edit ? 'true':'false' ?>;
-var URL_SUB = '<?= site_url('npd/subkegiatan_options') ?>',
-    URL_REK = '<?= site_url('npd/rekening_sisa') ?>',
-    URL_NOM = '<?= site_url('npd/next_nomor') ?>';
+var URL_PROG = '<?= site_url('npd/program_options') ?>',
+    URL_KEG  = '<?= site_url('npd/kegiatan_options') ?>',
+    URL_SUB  = '<?= site_url('npd/subkegiatan_options') ?>',
+    URL_PEK  = '<?= site_url('npd/pekerjaan_options') ?>',
+    URL_SD   = '<?= site_url('npd/sumber_dana_options') ?>',
+    URL_REK  = '<?= site_url('npd/rekening_sisa') ?>',
+    URL_NOM  = '<?= site_url('npd/next_nomor') ?>';
 (function(){
   function fmt(n){ return 'Rp '+Number(n||0).toLocaleString('id-ID'); }
   function digits(s){ return String(s).replace(/[^\d]/g,''); }
   function esc(v){ return v==null?'':$('<div>').text(String(v)).html(); }
   function opdVal(){ return document.getElementById('opd_id').value; }
 
-  function loadSubkeg(preselect){
-    var opd = opdVal();
-    var $s = $('#subkegiatan_id');
-    if(!opd){ $s.html('<option value="">— Pilih OPD dulu —</option>').prop('disabled',true); return; }
-    $s.prop('disabled',true).html('<option>Memuat…</option>');
-    $.getJSON(URL_SUB, {opd_id:opd}, function(list){
-      var h='<option value="">— Pilih Sub Kegiatan —</option>';
-      list.forEach(function(o){ h+='<option value="'+o.id+'">'+esc(o.label)+'</option>'; });
-      $s.html(h).prop('disabled',false);
-      if(preselect){ $s.val(preselect); if($s.val()) loadRek(); }
+  function fillSel($s, list, placeholder, preselect, after){
+    var h='<option value="">'+placeholder+'</option>';
+    list.forEach(function(o){ h+='<option value="'+o.id+'">'+esc(o.label)+'</option>'; });
+    $s.html(h).prop('disabled',false);
+    if(preselect){ $s.val(String(preselect)); }
+    if(after) after($s.val());
+  }
+  function loadPrograms(preselect){
+    var opd=opdVal(), $p=$('#program_id'), $k=$('#kegiatan_id'), $s=$('#subkegiatan_id');
+    $k.html('<option value="">— Pilih Program dulu —</option>').prop('disabled',true);
+    $s.html('<option value="">— Pilih Kegiatan dulu —</option>').prop('disabled',true);
+    if(!opd){ $p.html('<option value="">— Pilih OPD dulu —</option>').prop('disabled',true); return; }
+    $p.prop('disabled',true).html('<option>Memuat…</option>');
+    $.getJSON(URL_PROG, {opd_id:opd}, function(list){
+      fillSel($p, list, '— Pilih Program —', preselect, function(v){ if(v) loadKegiatan(PRESET.kegiatan_id); });
     });
+  }
+  function loadKegiatan(preselect){
+    var opd=opdVal(), prog=$('#program_id').val(), $k=$('#kegiatan_id'), $s=$('#subkegiatan_id');
+    $s.html('<option value="">— Pilih Kegiatan dulu —</option>').prop('disabled',true);
+    if(!opd||!prog){ $k.html('<option value="">— Pilih Program dulu —</option>').prop('disabled',true); return; }
+    $k.prop('disabled',true).html('<option>Memuat…</option>');
+    $.getJSON(URL_KEG, {opd_id:opd, program_id:prog}, function(list){
+      fillSel($k, list, '— Pilih Kegiatan —', preselect, function(v){ if(v) loadSubkeg(PRESET.subkegiatan_id); });
+    });
+  }
+  function loadSubkeg(preselect){
+    var opd=opdVal(), keg=$('#kegiatan_id').val(), $s=$('#subkegiatan_id');
+    if(!opd||!keg){ $s.html('<option value="">— Pilih Kegiatan dulu —</option>').prop('disabled',true); return; }
+    $s.prop('disabled',true).html('<option>Memuat…</option>');
+    $.getJSON(URL_SUB, {opd_id:opd, kegiatan_id:keg}, function(list){
+      fillSel($s, list, '— Pilih Sub Kegiatan —', preselect, function(v){ if(v) loadPekerjaan(PRESET.perihal); });
+    });
+  }
+  function loadPekerjaan(preselect){
+    var opd=opdVal(), sub=$('#subkegiatan_id').val(), $p=$('#perihal'), $sd=$('#sumber_dana_id');
+    $sd.html('<option value="">— Pilih Pekerjaan dulu —</option>').prop('disabled',true);
+    resetRek();
+    if(!opd||!sub){ $p.html('<option value="">— Pilih Sub Kegiatan dulu —</option>').prop('disabled',true); return; }
+    $p.prop('disabled',true).html('<option>Memuat…</option>');
+    $.getJSON(URL_PEK, {opd_id:opd, subkegiatan_id:sub}, function(list){
+      fillSel($p, list, '— Pilih Pekerjaan —', preselect, function(v){ if(v) loadSumber(PRESET.sumber_dana_id); });
+    });
+  }
+  function loadSumber(preselect){
+    var opd=opdVal(), sub=$('#subkegiatan_id').val(), paket=$('#perihal').val(), $sd=$('#sumber_dana_id');
+    resetRek();
+    if(!opd||!sub||!paket){ $sd.html('<option value="">— Pilih Pekerjaan dulu —</option>').prop('disabled',true); return; }
+    $sd.prop('disabled',true).html('<option>Memuat…</option>');
+    $.getJSON(URL_SD, {opd_id:opd, subkegiatan_id:sub, pekerjaan:paket}, function(list){
+      fillSel($sd, list, '— Pilih Sumber Dana —', preselect, function(v){ if(v) loadRek(); });
+    });
+  }
+  function resetRek(){
+    var st=document.getElementById('rek_state'), wrap=document.getElementById('rek_wrap');
+    wrap.style.display='none'; st.style.display='';
+    st.innerHTML='<i class="fa-solid fa-hand-point-up mb-2 d-block fa-lg"></i>Pilih pekerjaan & sumber dana untuk menampilkan rekening & sisa.';
   }
 
   function genNomor(){
     var opd=opdVal(); if(!opd) return;
-    var th=(document.getElementById('tanggal').value||'').substring(0,4)||new Date().getFullYear();
-    $.getJSON(URL_NOM,{tahun:th},function(r){ if(r.nomor && !document.getElementById('nomor_npd').value) document.getElementById('nomor_npd').value=r.nomor; });
+    var tgl=document.getElementById('tanggal').value||'';
+    var th=tgl.substring(0,4)||new Date().getFullYear();
+    var bl=tgl.substring(5,7)||'';
+    $.getJSON(URL_NOM,{tahun:th,bulan:bl},function(r){ if(r.nomor && !document.getElementById('nomor_npd').value) document.getElementById('nomor_npd').value=r.nomor; });
   }
 
   function recalc(){
@@ -160,13 +232,13 @@ var URL_SUB = '<?= site_url('npd/subkegiatan_options') ?>',
   }
 
   function loadRek(){
-    var opd=opdVal(), sub=$('#subkegiatan_id').val();
+    var opd=opdVal(), sub=$('#subkegiatan_id').val(), paket=$('#perihal').val(), sd=$('#sumber_dana_id').val();
     var st=document.getElementById('rek_state'), wrap=document.getElementById('rek_wrap');
-    if(!opd||!sub){ wrap.style.display='none'; st.style.display=''; st.innerHTML='Pilih sub kegiatan.'; return; }
+    if(!opd||!sub||!paket||!sd){ resetRek(); return; }
     st.style.display=''; st.innerHTML='<i class="fa-solid fa-spinner fa-spin me-1"></i>Memuat rekening…'; wrap.style.display='none';
-    var params={opd_id:opd, subkegiatan_id:sub}; if(IS_EDIT&&PRESET.id) params.npd_id=PRESET.id;
+    var params={opd_id:opd, subkegiatan_id:sub, pekerjaan:paket, sumber_dana_id:sd}; if(IS_EDIT&&PRESET.id) params.npd_id=PRESET.id;
     $.getJSON(URL_REK, params, function(rows){
-      if(!rows.length){ st.innerHTML='Tidak ada rekening pada sub kegiatan ini.'; wrap.style.display='none'; return; }
+      if(!rows.length){ st.innerHTML='Tidak ada rekening pada pekerjaan/sumber dana ini.'; wrap.style.display='none'; return; }
       var body=document.getElementById('rekBody'); body.innerHTML='';
       rows.forEach(function(r){
         var pre = PRESET.details[r.rekening_id] || 0;
@@ -186,17 +258,22 @@ var URL_SUB = '<?= site_url('npd/subkegiatan_options') ?>',
     });
   }
 
-  // events
-  if(IS_SUPER && !IS_EDIT){
-    document.getElementById('opd_id').addEventListener('change', function(){ document.getElementById('nomor_npd').value=''; loadSubkeg(); genNomor(); });
+  // events cascade
+  if(IS_SUPER){
+    document.getElementById('opd_id').addEventListener('change', function(){ document.getElementById('nomor_npd').value=''; loadPrograms(); genNomor(); });
   }
-  document.getElementById('subkegiatan_id').addEventListener('change', loadRek);
+  document.getElementById('program_id').addEventListener('change', function(){ loadKegiatan(); });
+  document.getElementById('kegiatan_id').addEventListener('change', function(){ loadSubkeg(); });
+  document.getElementById('subkegiatan_id').addEventListener('change', function(){ loadPekerjaan(); });
+  document.getElementById('perihal').addEventListener('change', function(){ loadSumber(); });
+  document.getElementById('sumber_dana_id').addEventListener('change', loadRek);
   document.getElementById('btnGenNomor').addEventListener('click', function(){ document.getElementById('nomor_npd').value=''; genNomor(); });
+  document.getElementById('tanggal').addEventListener('change', function(){ if(!IS_EDIT){ document.getElementById('nomor_npd').value=''; genNomor(); } });
   document.getElementById('rekBody').addEventListener('input', function(e){ if(e.target.classList.contains('jml')){ var d=digits(e.target.value); e.target.value=d?Number(d).toLocaleString('id-ID'):''; recalc(); } });
 
-  // init
-  if(IS_EDIT){ loadSubkeg(PRESET.subkegiatan_id); }
-  else if(!IS_SUPER){ loadSubkeg(); genNomor(); }
+  // init: edit -> rantai preselect; baru + non-super -> muat program OPD sendiri
+  if(IS_EDIT){ loadPrograms(PRESET.program_id); }
+  else if(!IS_SUPER){ loadPrograms(); genNomor(); }
 })();
 </script>
 <style>.dpa-kode{font-family:Consolas,monospace;font-size:.78em;background:rgba(0,0,0,.06);padding:1px 5px;border-radius:3px;}</style>

@@ -569,16 +569,21 @@ CREATE TABLE user_akses (
   CONSTRAINT fk_user_akses_bidang FOREIGN KEY (bidang_urusan_id) REFERENCES master_bidang (id) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Override hak akses menu per role (role matrix). Kosong = pakai default katalog (menu_helper).
+-- Hak akses per role dengan izin CRUD (pola pustaka). Kosong = default katalog (menu_helper).
 DROP TABLE IF EXISTS role_menu;
-CREATE TABLE role_menu (
+DROP TABLE IF EXISTS role_permission;
+CREATE TABLE role_permission (
   id INT NOT NULL AUTO_INCREMENT,
   role ENUM('superadmin','admin_opd','user_opd') NOT NULL,
-  menu_key VARCHAR(60) NOT NULL,
-  allowed TINYINT(1) NOT NULL DEFAULT 1,
+  page_key VARCHAR(60) NOT NULL,
+  can_view TINYINT(1) NOT NULL DEFAULT 0,
+  can_create TINYINT(1) NOT NULL DEFAULT 0,
+  can_edit TINYINT(1) NOT NULL DEFAULT 0,
+  can_delete TINYINT(1) NOT NULL DEFAULT 0,
   updated_at DATETIME DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (id),
-  UNIQUE KEY uk_role_menu (role, menu_key)
+  UNIQUE KEY uk_role_page (role, page_key)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+-- users.akses_semua_bidang: user_opd 1=CRUD semua bidang OPD, 0=hanya bidang tertaut.
 
 SET FOREIGN_KEY_CHECKS = 1;

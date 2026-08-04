@@ -1,10 +1,52 @@
 # PROGRESS — Catatan Teknis (aman untuk pindah device)
 
-**Terakhir diperbarui:** 2026-08-03 · **Status:** NPD 2a–2d lengkap + **Role Matrix (manajemen menu per role)** + penerima⇄pegawai live. Teruji.
+**Terakhir diperbarui:** 2026-08-04 · **Status:** Penerima auto-sync ke master_penerima + cetak pejabat dari data + kolom jabatan pegawai digabung. Teruji. (Manajemen sidebar sys_menu = ditunda.)
 
 ---
 
 ## Log Perkembangan
+
+### [2026-08-04] Penerima→master, cetak pejabat variabel, kolom jabatan
+- **Penerima auto-sync ke `master_penerima`** (`Npd::ensure_penerima`): saat simpan npd_penerima
+  (batch & single), penerima dipastikan ada di master lalu `penerima_id` diisi. Dari **pegawai** →
+  dedup by `pegawai_id` (buat baru dgn npwp/golongan/bank dari data pegawai bila belum ada); **manual**
+  → dedup by nama (pegawai_id NULL). Tidak ada penerima ganda. Teruji: buat+dedup OK.
+- **Cetak /npd/cetak/* variabel (tanpa hardcode)** — pejabat ditarik dari **data pegawai**
+  (`jabatan_penatausahaan_id`→`ref_jabatan`, dicocokkan by NAMA jabatan agar tahan seed) via
+  `Npd::pejabat_of($opd,$unit)`: **PPTK** (PELAKSANA TEKNIS, utamakan unit NPD; jabatan "PPTK Bidang
+  <unit> <singkatan OPD>"), **PPK** (PENATAUSAHAAN KEUANGAN), **Bendahara** (BENDAHARA PENGELUARAN).
+  Surat NPD: Nama/NIP/Jabatan = PPTK; addressee = Bendahara OPD; 3 ttd = PPK/Bendahara/PPTK dari data.
+  Pindah Buku ttd = PPTK dari data. Teruji NPD 9 (PPTK Anwar Fuadi, PPK Adi Bagus, Bend. Fiscalita).
+- **/master/pegawai**: kolom "Jab. Struktural"+"Jab. Fungsional" digabung jadi **satu kolom "Jabatan"**
+  yang **menumpuk** semua jabatan aktif (Struktural / Keuangan / Fungsional) dengan badge jenis —
+  renderer `jabatan_multi` di `views/master/index.php` (render kini menerima full row).
+
+### [2026-08-04] Cetak NPD & Pindah Buku (template + unduh PDF/Excel/Word)
+- **Cetak NPD** (`views/npd/cetak_npd.php`) — format **surat resmi** sesuai `docs/master/npd_bertutur_dak.xlsx`:
+  kop surat (pemda + OPD + alamat + logo), Nomor/Lampiran/Perihal, blok "Kepada Yth Bendahara
+  Pengeluaran", identitas **PPTK** (dari `master_opd_unit.kepala` via `npd.opd_unit_id`),
+  Program/Kegiatan/SubKeg/Pekerjaan/Sumber Dana, kalimat "Mohon menyiapkan dana … (terbilang)",
+  rincian rekening, **3 tanda tangan** (PPK SKPD, Bendahara, PPTK).
+- **Cetak Pindah Buku** (`cetak_pindahbuku.php`) — tabel **DAFTAR PEMINDAHBUKUAN** sesuai sheet Pinbuk:
+  No · Nama Penerima (+NIP) · Nomor Rekening Bank · Jumlah (netto) · Keterangan Belanja · JUMLAH,
+  no rekening dari `pegawai_rekening`(primary)/`master_penerima`; rekap setoran pajak bila ada.
+- **Unduh 3 format** dari toolbar tiap dokumen: **Cetak/Simpan PDF** (window.print), **Excel**
+  (`?format=excel`, mime `application/vnd.ms-excel`, `.xls`), **Word** (`?format=word`,
+  `application/msword`, `.doc`, header MSO). Tanpa dependensi (grid `border="1"` agar Excel bergaris).
+- **Kop surat** dikonfigurasi di `application/config/instansi.php` (pemda, alamat, kontak, website,
+  kota, logo, pejabat penanda tangan) — mudah disesuaikan per daerah.
+- **/npd index**: tombol per-baris kini + dropdown **Cetak** (NPD / Pindah Buku / C5). C5 ikut
+  dapat unduh Excel/Word gratis via engine yang sama. Teruji NPD 9 (7 penerima), semua format 200 OK.
+
+### [2026-08-04] NPD: nomor & modal penerima
+- **Nomor NPD** format `900 / 0001 / 06 / 2026` (0001=urut per OPD/tahun, 06=bulan dari tanggal,
+  2026=tahun) — `Npd_model::next_nomor($opd,$tahun,$bulan)`; regenerasi saat tanggal berubah.
+- **Modal Tambah Penerima → multi-baris** (`npd/view`): cari pegawai/penerima → klik = langsung
+  jadi baris; tombol "Baris manual"; harga satuan default = **sisa yang dicairkan** (editable,
+  karena penerima bisa >1); total & sisa live; tombol Simpan disabled bila melebihi pagu.
+- Endpoint baru `Npd::penerima_batch()` (`insert_batch`, validasi Σ ≤ jumlah baris). Edit satu
+  penerima pindah ke modal terpisah `#penEditModal` (`penerima_save` tetap). Teruji: 2 penerima
+  masuk, guard over-limit menolak baris ke-3.
 
 ### [2026-07-30] Tahap 1 — Fondasi + Master + Auth
 - Relokasi CI3 ke root `penatausahaan/`, `.htaccess` clean URL, config DB `penatus`.
@@ -174,6 +216,69 @@ Alur sinkron DPA→NPD: pilih sub kegiatan (yang ber-DPA) → tabel rekening tam
 - ⚠️ **`docs/master/penatus_schema.sql` sudah DIVERGEN dari DB live** (sesi-sesi lain meng-ALTER
   tanpa update file: enum jenis_penerima, banyak kolom pegawai, ref_* gaji, dll). Untuk jalur
   **rebuild** yang akurat, **dump ulang** skema live: `mysqldump -u root --no-data penatus`.
+
+### [2026-08-03] RBAC v2 (izin CRUD, pola pustaka) + fix NPD + penerima⇄pegawai
+Referensi pola: `C:\xampp\htdocs\pustaka` (sys_page + auth_role_permission CRUD + sys_menu).
+
+**1. Fix cascade NPD (bug: program/turunan tak sesuai OPD).**
+- Form NPD kini **OPD → Program → Kegiatan → Sub Kegiatan**, semua opsi **bersumber DPA OPD
+  terpilih** (endpoint `npd/program_options|kegiatan_options|subkegiatan_options` +
+  `Npd_model::dpa_programs/dpa_kegiatan/dpa_subkegiatan`). Teruji: OPD16 → 2 prog/3 keg/5 subkeg,
+  cascade menyaring benar; create tersimpan (program/keg/subkeg konsisten).
+
+**2. RBAC v2 — izin CRUD (ganti role_menu on/off).**
+- Tabel **`role_permission`** (role, page_key, can_view/create/edit/delete) + katalog di
+  `helpers/menu_helper.php` (`can($action,$key)`, `can_view/create/edit/delete`, fallback default).
+- Enforcement: `MY_Controller` blok VIEW; **engine Master** cek granular create/edit/delete
+  (save→create/edit sesuai id, delete→delete) + `scope_ok` (admin_opd hanya baris OPD-nya).
+- Tombol CRUD di list Master di-gate per izin (Tambah=create, Edit/Hapus per izin).
+- **UI Hak Akses** (`controllers/Akses.php`, superadmin): matrix halaman × (Lihat/Tambah/Edit/Hapus)
+  per role admin_opd & user_opd + Reset Default. `role_menu` dibuang.
+- **Teruji** (user_opd default): urusan view-only (no Tambah, save/delete→403); penerima full
+  CRUD (Tambah ada); user page→403.
+
+**3. Scope OPD & bidang.**
+- Non-super sudah ter-scope ke OPD-nya (scope_helper) di seluruh modul.
+- **`users.akses_semua_bidang`** (flag di form Pengguna, untuk user_opd): 1=CRUD **semua bidang**
+  OPD, 0=hanya bidang unit-nya (+ user_akses). Diterapkan di `scope_bidang_urusan_ids()` + session login.
+
+**4. Tampilan OPD** = `kode - nama` (bukan singkatan) di dropdown. **Sidebar** dirapikan:
+  "Anggaran & Penatausahaan" digabung (DPA/Arus Kas/NPD).
+
+**5. master_penerima.pegawai_id** — bila penerima adalah pegawai, nama/NPWP/golongan **live**
+  (COALESCE pegawai). Prefill di modal Penerima menautkan; ketik manual = lepas. **Propagasi terbukti**.
+
+**DITUNDA (didokumentasikan):** *Manajemen Sidebar penuh ala pustaka* (tabel `sys_menu`:
+reorder drag, ikon, rename, nesting, visibilitas per item). Saat ini visibilitas menu per role
+sudah diatur via **Hak Akses** (matrix), dan sidebar sudah data-driven per izin. Untuk kelola
+susunan/ikon/urutan menu dari UI, tinggal adopsi `sys_menu` (lihat
+`pustaka/sql/2026-07-28a_auth_rbac_sidebar_foundation.sql` + `models/Menu_model.php`).
+
+### [2026-08-04] Tagging NPD DPA-scoped + scope program non-super
+- **Filter index NPD** (Program/Kegiatan/Sub Kegiatan) kini **bersumber DPA OPD**, bukan master
+  global (dulu 148 program). Endpoint `npd/flt_program|flt_kegiatan|flt_subkegiatan`
+  (super: dari OPD filter; non-super: OPD-nya). Form NPD sudah DPA-scoped sebelumnya.
+- **`master/options` (bidang/program/kegiatan/subkegiatan) di-scope untuk NON-SUPER** ke
+  bidang-urusan OPD-nya (`source_options` di Master.php). Berlaku di **semua** cascade
+  (Master, Anggaran, NPD) → admin_opd/user_opd hanya lihat program urusan OPD-nya.
+  **Teruji**: user_opd OPD16 → program 6 (2.23.x + 2.24.x), bidang 2; super tetap 148.
+- Bug fix: `scope_*_ids()` dipanggil SEBELUM membangun query builder (agar tak merusak state).
+- Catatan: data DPA OPD16 sudah benar (program 2.23.02/2.23.03, 300/300 baris konsisten);
+  screenshot "2.16 Kominfo" adalah state lama/cache sebelum fix.
+
+### [2026-08-04] Form NPD ikut struktur DPA: Pekerjaan → Sumber Dana → Rekening
+Alur form kini: OPD → Program → Kegiatan → Sub Kegiatan → **Pekerjaan (paket_belanja)** →
+**Sumber Dana** (dari paket) → **Rincian Rekening** (sisa per paket+sumber dana).
+- **Perihal** jadi **select Pekerjaan** (daftar paket_belanja DPA sub kegiatan), bukan free text.
+- **Sumber Dana** dependent pada pekerjaan (dari DPA paket tsb).
+- **Rincian Rekening** hanya rekening milik (subkeg+paket+sumber dana) terpilih.
+- **Grain sisa** dipersempit ke (opd, subkeg, paket, sumber_dana, rekening) — realisasi
+  dicocokkan `npd.perihal` + `sumber_dana_id`. Endpoint: `npd/pekerjaan_options`,
+  `npd/sumber_dana_options`, `npd/rekening_sisa` (update). Model: `dpa_pekerjaan`,
+  `dpa_sumber_dana`, `rekening_sisa/pagu_map/realisasi_map` (grain baru).
+- **Teruji**: subkeg 1606 → 4 paket → sumber dana per paket → 8 rekening (cocok DB); create
+  mengurangi sisa paket tsb (4,648jt→3,648jt), paket lain tak terpengaruh.
+- Catatan: `pekerjaan` (textarea) kini "Catatan/Keterangan" opsional.
 
 ## Cara menjalankan (device yang sudah ada XAMPP)
 1. Start **Apache** + **MySQL** dari XAMPP Control Panel.

@@ -52,13 +52,61 @@ class Npd extends MY_Controller {
 
 	private function chain()
 	{
+		// Opsi filter bersumber DPA OPD (bukan master global) — konsisten dgn tagging DPA.
 		$c = array();
 		if (is_super())
 			$c[] = array('name' => 'm.opd_id', 'label' => 'OPD', 'source' => 'opd', 'opturl' => site_url('master/options/opd'));
-		$c[] = array('name' => 'm.program_id', 'label' => 'Program', 'source' => 'program', 'opturl' => site_url('master/options/program'));
-		$c[] = array('name' => 'm.kegiatan_id', 'label' => 'Kegiatan', 'source' => 'kegiatan', 'opturl' => site_url('master/options/kegiatan'));
-		$c[] = array('name' => 'm.subkegiatan_id', 'label' => 'Sub Kegiatan', 'source' => 'subkegiatan', 'opturl' => site_url('master/options/subkegiatan'));
+		$c[] = array('name' => 'm.program_id', 'label' => 'Program', 'source' => 'program', 'opturl' => site_url('npd/flt_program'));
+		$c[] = array('name' => 'm.kegiatan_id', 'label' => 'Kegiatan', 'source' => 'kegiatan', 'opturl' => site_url('npd/flt_kegiatan'));
+		$c[] = array('name' => 'm.subkegiatan_id', 'label' => 'Sub Kegiatan', 'source' => 'subkegiatan', 'opturl' => site_url('npd/flt_subkegiatan'));
 		return $c;
+	}
+
+	// ---------- Opsi filter index (DPA-scoped) ----------
+	private function flt_opd()
+	{
+		return is_super() ? (int) $this->input->get('opd') : (int) scope_opd_id();
+	}
+
+	public function flt_program()
+	{
+		$opd = $this->flt_opd();
+		$out = array();
+		if ($opd)
+		{
+			$scope = is_super() ? NULL : scope_subkegiatan_ids();
+			foreach ($this->npd->dpa_programs($opd, $scope) as $r)
+				$out[$r->id] = $r->kode_program . ' — ' . $r->nama_program;
+		}
+		$this->json($out);
+	}
+
+	public function flt_kegiatan()
+	{
+		$opd = $this->flt_opd();
+		$program = (int) $this->input->get('program');
+		$out = array();
+		if ($opd && $program)
+		{
+			$scope = is_super() ? NULL : scope_subkegiatan_ids();
+			foreach ($this->npd->dpa_kegiatan($opd, $program, $scope) as $r)
+				$out[$r->id] = $r->kode_kegiatan . ' — ' . $r->nama_kegiatan;
+		}
+		$this->json($out);
+	}
+
+	public function flt_subkegiatan()
+	{
+		$opd = $this->flt_opd();
+		$kegiatan = (int) $this->input->get('kegiatan');
+		$out = array();
+		if ($opd && $kegiatan)
+		{
+			$scope = is_super() ? NULL : scope_subkegiatan_ids();
+			foreach ($this->npd->dpa_subkegiatan($opd, $kegiatan, $scope) as $r)
+				$out[$r->id] = $r->kode_subkegiatan . ' — ' . $r->nama_subkegiatan;
+		}
+		$this->json($out);
 	}
 
 	public function index()
@@ -127,28 +175,92 @@ class Npd extends MY_Controller {
 		), $id ? 'Edit NPD' : 'Buat NPD');
 	}
 
-	/** JSON: subkegiatan ber-DPA utk OPD (scoped). */
-	public function subkegiatan_options()
+	/** JSON: program yang ada di DPA OPD (cascade level 1). */
+	public function program_options()
 	{
 		$opd_id = $this->eff_opd();
 		if ( ! $opd_id) { $this->json(array()); return; }
 		$scope = is_super() ? NULL : scope_subkegiatan_ids();
-		$rows = $this->npd->subkegiatan_with_dpa($opd_id, $scope);
 		$out = array();
-		foreach ($rows as $r)
-			$out[] = array('id' => $r->id, 'label' => $r->kode_subkegiatan . ' — ' . $r->nama_subkegiatan);
+		foreach ($this->npd->dpa_programs($opd_id, $scope) as $r)
+			$out[] = array('id' => $r->id, 'label' => $r->kode_program . ' — ' . $r->nama_program);
 		$this->json($out);
 	}
 
-	/** JSON: rekening + sisa anggaran utk subkegiatan. */
-	public function rekening_sisa()
+	/** JSON: kegiatan di DPA OPD di bawah program (cascade level 2). */
+	public function kegiatan_options()
+	{
+		$opd_id  = $this->eff_opd();
+		$program = (int) $this->input->get('program_id');
+		if ( ! $opd_id || ! $program) { $this->json(array()); return; }
+		$scope = is_super() ? NULL : scope_subkegiatan_ids();
+		$out = array();
+		foreach ($this->npd->dpa_kegiatan($opd_id, $program, $scope) as $r)
+			$out[] = array('id' => $r->id, 'label' => $r->kode_kegiatan . ' — ' . $r->nama_kegiatan);
+		$this->json($out);
+	}
+
+	/** JSON: subkegiatan di DPA OPD di bawah kegiatan (cascade level 3). */
+	public function subkegiatan_options()
+	{
+		$opd_id   = $this->eff_opd();
+		$kegiatan = (int) $this->input->get('kegiatan_id');
+		if ( ! $opd_id) { $this->json(array()); return; }
+		$scope = is_super() ? NULL : scope_subkegiatan_ids();
+
+		// Bila kegiatan_id diberikan -> subkeg di bawah kegiatan tsb (cascade).
+		// Bila tidak -> semua subkeg ber-DPA OPD (kompatibilitas).
+		$out = array();
+		if ($kegiatan)
+		{
+			foreach ($this->npd->dpa_subkegiatan($opd_id, $kegiatan, $scope) as $r)
+				$out[] = array('id' => $r->id, 'label' => $r->kode_subkegiatan . ' — ' . $r->nama_subkegiatan);
+		}
+		else
+		{
+			foreach ($this->npd->subkegiatan_with_dpa($opd_id, $scope) as $r)
+				$out[] = array('id' => $r->id, 'label' => $r->kode_subkegiatan . ' — ' . $r->nama_subkegiatan);
+		}
+		$this->json($out);
+	}
+
+	/** JSON: pekerjaan (paket) pada subkegiatan (dari DPA). */
+	public function pekerjaan_options()
 	{
 		$opd_id = $this->eff_opd();
 		$sub    = (int) $this->input->get('subkegiatan_id');
-		$exclude = $this->input->get('npd_id') ? (int) $this->input->get('npd_id') : NULL;
 		if ( ! $opd_id || ! $sub) { $this->json(array()); return; }
 		if ( ! is_super() && ! $this->subkeg_allowed($sub)) { $this->json(array()); return; }
-		$this->json($this->npd->rekening_sisa($opd_id, $sub, $exclude));
+		$out = array();
+		foreach ($this->npd->dpa_pekerjaan($opd_id, $sub) as $paket)
+			$out[] = array('id' => $paket, 'label' => $paket);
+		$this->json($out);
+	}
+
+	/** JSON: sumber dana pada (subkegiatan, pekerjaan) dari DPA. */
+	public function sumber_dana_options()
+	{
+		$opd_id = $this->eff_opd();
+		$sub    = (int) $this->input->get('subkegiatan_id');
+		$paket  = (string) $this->input->get('pekerjaan');
+		if ( ! $opd_id || ! $sub || $paket === '') { $this->json(array()); return; }
+		$out = array();
+		foreach ($this->npd->dpa_sumber_dana($opd_id, $sub, $paket) as $r)
+			$out[] = array('id' => (int) $r->sumber_dana_id, 'label' => $r->nama);
+		$this->json($out);
+	}
+
+	/** JSON: rekening + sisa anggaran utk (subkegiatan, pekerjaan, sumber dana). */
+	public function rekening_sisa()
+	{
+		$opd_id  = $this->eff_opd();
+		$sub     = (int) $this->input->get('subkegiatan_id');
+		$paket   = (string) $this->input->get('pekerjaan');
+		$sd      = (int) $this->input->get('sumber_dana_id');
+		$exclude = $this->input->get('npd_id') ? (int) $this->input->get('npd_id') : NULL;
+		if ( ! $opd_id || ! $sub || $paket === '') { $this->json(array()); return; }
+		if ( ! is_super() && ! $this->subkeg_allowed($sub)) { $this->json(array()); return; }
+		$this->json($this->npd->rekening_sisa($opd_id, $sub, $paket, $sd, $exclude));
 	}
 
 	/** JSON: nomor NPD berikutnya. */
@@ -156,8 +268,9 @@ class Npd extends MY_Controller {
 	{
 		$opd_id = $this->eff_opd();
 		$tahun  = (int) ($this->input->get('tahun') ?: date('Y'));
+		$bulan  = (int) $this->input->get('bulan');
 		if ( ! $opd_id) { $this->json(array('nomor' => '')); return; }
-		$this->json(array('nomor' => $this->npd->next_nomor($opd_id, $tahun)));
+		$this->json(array('nomor' => $this->npd->next_nomor($opd_id, $tahun, $bulan ?: NULL)));
 	}
 
 	// ---------------- SAVE ----------------
@@ -168,8 +281,12 @@ class Npd extends MY_Controller {
 		$sub    = (int) $this->input->post('subkegiatan_id');
 		$errors = array();
 
+		$paket = (string) $this->input->post('perihal', TRUE);   // = pekerjaan (paket DPA)
+		$sd    = (int) $this->input->post('sumber_dana_id');
+
 		if ( ! $opd_id) $errors[] = 'OPD wajib dipilih.';
 		if ( ! $sub)    $errors[] = 'Sub kegiatan wajib dipilih.';
+		if ($paket === '') $errors[] = 'Pekerjaan wajib dipilih.';
 
 		// otorisasi
 		if ($id)
@@ -195,14 +312,14 @@ class Npd extends MY_Controller {
 		}
 		if (empty($lines)) $errors[] = 'Minimal satu rekening dengan jumlah > 0.';
 
-		// validasi sisa
-		if ($sub && $opd_id && $lines)
+		// validasi sisa (grain: subkeg + pekerjaan + sumber dana + rekening)
+		if ($sub && $opd_id && $paket !== '' && $lines)
 		{
-			$pagu = $this->npd->pagu_map($opd_id, $sub);
-			$real = $this->npd->realisasi_map($opd_id, $sub, $id ?: NULL);
+			$pagu = $this->npd->pagu_map($opd_id, $sub, $paket, $sd);
+			$real = $this->npd->realisasi_map($opd_id, $sub, $paket, $sd, $id ?: NULL);
 			foreach ($lines as $rid => $jml)
 			{
-				if ( ! isset($pagu[$rid])) { $errors[] = "Rekening #$rid tidak ada di DPA subkegiatan ini."; continue; }
+				if ( ! isset($pagu[$rid])) { $errors[] = "Rekening #$rid tidak ada di DPA pekerjaan/sumber dana ini."; continue; }
 				$sisa = $pagu[$rid] - (isset($real[$rid]) ? $real[$rid] : 0);
 				if ($jml > $sisa + 0.001)
 					$errors[] = 'Jumlah rekening ' . $rid . ' (' . rupiah($jml) . ') melebihi sisa ' . rupiah($sisa) . '.';
@@ -218,7 +335,7 @@ class Npd extends MY_Controller {
 		$ctx = $this->npd->subkegiatan_context($opd_id, $sub);
 		$tanggal = $this->input->post('tanggal', TRUE) ?: date('Y-m-d');
 		$nomor   = trim((string) $this->input->post('nomor_npd', TRUE));
-		if ($nomor === '') $nomor = $this->npd->next_nomor($opd_id, (int) date('Y', strtotime($tanggal)));
+		if ($nomor === '') $nomor = $this->npd->next_nomor($opd_id, (int) date('Y', strtotime($tanggal)), (int) date('n', strtotime($tanggal)));
 
 		$header = array(
 			'nomor_npd'      => $nomor,
@@ -270,14 +387,31 @@ class Npd extends MY_Controller {
 	}
 
 	// ---------------- CETAK / DOKUMEN (2d) ----------------
-	public function cetak($id)       { $this->cetak_doc((int) $id, 'npd/cetak_npd', 'Cetak NPD'); }
+	public function cetak($id)       { $this->cetak_doc((int) $id, 'npd/cetak_npd', 'NPD'); }
 	public function pindah_buku($id) { $this->cetak_doc((int) $id, 'npd/cetak_pindahbuku', 'Pindah Buku'); }
 	public function c5($id)          { $this->cetak_doc((int) $id, 'npd/cetak_c5', 'C5'); }
 
 	private function cetak_doc($id, $view, $title)
 	{
 		$d = $this->load_taxed($id);
-		$d['judul'] = $title;
+		$this->config->load('instansi', TRUE);
+		$d['instansi'] = $this->config->item('instansi', 'instansi');
+		$d['judul']    = $title;
+
+		$fmt = strtolower((string) $this->input->get('format'));
+		$d['format'] = in_array($fmt, array('excel', 'word', 'pdf'), TRUE) ? $fmt : 'html';
+
+		if ($d['format'] === 'excel' || $d['format'] === 'word')
+		{
+			$slug = preg_replace('/[^A-Za-z0-9]+/', '_', $title . ' ' . $d['row']->nomor_npd);
+			$slug = trim($slug, '_');
+			$ext  = $d['format'] === 'excel' ? 'xls' : 'doc';
+			$mime = $d['format'] === 'excel' ? 'application/vnd.ms-excel' : 'application/msword';
+			$this->output
+				->set_content_type($mime, 'utf-8')
+				->set_header('Content-Disposition: attachment; filename="' . $slug . '.' . $ext . '"')
+				->set_header('Cache-Control: max-age=0');
+		}
 		$this->load->view($view, $d); // layout cetak sendiri (tanpa sidebar)
 	}
 
@@ -290,9 +424,12 @@ class Npd extends MY_Controller {
 
 		$info = $this->db->select('o.nama_opd, o.singkatan, o.kepala_opd, o.nip_kepala, o.kode_opd,
 		          sk.kode_subkegiatan, sk.nama_subkegiatan, k.nama_kegiatan, k.kode_kegiatan,
-		          p.nama_program, sd.nama AS sumber_dana', FALSE)
+		          p.nama_program, sd.nama AS sumber_dana,
+		          ou.nama_unit AS unit_nama, ou.jenis_unit AS unit_jenis,
+		          ou.kepala AS pptk_nama, ou.nip_kepala AS pptk_nip', FALSE)
 			->from('npd n')
 			->join('master_opd o', 'o.id = n.opd_id', 'left')
+			->join('master_opd_unit ou', 'ou.id = n.opd_unit_id', 'left')
 			->join('master_subkegiatan sk', 'sk.id = n.subkegiatan_id', 'left')
 			->join('master_kegiatan k', 'k.id = n.kegiatan_id', 'left')
 			->join('master_program p', 'p.id = n.program_id', 'left')
@@ -306,12 +443,16 @@ class Npd extends MY_Controller {
 			COALESCE(pg.nama_lengkap, mp.nama_penerima, np.nama_penerima) AS nama_live,
 			pg.nip AS peg_nip, pg.golongan AS peg_gol, pg.jenis_kepegawaian AS peg_jenis,
 			mp.golongan AS pen_gol, mp.nama_bank, mp.no_rekening,
+			COALESCE(pgr.no_rekening, mp.no_rekening) AS norek_live,
+			COALESCE(rb.nama_bank, mp.nama_bank) AS bank_live,
 			COALESCE(pg.npwp, mp.npwp) AS npwp_live,
 			CASE WHEN np.pegawai_id IS NOT NULL THEN "pegawai"
 			     WHEN np.penerima_id IS NOT NULL THEN "penerima" ELSE "manual" END AS sumber', FALSE)
 			->from('npd_penerima np')
 			->join('npd_detail nd', 'nd.id = np.npd_detail_id')
 			->join('pegawai pg', 'pg.id = np.pegawai_id', 'left')
+			->join('pegawai_rekening pgr', 'pgr.pegawai_id = np.pegawai_id AND pgr.is_primary = 1', 'left')
+			->join('ref_bank rb', 'rb.id = pgr.bank_id', 'left')
 			->join('master_penerima mp', 'mp.id = np.penerima_id', 'left')
 			->where('nd.npd_id', (int) $id)->order_by('np.id')->get()->result();
 
@@ -329,7 +470,39 @@ class Npd extends MY_Controller {
 			$penmap[$p->npd_detail_id][] = $p;
 		}
 
-		return array('row' => $row, 'info' => $info, 'penmap' => $penmap);
+		return array(
+			'row' => $row, 'info' => $info, 'penmap' => $penmap,
+			'pejabat' => $this->pejabat_of($row->opd_id, $row->opd_unit_id),
+		);
+	}
+
+	/**
+	 * Pejabat penatausahaan OPD dari data pegawai (jabatan_penatausahaan_id -> ref_jabatan).
+	 * Dicocokkan berdasar NAMA jabatan (bukan ID) agar tahan perubahan seed.
+	 *   PPTK  = "PEJABAT PELAKSANA TEKNIS KEGIATAN" (utamakan unit sesuai NPD)
+	 *   PPK   = "PEJABAT PENATAUSAHAAN KEUANGAN SKPD"
+	 *   Bend. = "BENDAHARA PENGELUARAN" (persis, bukan pembantu)
+	 *   PA    = "PENGGUNA ANGGARAN"
+	 */
+	private function pejabat_of($opd_id, $opd_unit_id)
+	{
+		$by = function ($like, $unit = NULL, $exact = NULL) use ($opd_id) {
+			$this->db->select('pg.nama_lengkap, pg.nip', FALSE)->from('pegawai pg')
+				->join('ref_jabatan rj', 'rj.id = pg.jabatan_penatausahaan_id')
+				->where('pg.opd_id', (int) $opd_id)->where('pg.is_active', 1);
+			if ($exact) $this->db->where('rj.nama_jabatan', $exact);
+			else        $this->db->like('rj.nama_jabatan', $like);
+			if ($unit)  $this->db->where('pg.opd_unit_id', (int) $unit);
+			return $this->db->order_by('pg.id')->limit(1)->get()->row();
+		};
+		$pptk = $opd_unit_id ? $by('PELAKSANA TEKNIS', (int) $opd_unit_id) : NULL;
+		if ( ! $pptk) $pptk = $by('PELAKSANA TEKNIS');
+		return array(
+			'pptk'      => $pptk,
+			'ppk'       => $by('PENATAUSAHAAN KEUANGAN'),
+			'bendahara' => $by(NULL, NULL, 'BENDAHARA PENGELUARAN'),
+			'pa'        => $by('PENGGUNA ANGGARAN'),
+		);
 	}
 
 	// ---------------- PENERIMA (2b) ----------------
@@ -403,10 +576,12 @@ class Npd extends MY_Controller {
 			redirect('npd/view/' . $npd->id);
 		}
 
+		$pegid = $this->input->post('pegawai_id') ? (int) $this->input->post('pegawai_id') : NULL;
+		$penid = $this->ensure_penerima($pegid, $this->input->post('penerima_id') ? (int) $this->input->post('penerima_id') : NULL, $nama);
 		$data = array(
 			'npd_detail_id' => $detail_id,
-			'pegawai_id'    => $this->input->post('pegawai_id') ? (int) $this->input->post('pegawai_id') : NULL,
-			'penerima_id'   => $this->input->post('penerima_id') ? (int) $this->input->post('penerima_id') : NULL,
+			'pegawai_id'    => $pegid,
+			'penerima_id'   => $penid,
 			'nama_penerima' => $nama,
 			'uraian'        => $this->input->post('uraian', TRUE),
 			'volume'        => $volume,
@@ -418,6 +593,131 @@ class Npd extends MY_Controller {
 		else $this->db->insert('npd_penerima', $data);
 		$this->session->set_flashdata('success', 'Penerima berhasil disimpan.');
 		redirect('npd/view/' . $npd->id);
+	}
+
+	/** Tambah BANYAK penerima sekaligus (dari modal multi-baris). */
+	public function penerima_batch()
+	{
+		$detail_id = (int) $this->input->post('npd_detail_id');
+		$detail = $this->db->get_where('npd_detail', array('id' => $detail_id))->row();
+		if ( ! $detail) show_error('Baris NPD tidak ditemukan', 404);
+		$npd = $this->npd_of_detail($detail_id);
+		if ( ! $npd || ! $this->can_edit($npd)) show_error('Akses ditolak', 403);
+
+		$nama_a = (array) $this->input->post('nama_penerima');
+		$peg_a  = (array) $this->input->post('pegawai_id');
+		$pen_a  = (array) $this->input->post('penerima_id');
+		$ur_a   = (array) $this->input->post('uraian');
+		$vol_a  = (array) $this->input->post('volume');
+		$hrg_a  = (array) $this->input->post('harga_satuan');
+		$ket_a  = (array) $this->input->post('keterangan');
+
+		$rows = array(); $sum_new = 0; $errors = array();
+		foreach ($nama_a as $i => $nm)
+		{
+			$nm  = trim((string) $nm);
+			$vol = (float) str_replace('.', '', (string) ($vol_a[$i] ?? 1)); if ($vol <= 0) $vol = 1;
+			$hrg = (float) str_replace('.', '', (string) ($hrg_a[$i] ?? 0));
+			$jml = round($vol * $hrg, 2);
+			if ($nm === '' && $jml <= 0) continue; // baris kosong -> lewati
+			if ($nm === '') { $errors[] = 'Ada baris tanpa nama penerima.'; continue; }
+			if ($jml <= 0) { $errors[] = 'Nominal "' . $nm . '" harus > 0.'; continue; }
+			$pegid = ! empty($peg_a[$i]) ? (int) $peg_a[$i] : NULL;
+			$penid = $this->ensure_penerima($pegid, ! empty($pen_a[$i]) ? (int) $pen_a[$i] : NULL, $nm);
+			$rows[] = array(
+				'npd_detail_id' => $detail_id,
+				'pegawai_id'    => $pegid,
+				'penerima_id'   => $penid,
+				'nama_penerima' => $nm,
+				'uraian'        => trim((string) ($ur_a[$i] ?? '')),
+				'volume'        => $vol,
+				'harga_satuan'  => $hrg,
+				'jumlah'        => $jml,
+				'keterangan'    => trim((string) ($ket_a[$i] ?? '')),
+			);
+			$sum_new += $jml;
+		}
+		if (empty($rows) && empty($errors)) $errors[] = 'Tidak ada penerima untuk disimpan.';
+
+		$sum_exist = (float) $this->db->select('COALESCE(SUM(jumlah),0) AS s', FALSE)
+			->from('npd_penerima')->where('npd_detail_id', $detail_id)->get()->row()->s;
+		if ($sum_new + $sum_exist > (float) $detail->jumlah + 0.001)
+			$errors[] = 'Total penerima (' . rupiah($sum_new + $sum_exist) . ') melebihi jumlah baris rekening (' . rupiah($detail->jumlah) . ').';
+
+		if ($errors)
+		{
+			$this->session->set_flashdata('error', implode(' ', $errors));
+			redirect('npd/view/' . $npd->id);
+		}
+
+		$this->db->insert_batch('npd_penerima', $rows);
+		$this->session->set_flashdata('success', count($rows) . ' penerima ditambahkan.');
+		redirect('npd/view/' . $npd->id);
+	}
+
+	/**
+	 * Pastikan penerima tercatat di master_penerima; kembalikan penerima_id.
+	 * - penerima_id sudah ada  -> pakai (sudah dari master).
+	 * - dari pegawai           -> cari/buat master_penerima ber-pegawai_id (dedup by pegawai_id).
+	 * - manual (nama saja)     -> cari/buat by nama, pegawai_id NULL (dedup by nama).
+	 * Mencegah penerima yang sama masuk lebih dari sekali.
+	 */
+	private function ensure_penerima($pegawai_id, $penerima_id, $nama)
+	{
+		if ($penerima_id) return (int) $penerima_id;
+
+		if ($pegawai_id)
+		{
+			$ex = $this->db->select('id')->get_where('master_penerima', array('pegawai_id' => (int) $pegawai_id))->row();
+			if ($ex) return (int) $ex->id;
+
+			$pg = $this->db->select('nama_lengkap, npwp, golongan, status_kepegawaian')
+				->get_where('pegawai', array('id' => (int) $pegawai_id))->row();
+			if ($pg)
+			{
+				$bank = $this->db->select('rb.nama_bank, pr.no_rekening, pr.nama_pemilik_rekening', FALSE)
+					->from('pegawai_rekening pr')->join('ref_bank rb', 'rb.id = pr.bank_id', 'left')
+					->where('pr.pegawai_id', (int) $pegawai_id)->where('pr.is_primary', 1)
+					->limit(1)->get()->row();
+				$this->db->insert('master_penerima', array(
+					'pegawai_id'     => (int) $pegawai_id,
+					'nama_penerima'  => $pg->nama_lengkap,
+					'jenis_penerima' => $pg->status_kepegawaian === 'ASN' ? 'asn' : 'non_asn',
+					'punya_npwp'     => $pg->npwp ? 1 : 0,
+					'npwp'           => $pg->npwp,
+					'golongan'       => $this->pen_golongan($pg->golongan),
+					'nama_bank'      => $bank ? $bank->nama_bank : NULL,
+					'no_rekening'    => $bank ? $bank->no_rekening : NULL,
+					'nama_rekening'  => ($bank && $bank->nama_pemilik_rekening) ? $bank->nama_pemilik_rekening : $pg->nama_lengkap,
+					'is_active'      => 1,
+				));
+				return (int) $this->db->insert_id();
+			}
+		}
+
+		$nm = trim((string) $nama);
+		if ($nm === '') return NULL;
+		$ex = $this->db->select('id')->from('master_penerima')
+			->where('pegawai_id IS NULL', NULL, FALSE)
+			->where('LOWER(nama_penerima)', strtolower($nm))
+			->limit(1)->get()->row();
+		if ($ex) return (int) $ex->id;
+		$this->db->insert('master_penerima', array(
+			'nama_penerima'  => $nm,
+			'jenis_penerima' => 'non_asn',
+			'punya_npwp'     => 0,
+			'is_active'      => 1,
+		));
+		return (int) $this->db->insert_id();
+	}
+
+	/** Peta golongan pegawai (III/a, IX, dst.) -> enum master_penerima (I..IV) atau NULL. */
+	private function pen_golongan($g)
+	{
+		$g = strtoupper(trim((string) $g));
+		if ($g === '') return NULL;
+		$base = (strpos($g, '/') !== FALSE) ? substr($g, 0, strpos($g, '/')) : $g;
+		return in_array($base, array('I', 'II', 'III', 'IV'), TRUE) ? $base : NULL;
 	}
 
 	public function penerima_delete()

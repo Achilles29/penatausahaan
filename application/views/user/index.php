@@ -116,6 +116,13 @@
               <option value="">— Pilih Unit —</option>
             </select>
           </div>
+          <div class="mb-3 blk-uopd border rounded p-2 bg-light">
+            <div class="form-check form-switch mb-0">
+              <input type="checkbox" class="form-check-input" name="akses_semua_bidang" id="fld_akses_semua_bidang" value="1">
+              <label class="form-check-label" for="fld_akses_semua_bidang"><b>Akses semua bidang OPD</b></label>
+            </div>
+            <small class="text-muted">Aktif: user dapat mengakses/CRUD data <b>semua bidang</b> di OPD-nya. Nonaktif: hanya bidang unit-nya (sesuai Akses Bidang).</small>
+          </div>
           <div class="mb-3">
             <label class="form-label">Kata sandi <small class="text-muted" id="pwdHint">(wajib untuk pengguna baru)</small></label>
             <input type="password" class="form-control" name="password" id="fld_password" autocomplete="new-password">
@@ -241,6 +248,7 @@ var UCFG = {
     var isSuper = (r === 'superadmin');
     $('.blk-super').toggle(isSuper);
     $('.blk-opd').toggle(!isSuper);
+    $('.blk-uopd').toggle(r === 'user_opd');
   }
   $('#fld_role').on('change', toggleByRole);
 
@@ -360,6 +368,7 @@ var UCFG = {
       $('#fld_role').val(row.role);
       $('#fld_username').val(row.username || '');
       $('#fld_is_active').prop('checked', Number(row.is_active) === 1);
+      $('#fld_akses_semua_bidang').prop('checked', Number(row.akses_semua_bidang) === 1);
       toggleByRole();
 
       if (row.role !== 'superadmin') {
