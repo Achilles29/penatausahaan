@@ -396,3 +396,27 @@ PPK adalah Pejabat Penatausahaan Keuangan Sesuai data opd
 Bendahara Pengeluaran Sesuai data opd
 PPTK sesuai PPTK OPD sesuai sub kegiatan yang dipilih
 hasil download tidak sesuai template
+
+
+
+NPD:
+- Form kode rekening termasuk kode sub kegiatan (seperti gambar 1)
+
+
+PINBUK:
+- cetak PINBUK per rekening 1 halaman
+- ada beberapa jenis, cetak nya sesuai rekening. jika rekening perjalaan dinas maka bentuk kolom sesuai dengan gambar, No, Nama , NIP untuk ASN, Jabatan Untuk ASN, Gol untuk ASN, lalu jumlah dibagi apakah itu untuk SPPD, REPRESENTASI, PENGINAPAN, atau TOL, Jumlah Penerimaan, Rekening. 
+
+- lalu untuk honor seperti gambar 3
+- lalu untuk belanja barang jasa lainnya seperti gambar 4 dan setersunya
+
+
+jadi mungkin saat membuat pinbuk perlu memilih apakah itu termasuk belanja perjalanan , honor, atau barang jasa lainnya dan perlu ada enum untuk rekening perjalanan dinas sesuai kolom, dan pajak untuk barang jasa, karena besaran pajak pun berbeda antar jenis belanja dan penerima,
+
+
+
+- saat menambah penerima, cek rekening dan npwp. rekening wajib isi. npwp jika ada wajib isi. karena besaran pajak berbeda.
+- setelah itu ada pilihan honor / perjalanan dinas /barang jasa lain (karena berbeda form nya)
+
+
+- rapikan lagi tampilan cetak pindah buku

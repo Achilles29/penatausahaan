@@ -446,11 +446,14 @@ class Npd extends MY_Controller {
 			COALESCE(pgr.no_rekening, mp.no_rekening) AS norek_live,
 			COALESCE(rb.nama_bank, mp.nama_bank) AS bank_live,
 			COALESCE(pg.npwp, mp.npwp) AS npwp_live,
+			COALESCE(rjf.nama_jabatan, rjs.nama_jabatan) AS jabatan_live,
 			CASE WHEN np.pegawai_id IS NOT NULL THEN "pegawai"
 			     WHEN np.penerima_id IS NOT NULL THEN "penerima" ELSE "manual" END AS sumber', FALSE)
 			->from('npd_penerima np')
 			->join('npd_detail nd', 'nd.id = np.npd_detail_id')
 			->join('pegawai pg', 'pg.id = np.pegawai_id', 'left')
+			->join('ref_jabatan rjf', 'rjf.id = pg.jabatan_fungsional_id', 'left')
+			->join('ref_jabatan rjs', 'rjs.id = pg.jabatan_struktural_id', 'left')
 			->join('pegawai_rekening pgr', 'pgr.pegawai_id = np.pegawai_id AND pgr.is_primary = 1', 'left')
 			->join('ref_bank rb', 'rb.id = pgr.bank_id', 'left')
 			->join('master_penerima mp', 'mp.id = np.penerima_id', 'left')

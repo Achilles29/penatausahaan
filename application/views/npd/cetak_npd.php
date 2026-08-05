@@ -10,14 +10,10 @@ $opd_s = trim((string) ($info->singkatan ?? '')) ?: $opd;
 $unit  = trim((string) ($info->unit_nama ?? ''));
 $pptk_jab = 'PPTK ' . ($unit !== '' ? ucwords(strtolower($unit)) . ' ' : '') . $opd_s;
 
-// Pejabat dari data pegawai (variabel, tanpa hardcode)
+// PPTK dari data pegawai (variabel, tanpa hardcode). Bendahara & PPK cukup paraf (tanpa nama).
 $pj       = $pejabat;
-$pptk_nm  = ($pj['pptk']->nama_lengkap    ?? '') ?: ($info->pptk_nama ?: '');
-$pptk_nip = ($pj['pptk']->nip             ?? '') ?: ($info->pptk_nip ?: '');
-$ppk_nm   = ($pj['ppk']->nama_lengkap     ?? '') ?: ($ins['ppk_nama'] ?: '');
-$ppk_nip  = ($pj['ppk']->nip              ?? '') ?: ($ins['ppk_nip'] ?: '');
-$bend_nm  = ($pj['bendahara']->nama_lengkap ?? '') ?: ($ins['bendahara_nama'] ?: '');
-$bend_nip = ($pj['bendahara']->nip        ?? '') ?: ($ins['bendahara_nip'] ?: '');
+$pptk_nm  = ($pj['pptk']->nama_lengkap ?? '') ?: ($info->pptk_nama ?: '');
+$pptk_nip = ($pj['pptk']->nip          ?? '') ?: ($info->pptk_nip ?: '');
 $logo = $ins['logo'] ? base_url($ins['logo']) : '';
 ?>
 <div class="page">
@@ -25,14 +21,14 @@ $logo = $ins['logo'] ? base_url($ins['logo']) : '';
   <!-- KOP SURAT -->
   <table class="kop" style="width:100%">
     <tr>
-      <?php if ($logo): ?><td style="width:80px; text-align:center"><img src="<?= $logo ?>" alt="logo" style="height:70px"></td><?php endif; ?>
+      <?php if ($logo): ?><td style="width:64px; text-align:center"><img src="<?= $logo ?>" alt="logo" width="43" height="64" style="width:43px; height:64px"></td><?php endif; ?>
       <td style="text-align:center">
         <div class="nm1"><?= html_escape($ins['pemda']) ?></div>
         <div class="nm2"><?= html_escape(strtoupper($opd)) ?></div>
         <div class="adr"><?= html_escape($ins['alamat']) ?> &nbsp; <?= html_escape($ins['kontak']) ?></div>
         <div class="adr"><?= html_escape($ins['website']) ?></div>
       </td>
-      <?php if ($logo): ?><td style="width:80px">&nbsp;</td><?php endif; ?>
+      <?php if ($logo): ?><td style="width:64px">&nbsp;</td><?php endif; ?>
     </tr>
   </table>
   <div class="kop-line"></div>
@@ -49,7 +45,7 @@ $logo = $ins['logo'] ? base_url($ins['logo']) : '';
     <td style="width:45%; vertical-align:top">
       <div style="text-align:right"><?= html_escape($kota) ?>, <?= tanggal_id($row->tanggal) ?></div>
       <div style="margin-top:6px">Kepada Yth.</div>
-      <div><b>Bendahara Pengeluaran</b><?= $bend_nm ? ' — ' . html_escape($bend_nm) : '' ?></div>
+      <div><b>Bendahara Pengeluaran</b></div>
       <div><?= html_escape($opd) ?></div>
       <div>di -</div>
       <div style="text-align:right; padding-right:30px"><b><?= html_escape($kota) ?></b></div>
@@ -75,15 +71,16 @@ $logo = $ins['logo'] ? base_url($ins['logo']) : '';
     kegiatan belanja daerah dengan perincian sebagai berikut :
   </p>
 
+  <?php $kode_sk = trim((string) ($info->kode_subkegiatan ?? '')); ?>
   <table class="grid" border="1" cellspacing="0" style="width:100%">
     <thead><tr>
-      <th style="width:32px">No</th><th style="width:190px">Kode Rekening</th><th>Belanja</th><th style="width:150px">Jumlah (Rp)</th>
+      <th style="width:32px">No</th><th style="width:235px">Kode Rekening</th><th>Belanja</th><th style="width:140px">Jumlah (Rp)</th>
     </tr></thead>
     <tbody>
       <?php foreach ($row->details as $i => $d): ?>
       <tr>
         <td class="c"><?= $i + 1 ?></td>
-        <td class="kode"><?= html_escape($d->kode_rekening) ?></td>
+        <td class="kode"><?= html_escape(($kode_sk !== '' ? $kode_sk . '.' : '') . $d->kode_rekening) ?></td>
         <td><?= html_escape($d->uraian) ?></td>
         <td class="r"><?= number_format($d->jumlah, 0, ',', '.') ?></td>
       </tr>
@@ -92,26 +89,21 @@ $logo = $ins['logo'] ? base_url($ins['logo']) : '';
     </tbody>
   </table>
 
-  <!-- TANDA TANGAN -->
-  <table class="ttd-wrap"><tr>
-    <td class="ttd">
-      Menyetujui,<br>Pejabat Penatausahaan Keuangan
-      <div class="sp"></div>
-      <b><u><?= html_escape($ppk_nm ?: '....................') ?></u></b><br>
-      NIP. <?= html_escape($ppk_nip ?: '....................') ?>
-    </td>
-    <td class="ttd">
-      &nbsp;<br>Bendahara Pengeluaran
-      <div class="sp"></div>
-      <b><u><?= html_escape($bend_nm ?: '....................') ?></u></b><br>
-      NIP. <?= html_escape($bend_nip ?: '....................') ?>
-    </td>
-    <td class="ttd">
-      <?= html_escape($kota) ?>, <?= tanggal_id($row->tanggal) ?><br><?= html_escape($pptk_jab) ?>
-      <div class="sp"></div>
+  <!-- TANDA TANGAN: PPTK penanda tangan utama; Bendahara & PPK cukup paraf (tanpa nama) -->
+  <table style="width:100%; margin-top:20px"><tr>
+    <td style="width:45%">&nbsp;</td>
+    <td style="width:55%; text-align:center">
+      <?= html_escape($kota) ?>, <?= tanggal_id($row->tanggal) ?><br>
+      PPTK <?= html_escape($unit !== '' ? ucwords(strtolower($unit)) : 'Kegiatan') ?><br><?= html_escape($opd) ?>
+      <div style="height:58px"></div>
       <b><u><?= html_escape($pptk_nm ?: '....................') ?></u></b><br>
       NIP. <?= html_escape($pptk_nip ?: '....................') ?>
     </td>
   </tr></table>
+
+  <table border="1" cellspacing="0" style="width:55%; margin-left:auto; margin-top:8px; text-align:center">
+    <tr><td style="width:62%; padding:5px 4px">Bendahara Pengeluaran</td><td style="padding:5px 4px">PPK SKPD</td></tr>
+    <tr><td style="height:48px">&nbsp;</td><td>&nbsp;</td></tr>
+  </table>
 </div>
 </body></html>

@@ -23,7 +23,24 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 | a PHP script and you can easily do that on your own.
 |
 */
-$config['base_url'] = 'http://localhost/penatausahaan/';
+// Auto-deteksi base_url — jalan di localhost maupun server (subfolder & HTTPS otomatis).
+// Ganti dengan URL tetap bila situs diakses dari banyak domain / di belakang proxy khusus.
+if (isset($_SERVER['HTTP_HOST']) && $_SERVER['HTTP_HOST'] !== '')
+{
+	$scheme = 'http';
+	if ((isset($_SERVER['HTTPS']) && strtolower($_SERVER['HTTPS']) !== 'off')
+		|| (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https')
+		|| (isset($_SERVER['SERVER_PORT']) && (int) $_SERVER['SERVER_PORT'] === 443))
+	{
+		$scheme = 'https';
+	}
+	$dir = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME']));
+	$config['base_url'] = $scheme . '://' . $_SERVER['HTTP_HOST'] . rtrim($dir, '/') . '/';
+}
+else
+{
+	$config['base_url'] = 'http://localhost/penatausahaan/';
+}
 
 /*
 |--------------------------------------------------------------------------
@@ -387,7 +404,7 @@ $config['sess_driver'] = 'files';
 $config['sess_cookie_name'] = 'ci_session';
 $config['sess_samesite'] = 'Lax';
 $config['sess_expiration'] = 7200;
-$config['sess_save_path'] = NULL;
+$config['sess_save_path'] = APPPATH . 'cache/sessions'; // folder harus ADA & WRITABLE (0755/0700) di server
 $config['sess_match_ip'] = FALSE;
 $config['sess_time_to_update'] = 300;
 $config['sess_regenerate_destroy'] = FALSE;

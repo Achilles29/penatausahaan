@@ -1,10 +1,30 @@
 # PROGRESS — Catatan Teknis (aman untuk pindah device)
 
-**Terakhir diperbarui:** 2026-08-04 · **Status:** Penerima auto-sync ke master_penerima + cetak pejabat dari data + kolom jabatan pegawai digabung. Teruji. (Manajemen sidebar sys_menu = ditunda.)
+**Terakhir diperbarui:** 2026-08-04 · **Status:** Pindah Buku multi-format per rekening (perjalanan/honor/barang-jasa) + kode rekening NPD + subkeg. Teruji. (Manajemen sidebar sys_menu = ditunda.)
 
 ---
 
 ## Log Perkembangan
+
+### [2026-08-04] Cetak NPD kode+subkeg & Pindah Buku multi-format per rekening
+- **NPD**: kolom "Kode Rekening" kini menyertakan **kode sub kegiatan** sebagai prefiks
+  (`<kode_subkeg>.<kode_rekening>`, mis. `2.23.02.2.02.0010.5.1.02.01.001.00004`) sesuai template.
+- **Pindah Buku** dicetak **per rekening (1 halaman/rekening)**; **format menyesuaikan
+  `master_rekening.kategori_pajak`** (data-driven, bukan tebak-tebak):
+  - `perjalanan_dinas` → **Lampiran Penerimaan Uang Perjalanan Dinas**: NO·NAMA·NIP·JABATAN·GOL
+    (khusus ASN) · JUMLAH dipecah **SPPD/REPRESENTASI/PENGINAPAN/TOL** · Jumlah Penerimaan · No Rekening.
+    Penerima **dikelompokkan per orang**; komponen ditentukan dari kata kunci uraian
+    (representasi/penginap-hotel/tol-transpor → sisanya SPPD). Teruji cocok dgn contoh (INDAH
+    SPPD 340rb+Penginapan 2.788.666=3.128.666; M. Ali SPPD 300rb+Tol 38rb=338rb).
+  - `honorarium` → **Pemindahbukuan Honor**: +kolom **Rincian** (vol × harga), Jumlah Kotor,
+    Pajak (PPN·**PPh 21**·Total), Jumlah Bersih, Keterangan.
+  - lainnya (barang/sewa/jasa/makan_minum/…) → **Pemindahbukuan Barang/Jasa**: Jumlah Kotor,
+    Pajak (PPN·**PPh Ps 23**·Total), Jumlah Bersih, Keterangan.
+  - Pajak per penerima dari engine `hitung_pajak_rekening` (PPN vs PPh dipisah otomatis).
+- `Npd::load_taxed` query penerima kini juga menarik **jabatan** (fungsional→struktural) & gol.
+- Semua format unduh (HTML/PDF/Excel/Word) 200 OK. **Catatan**: komponen perjalanan & jenis
+  belanja saat ini **otomatis dari data** (uraian + kategori_pajak); enum eksplisit di modal
+  penerima bisa ditambah bila perlu.
 
 ### [2026-08-04] Penerima→master, cetak pejabat variabel, kolom jabatan
 - **Penerima auto-sync ke `master_penerima`** (`Npd::ensure_penerima`): saat simpan npd_penerima
