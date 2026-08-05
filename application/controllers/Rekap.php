@@ -284,6 +284,8 @@ class Rekap extends Gaji {
 			'bel_bpjs_gaji' => 0,
 			'bel_jkk'       => 0,
 			'bel_jkm'       => 0,
+			'bel_tapera'    => 0,
+			'pot_tapera_peg'=> 0,
 			'bel_tpp_bpjs'  => 0,
 		];
 	}
@@ -303,10 +305,12 @@ class Rekap extends Gaji {
 		$pot_jht_taspen  = $iu['jht_taspen'] ?? 0;
 		$bruto_komponen  = $k['gaji_pokok'] + $k['t_istri'] + $k['t_anak'] + $k['t_jabatan'] + $k['t_khusus'] + $k['t_pangan'] + $t_pembulatan;
 		$pph21           = $bel['pph21'];
-		// bruto_gaji = seluruh belanja pemerintah: komponen + PPh DTP + iuran pemberi kerja (009/010/011)
-		$bruto_gaji      = $bruto_komponen + $pph21 + $bel['bpjs_kes_employer'] + $bel['jkk'] + $bel['jkm'];
-		$bersih_gaji     = $bruto_komponen - $pot_bpjs - $pot_pensiun;
-		$tpp_bersih   = $tpp - $bpjs_tpp_peg;
+		$tapera_peg      = $iu['tapera_pegawai'] ?? 0;
+		$tapera_pem      = $bel['tapera'] ?? 0;
+		// bruto_gaji = seluruh belanja pemerintah: komponen + PPh DTP + iuran pemberi kerja (009/010/011/012)
+		$bruto_gaji      = $bruto_komponen + $pph21 + $bel['bpjs_kes_employer'] + $bel['jkk'] + $bel['jkm'] + $tapera_pem;
+		$bersih_gaji     = $bruto_komponen - $pot_bpjs - $pot_pensiun - $tapera_peg;
+		$tpp_bersih      = $tpp - $bpjs_tpp_peg;
 
 		return [
 			'jml'           => 1,
@@ -333,6 +337,8 @@ class Rekap extends Gaji {
 			'bel_bpjs_gaji' => $bel['bpjs_kes_employer'],
 			'bel_jkk'       => $bel['jkk'],
 			'bel_jkm'       => $bel['jkm'],
+			'bel_tapera'    => $tapera_pem,
+			'pot_tapera_peg'=> $tapera_peg,
 			'bel_tpp_bpjs'  => $bel['bpjs_tpp'],
 		];
 	}

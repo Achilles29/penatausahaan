@@ -256,7 +256,7 @@
               <th rowspan="2" class="align-middle">OPD</th>
               <th colspan="12" class="text-center" style="background:#dbeafe;color:#1e40af">KOMPONEN GAJI (001–012)</th>
               <th rowspan="2" class="text-end align-middle" style="background:#fef9c3;color:#78350f;min-width:75px">Total Bruto</th>
-              <th colspan="7" class="text-center" style="background:#fce7f3;color:#9d174d">POTONGAN &amp; PENYETORAN</th>
+              <th colspan="8" class="text-center" style="background:#fce7f3;color:#9d174d">POTONGAN &amp; PENYETORAN</th>
               <th rowspan="2" class="text-end align-middle" style="background:#fce7f3;color:#9d174d;min-width:75px">Total Pot.</th>
               <th rowspan="2" class="text-end align-middle" style="background:#d1fae5;color:#065f46;min-width:75px">Gaji Bersih</th>
               <th colspan="2" class="text-center" style="background:#dcfce7;color:#14532d">TPP</th>
@@ -280,6 +280,7 @@
               <th class="text-end">009 Peg<br>BPJS (1%)</th>
               <th class="text-end">013<br>Pensiun</th>
               <th class="text-end">013<br>JHT</th>
+              <th class="text-end">012<br>Tapera (2,5%)</th>
               <th class="text-end">007<br>PPh DTP</th>
               <th class="text-end">009 Empl<br>BPJS (4%)</th>
               <th class="text-end">010<br>JKK</th>
@@ -329,7 +330,7 @@ var REK_RINGKASAN = [
   { rek:'5.1.01.01.011', lbl:'Belanja Iuran Jaminan Kematian ASN',
     gaji:function(t){return t.bel_jkm||0;}, tpp:function(t){return 0;} },
   { rek:'5.1.01.01.012', lbl:'Belanja Iuran Simpanan Peserta Tabungan Perumahan Rakyat ASN',
-    gaji:function(t){return 0;}, tpp:function(t){return 0;} },
+    gaji:function(t){return t.bel_tapera||0;}, tpp:function(t){return 0;} },
   { type:'subtotal_group', lbl:'Subtotal Belanja Gaji dan Tunjangan (5.1.01.01)' },
   { type:'spacer' },
   { type:'group', rek:'5.1.01.02', lbl:'5.1.01.02   Belanja Tambahan Penghasilan ASN' },
@@ -573,17 +574,18 @@ var REK_GAJI = [
   { rek:'5.1.01.01.009', lbl:'BPJS Kesehatan ASN — Pemberi Kerja (4%) (disetor ke BPJS)',         key:'bel_bpjs_gaji',     neg:false, noSum:true },
   { rek:'5.1.01.01.010', lbl:'Iuran JKK ASN — Pemberi Kerja (disetor)',                           key:'bel_jkk',           neg:false, noSum:true },
   { rek:'5.1.01.01.011', lbl:'Iuran JKM ASN — Pemberi Kerja (disetor)',                           key:'bel_jkm',           neg:false, noSum:true },
+  { rek:'5.1.01.01.012', lbl:'Iuran Tapera ASN — Pegawai (2,5%) [dipotong]',                     key:'pot_tapera',        neg:false, noSum:true },
   { type:'subtotal-pot', lbl:'Total Potongan & Penyetoran', compute: function(t) {
       return (t.pot_bpjs_kes||0)+(t.pot_pensiun_peg||0)+(t.pot_jht_taspen||0)
-            +(t.pot_jht||0)+(t.pot_jp||0)
+            +(t.pot_jht||0)+(t.pot_jp||0)+(t.pot_tapera||0)
             +(t.bel_pph21||0)+(t.bel_bpjs_gaji||0)+(t.bel_jkk||0)+(t.bel_jkm||0);
   }},
   { type:'bersih', lbl:'Gaji Bersih (Diterima Pegawai)', compute: function(t) {
       var bruto = (t.gaji_pokok||0)+(t.t_keluarga||0)+(t.t_jabatan_str||0)+(t.t_jabatan_fung||0)
                  +(t.t_jabatan_umum||0)+(t.t_khusus||0)+(t.t_pangan||0)+(t.t_pembulatan||0)
-                 +(t.bel_pph21||0)+(t.bel_bpjs_gaji||0)+(t.bel_jkk||0)+(t.bel_jkm||0);
+                 +(t.bel_pph21||0)+(t.bel_bpjs_gaji||0)+(t.bel_jkk||0)+(t.bel_jkm||0)+(t.bel_tapera||0);
       var pot = (t.pot_bpjs_kes||0)+(t.pot_pensiun_peg||0)+(t.pot_jht_taspen||0)
-               +(t.pot_jht||0)+(t.pot_jp||0)
+               +(t.pot_jht||0)+(t.pot_jp||0)+(t.pot_tapera||0)
                +(t.bel_pph21||0)+(t.bel_bpjs_gaji||0)+(t.bel_jkk||0)+(t.bel_jkm||0);
       return bruto - pot;
   }},
@@ -756,8 +758,8 @@ function renderPegawai(res) {
   var dhtml = '';
   var ft = {
     gapok:0, tkel:0, tjabStr:0, tjabFung:0, tjabUmum:0, tpan:0, t007:0, tpemb:0,
-    bpjsEmpl:0, jkk:0, jkm:0, bruto:0,
-    bpjsPeg:0, pensiun:0, jht:0, pphDtp:0, bpjsEmplDis:0, jkkDis:0, jkmDis:0,
+    bpjsEmpl:0, jkk:0, jkm:0, taperaPem:0, bruto:0,
+    bpjsPeg:0, pensiun:0, jht:0, taperaPeg:0, pphDtp:0, bpjsEmplDis:0, jkkDis:0, jkmDis:0,
     totalPot:0, bersih:0,
     tpp:0, bpjsTppPeg:0, tppBersih:0, totalBersih:0
   };
@@ -776,15 +778,17 @@ function renderPegawai(res) {
     var bpjsEmpl    = bel.bpjs_kes_employer || 0;
     var jkk         = bel.jkk || 0;
     var jkm         = bel.jkm || 0;
+    var taperaPem   = bel.tapera || 0;
     var t007        = tkhusus + pphDtp; // combined rekening 007
     var bruto       = (k.gaji_pokok||0)+tkel+tjabStr+tjabFung+tjabUmum+tkhusus+(k.t_pangan||0)+tpemb
-                     +pphDtp+bpjsEmpl+jkk+jkm;
+                     +pphDtp+bpjsEmpl+jkk+jkm+taperaPem;
     var bpjsPeg     = iu.bpjs_kes_pegawai || 0;
     var pensiunPeg  = iu.pensiun_pegawai || 0;
     var jhtTaspen   = iu.jht_taspen || 0;
     var jhtBpjs     = iu.jht || 0;
     var jp          = iu.jp || 0;
-    var totalPot    = bpjsPeg + pensiunPeg + jhtTaspen + jhtBpjs + jp + pphDtp + bpjsEmpl + jkk + jkm;
+    var taperaPeg   = iu.tapera_pegawai || 0;
+    var totalPot    = bpjsPeg + pensiunPeg + jhtTaspen + jhtBpjs + jp + taperaPeg + pphDtp + bpjsEmpl + jkk + jkm;
     var bersihGaji  = bruto - totalPot;
     var bpjsTppPeg  = iu.bpjs_tpp_pegawai || (tpp > 0 ? Math.round(tpp * 0.01) : 0);
     var tppBersih   = tpp - bpjsTppPeg;
@@ -801,10 +805,12 @@ function renderPegawai(res) {
     ft.bpjsEmpl    += bpjsEmpl;
     ft.jkk         += jkk;
     ft.jkm         += jkm;
+    ft.taperaPem   += taperaPem;
     ft.bruto       += bruto;
     ft.bpjsPeg     += bpjsPeg;
     ft.pensiun     += pensiunPeg;
     ft.jht         += jhtTaspen;
+    ft.taperaPeg   += taperaPeg;
     ft.pphDtp      += pphDtp;
     ft.bpjsEmplDis += bpjsEmpl;
     ft.jkkDis      += jkk;
@@ -849,13 +855,14 @@ function renderPegawai(res) {
       +'<td class="text-end">'+rupiah(bpjsEmpl)+'</td>'
       +'<td class="text-end">'+rupiah(jkk)+'</td>'
       +'<td class="text-end">'+rupiah(jkm)+'</td>'
-      +'<td class="text-end text-muted">—</td>'
+      +'<td class="text-end">'+rupiah(taperaPem)+'</td>'
       // Total Bruto
       +'<td class="text-end fw-semibold" style="background:#fef9c3">'+rupiah(bruto)+'</td>'
       // potongan
       +'<td class="text-end">'+rupiah(bpjsPeg)+'</td>'
       +'<td class="text-end">'+rupiah(pensiunPeg)+'</td>'
       +'<td class="text-end">'+rupiah(jhtTaspen)+'</td>'
+      +'<td class="text-end">'+rupiah(taperaPeg)+'</td>'
       +'<td class="text-end">'+rupiah(pphDtp)+'</td>'
       +'<td class="text-end">'+rupiah(bpjsEmpl)+'</td>'
       +'<td class="text-end">'+rupiah(jkk)+'</td>'
@@ -874,7 +881,7 @@ function renderPegawai(res) {
       +'</tr>';
   });
 
-  $('#tblDetailBody').html(dhtml || '<tr><td colspan="33" class="text-center text-muted py-3">Tidak ada data</td></tr>');
+  $('#tblDetailBody').html(dhtml || '<tr><td colspan="34" class="text-center text-muted py-3">Tidak ada data</td></tr>');
   $('#tblDetailFoot').html(
     '<tr><td colspan="6" class="text-end fw-bold">TOTAL</td>'
     // komponen 001–012
@@ -889,13 +896,14 @@ function renderPegawai(res) {
     +'<td class="text-end">'+rupiah(ft.bpjsEmpl)+'</td>'
     +'<td class="text-end">'+rupiah(ft.jkk)+'</td>'
     +'<td class="text-end">'+rupiah(ft.jkm)+'</td>'
-    +'<td class="text-end">—</td>'
+    +'<td class="text-end">'+rupiah(ft.taperaPem)+'</td>'
     // Total Bruto
     +'<td class="text-end fw-bold" style="background:#fef9c3">'+rupiah(ft.bruto)+'</td>'
     // potongan
     +'<td class="text-end">'+rupiah(ft.bpjsPeg)+'</td>'
     +'<td class="text-end">'+rupiah(ft.pensiun)+'</td>'
     +'<td class="text-end">'+rupiah(ft.jht)+'</td>'
+    +'<td class="text-end">'+rupiah(ft.taperaPeg)+'</td>'
     +'<td class="text-end">'+rupiah(ft.pphDtp)+'</td>'
     +'<td class="text-end">'+rupiah(ft.bpjsEmplDis)+'</td>'
     +'<td class="text-end">'+rupiah(ft.jkkDis)+'</td>'

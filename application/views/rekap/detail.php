@@ -116,7 +116,7 @@ $rek_sfx = ($p['jenis'] === 'PNS') ? '.00001' : '.00002';
       ['5.1.01.01.009', 'Belanja Iuran Jaminan Kesehatan '.$jl,                       fn($dm) => $dm['hitung']['belanja']['bpjs_kes_employer'] ?? 0],
       ['5.1.01.01.010', 'Belanja Iuran Jaminan Kecelakaan Kerja '.$jl,               fn($dm) => $dm['hitung']['belanja']['jkk'] ?? 0],
       ['5.1.01.01.011', 'Belanja Iuran Jaminan Kematian '.$jl,                       fn($dm) => $dm['hitung']['belanja']['jkm'] ?? 0],
-      ['5.1.01.01.012', 'Belanja Iuran Simpanan Peserta Tapera '.$jl,                fn($dm) => 0],
+      ['5.1.01.01.012', 'Belanja Iuran Simpanan Peserta Tapera '.$jl,                fn($dm) => $dm['hitung']['belanja']['tapera'] ?? 0],
     ];
     foreach ($k_rows as [$rek, $lbl, $cb]):
         $lbl_html = '<span class="rekening-badge">'.$rek.$rek_sfx.'</span> '.$lbl;
@@ -133,7 +133,7 @@ $rek_sfx = ($p['jenis'] === 'PNS') ? '.00001' : '.00002';
         $v = ($k['gaji_pokok']??0)+($k['t_istri']??0)+($k['t_anak']??0)
             +($k['t_jabatan_str']??0)+($k['t_jabatan_fung']??0)+($k['t_jabatan_umum']??0)
             +($k['t_khusus']??0)+($k['t_pangan']??0)+($k['t_pembulatan']??0)
-            +($b['pph21']??0)+($b['bpjs_kes_employer']??0)+($b['jkk']??0)+($b['jkm']??0);
+            +($b['pph21']??0)+($b['bpjs_kes_employer']??0)+($b['jkk']??0)+($b['jkm']??0)+($b['tapera']??0);
         $grand_bruto += $v;
         $kppCls = !empty($dm['pensiun']) ? ' kpp-col' : '';
       ?><td class="num<?= $kppCls ?>"><?= number_format($v) ?></td><?php endforeach; ?>
@@ -159,6 +159,8 @@ $rek_sfx = ($p['jenis'] === 'PNS') ? '.00001' : '.00002';
         fn($dm) => $dm['hitung']['belanja']['jkk'] ?? 0],
       ['5.1.01.01.011', 'Belanja Iuran Jaminan Kematian '.$jl.' (disetor)',
         fn($dm) => $dm['hitung']['belanja']['jkm'] ?? 0],
+      ['5.1.01.01.012', 'Iuran Tapera '.$jl.' (2,5%) [dipotong pegawai]',
+        fn($dm) => $dm['hitung']['iuran']['tapera_pegawai'] ?? 0],
     ];
     foreach ($pot_rows as [$rek, $lbl, $cb]):
         $lbl_html = '<span class="rekening-badge">'.$rek.$rek_sfx.'</span> '.$lbl;
@@ -174,6 +176,7 @@ $rek_sfx = ($p['jenis'] === 'PNS') ? '.00001' : '.00002';
         $b  = $dm['hitung']['belanja'];
         $v  = ($iu['bpjs_kes_pegawai']??0)
              +($iu['pensiun_pegawai']??0)+($iu['jht_taspen']??0)+($iu['jht']??0)+($iu['jp']??0)
+             +($iu['tapera_pegawai']??0)
              +($b['pph21']??0)+($b['bpjs_kes_employer']??0)+($b['jkk']??0)+($b['jkm']??0);
         $grand_pot += $v;
         $kppCls = !empty($dm['pensiun']) ? ' kpp-col' : '';

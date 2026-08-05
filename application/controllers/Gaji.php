@@ -151,7 +151,8 @@ class Gaji extends MY_Controller {
 			'pot_total' => 0, 'bersih' => 0,
 			'bel_bpjs_gaji' => 0, 'bel_bpjs_tpp' => 0,
 			'bel_pph21' => 0, 'bel_pph21_tpp' => 0,
-			'bel_jkk' => 0, 'bel_jkm' => 0,
+			'bel_jkk' => 0, 'bel_jkm' => 0, 'bel_tapera' => 0,
+			'pot_tapera' => 0,
 			'pensiun_count' => 0,
 		);
 		$totals = array('all' => $t0, 'pns' => $t0, 'pppk' => $t0);
@@ -196,6 +197,8 @@ class Gaji extends MY_Controller {
 				$totals[$tk]['bel_pph21_tpp']    += ($h['belanja']['pph21_tpp'] ?? 0);
 				$totals[$tk]['bel_jkk']          += $h['belanja']['jkk'];
 				$totals[$tk]['bel_jkm']          += $h['belanja']['jkm'];
+				$totals[$tk]['bel_tapera']       += ($h['belanja']['tapera'] ?? 0);
+				$totals[$tk]['pot_tapera']       += ($h['iuran']['tapera_pegawai'] ?? 0);
 			}
 		}
 
@@ -437,7 +440,12 @@ class Gaji extends MY_Controller {
 		$jht = ($jenis === 'PPPK') ? (int) round($gaji_pokok * 0.02) : 0;
 		$jp  = ($jenis === 'PPPK') ? (int) round($gaji_pokok * 0.01) : 0;
 
-		$total_potong_pegawai = $bpjs_kes_pegawai + $pensiun_pegawai + $jht_taspen + $jht + $jp;
+		// Tapera PP 21/2024: basis = gapok + tunjangan keluarga; tidak berlaku gaji ke-13/14
+		$dasar_tapera = $gaji_pokok + $t_istri + $t_anak;
+		$tapera_peg = ($is_ke === 0 && $jenis !== 'NON_ASN') ? (int) round($dasar_tapera * 0.025) : 0;
+		$tapera_pem = ($is_ke === 0 && $jenis !== 'NON_ASN') ? (int) round($dasar_tapera * 0.005) : 0;
+
+		$total_potong_pegawai = $bpjs_kes_pegawai + $pensiun_pegawai + $jht_taspen + $jht + $jp + $tapera_peg;
 
 		// ── 9. BELANJA PEMERINTAH (tidak dipotong dari gaji) ─────────────────────────
 		// BPJS Kes employer: 4% dari dasar BPJS (terpisah dari bagian pegawai)
@@ -630,6 +638,7 @@ class Gaji extends MY_Controller {
 				'jht_taspen'        => $jht_taspen,
 				'jht'               => $jht,
 				'jp'                => $jp,
+				'tapera_pegawai'    => $tapera_peg,
 				'bpjs_tpp_pegawai'  => $bpjs_tpp_pegawai,
 			),
 			'potongan' => array_values(array_filter(array(
@@ -638,6 +647,7 @@ class Gaji extends MY_Controller {
 				$jht_taspen        ? array('rekening' => '5.1.01.01.013'.$rek_sfx, 'label' => 'Taspen — JHT (3,25%)',             'nominal' => $jht_taspen)       : NULL,
 				$jht               ? array('rekening' => '5.1.01.01.013'.$rek_sfx, 'label' => 'BPJS TK — JHT (2%)',              'nominal' => $jht)              : NULL,
 				$jp                ? array('rekening' => '5.1.01.01.013'.$rek_sfx, 'label' => 'BPJS TK — JP (1%)',               'nominal' => $jp)               : NULL,
+				$tapera_peg        ? array('rekening' => '5.1.01.01.012'.$rek_sfx, 'label' => 'Iuran Tapera (2,5%)',             'nominal' => $tapera_peg)       : NULL,
 				$bpjs_tpp_pegawai  ? array('rekening' => '5.1.01.01.009'.$rek_sfx, 'label' => 'BPJS Kesehatan TPP (1%)',         'nominal' => $bpjs_tpp_pegawai) : NULL,
 			))),
 			'total_potong' => $total_potong_pegawai,
@@ -647,6 +657,7 @@ class Gaji extends MY_Controller {
 				'bpjs_tpp'          => $bpjs_tpp,
 				'jkk'               => $jkk,
 				'jkm'               => $jkm,
+				'tapera'            => $tapera_pem,
 				'pph21'             => $pph21,
 				'pph21_tpp'         => $pph21_tpp,
 			),

@@ -425,7 +425,7 @@ $uniq_pppk = count(array_filter($peg_rows, fn($r) => $r['jenis'] === 'PPPK'));
         ['row', '5.1.01.01.011', 'Belanja Iuran Jaminan Kematian ASN',
           fn($d)=>$d['bel_jkm']??0, fn($d)=>0],
         ['row', '5.1.01.01.012', 'Belanja Iuran Simpanan Peserta Tabungan Perumahan Rakyat ASN',
-          fn($d)=>0, fn($d)=>0],
+          fn($d)=>$d['bel_tapera']??0, fn($d)=>0],
         ['subtotal_group', 'Subtotal Belanja Gaji dan Tunjangan (5.1.01.01)'],
         ['spacer'],
         ['group', '5.1.01.02', '5.1.01.02   Belanja Tambahan Penghasilan ASN'],
@@ -622,7 +622,7 @@ $uniq_pppk = count(array_filter($peg_rows, fn($r) => $r['jenis'] === 'PPPK'));
             <th rowspan="2" class="text-center align-middle">Gol</th>
             <th colspan="12" class="text-center" style="background:#dbeafe;color:#1e40af">KOMPONEN GAJI (001–012)</th>
             <th rowspan="2" class="text-end align-middle" style="background:#fef9c3;color:#78350f;min-width:80px">Total Bruto</th>
-            <th colspan="7" class="text-center" style="background:#fce7f3;color:#9d174d">POTONGAN &amp; PENYETORAN</th>
+            <th colspan="8" class="text-center" style="background:#fce7f3;color:#9d174d">POTONGAN &amp; PENYETORAN</th>
             <th rowspan="2" class="text-end align-middle" style="background:#fce7f3;color:#9d174d;min-width:80px">Total Pot.</th>
             <th rowspan="2" class="text-end align-middle" style="background:#d1fae5;color:#065f46;min-width:80px">Gaji Bersih</th>
             <th colspan="2" class="text-center" style="background:#dcfce7;color:#14532d">TPP</th>
@@ -645,6 +645,7 @@ $uniq_pppk = count(array_filter($peg_rows, fn($r) => $r['jenis'] === 'PPPK'));
             <th class="text-end" style="min-width:65px">009 Peg<br>BPJS (1%)</th>
             <th class="text-end" style="min-width:65px">013<br>Pensiun</th>
             <th class="text-end" style="min-width:55px">013<br>JHT</th>
+            <th class="text-end" style="min-width:65px">012<br>Tapera (2,5%)</th>
             <th class="text-end" style="min-width:65px">007<br>PPh DTP</th>
             <th class="text-end" style="min-width:65px">009 Empl<br>BPJS (4%)</th>
             <th class="text-end" style="min-width:55px">010<br>JKK</th>
@@ -657,7 +658,7 @@ $uniq_pppk = count(array_filter($peg_rows, fn($r) => $r['jenis'] === 'PPPK'));
         <?php
         $no = 0;
         $ft = array_fill_keys(['gapok','tkel','tjab','tfung','tfung_umum','tpangan','t007','tpemb',
-            'bpjs_empl','jkk','jkm','bruto','bpjs_peg','pensiun','jht','pph21',
+            'bpjs_empl','jkk','jkm','tapera_pem','bruto','bpjs_peg','pensiun','jht','tapera_peg','pph21',
             'bpjs_empl_dis','jkk_dis','jkm_dis','total_pot','bersih',
             'tpp','bpjs_tpp_peg','tpp_bersih','total_thp'], 0);
         foreach ($peg_rows as $pr):
@@ -666,6 +667,7 @@ $uniq_pppk = count(array_filter($peg_rows, fn($r) => $r['jenis'] === 'PPPK'));
           $detail_url = site_url('rekap/detail/'.$pr['id'].'/'.$p['tahun'].'/'.$p['bm'].'/'.$p['ba']);
           $t007      = ($t['t_khusus']??0) + ($t['pph21']??0);
           $total_pot = ($t['pot_bpjs']??0)+($t['pot_pensiun_peg']??0)+($t['pot_jht_taspen']??0)
+                      +($t['pot_tapera_peg']??0)
                       +($t['pph21']??0)+($t['bel_bpjs_gaji']??0)+($t['bel_jkk']??0)+($t['bel_jkm']??0);
           $ft['gapok']       += $t['gaji_pokok']??0;
           $ft['tkel']        += $t['t_keluarga']??0;
@@ -678,10 +680,12 @@ $uniq_pppk = count(array_filter($peg_rows, fn($r) => $r['jenis'] === 'PPPK'));
           $ft['bpjs_empl']   += $t['bel_bpjs_gaji']??0;
           $ft['jkk']         += $t['bel_jkk']??0;
           $ft['jkm']         += $t['bel_jkm']??0;
+          $ft['tapera_pem']  += $t['bel_tapera']??0;
           $ft['bruto']       += $t['bruto_gaji']??0;
           $ft['bpjs_peg']    += $t['pot_bpjs']??0;
           $ft['pensiun']     += $t['pot_pensiun_peg']??0;
           $ft['jht']         += $t['pot_jht_taspen']??0;
+          $ft['tapera_peg']  += $t['pot_tapera_peg']??0;
           $ft['pph21']       += $t['pph21']??0;
           $ft['bpjs_empl_dis'] += $t['bel_bpjs_gaji']??0;
           $ft['jkk_dis']     += $t['bel_jkk']??0;
@@ -718,11 +722,12 @@ $uniq_pppk = count(array_filter($peg_rows, fn($r) => $r['jenis'] === 'PPPK'));
           <td class="text-end"><?= ($t['bel_bpjs_gaji']??0) ? number_format($t['bel_bpjs_gaji']) : '—' ?></td>
           <td class="text-end"><?= ($t['bel_jkk']??0) ? number_format($t['bel_jkk']) : '—' ?></td>
           <td class="text-end"><?= ($t['bel_jkm']??0) ? number_format($t['bel_jkm']) : '—' ?></td>
-          <td class="text-end text-muted">—</td>
+          <td class="text-end"><?= ($t['bel_tapera']??0) ? number_format($t['bel_tapera']) : '—' ?></td>
           <td class="text-end fw-semibold" style="background:#fef9c3"><?= number_format($t['bruto_gaji']??0) ?></td>
           <td class="text-end"><?= ($t['pot_bpjs']??0) ? number_format($t['pot_bpjs']) : '—' ?></td>
           <td class="text-end"><?= ($t['pot_pensiun_peg']??0) ? number_format($t['pot_pensiun_peg']) : '—' ?></td>
           <td class="text-end"><?= ($t['pot_jht_taspen']??0) ? number_format($t['pot_jht_taspen']) : '—' ?></td>
+          <td class="text-end"><?= ($t['pot_tapera_peg']??0) ? number_format($t['pot_tapera_peg']) : '—' ?></td>
           <td class="text-end"><?= ($t['pph21']??0) ? number_format($t['pph21']) : '—' ?></td>
           <td class="text-end"><?= ($t['bel_bpjs_gaji']??0) ? number_format($t['bel_bpjs_gaji']) : '—' ?></td>
           <td class="text-end"><?= ($t['bel_jkk']??0) ? number_format($t['bel_jkk']) : '—' ?></td>
@@ -750,11 +755,12 @@ $uniq_pppk = count(array_filter($peg_rows, fn($r) => $r['jenis'] === 'PPPK'));
             <td class="text-end"><?= number_format($ft['bpjs_empl']) ?></td>
             <td class="text-end"><?= number_format($ft['jkk']) ?></td>
             <td class="text-end"><?= number_format($ft['jkm']) ?></td>
-            <td class="text-end">—</td>
+            <td class="text-end"><?= number_format($ft['tapera_pem']) ?></td>
             <td class="text-end" style="background:#fef9c3"><?= number_format($ft['bruto']) ?></td>
             <td class="text-end"><?= number_format($ft['bpjs_peg']) ?></td>
             <td class="text-end"><?= number_format($ft['pensiun']) ?></td>
             <td class="text-end"><?= number_format($ft['jht']) ?></td>
+            <td class="text-end"><?= number_format($ft['tapera_peg']) ?></td>
             <td class="text-end"><?= number_format($ft['pph21']) ?></td>
             <td class="text-end"><?= number_format($ft['bpjs_empl_dis']) ?></td>
             <td class="text-end"><?= number_format($ft['jkk_dis']) ?></td>
