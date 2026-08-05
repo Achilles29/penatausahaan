@@ -343,28 +343,26 @@ var REK_RINGKASAN = [
 var _ringTotals = null; // stored for a# cadangan reactivity
 
 function updateCadanganGaji() {
-  if (!_ringTotals) return;
-  var pct = parseFloat(document.getElementById('gCadPct').value) || 0;
-  var el  = document.getElementById('gCadResult');
+  var pct  = parseFloat(document.getElementById('gCadPct').value) || 0;
+  var mult = 1 + pct / 100;
+  document.querySelectorAll('#tblRingkasan tbody td[data-orig]').forEach(function(td) {
+    var v = parseInt(td.dataset.orig) || 0;
+    td.textContent = v ? Math.round(v * mult).toLocaleString('id-ID') : '—';
+  });
+  var el = document.getElementById('gCadResult');
   if (!el) return;
-  var _g = _ringTotals.totG, _t = _ringTotals.totT, _a = _ringTotals.totAll;
-  function fmt(n) { return Math.round(n).toLocaleString('id-ID'); }
-  if (pct <= 0) {
-    el.innerHTML = '<span class="text-muted" style="font-size:.75rem">Masukkan a# &gt; 0 untuk proyeksi cadangan anggaran</span>';
-    return;
+  if (pct > 0 && _ringTotals) {
+    var totA = _ringTotals.totAll;
+    var buf  = Math.round(totA * pct / 100);
+    el.innerHTML = '<div class="d-flex flex-wrap gap-3 align-items-center" style="font-size:.78rem">'
+      + '<span class="badge bg-warning text-dark fw-semibold">a# '+pct+'% aktif — nilai tabel sudah disesuaikan</span>'
+      + '<span class="text-muted">Total asal: <b>Rp '+totA.toLocaleString('id-ID')+'</b>'
+      + ' &rarr; Proyeksi: <b style="color:#4c1d95">Rp '+Math.round(totA*mult).toLocaleString('id-ID')+'</b>'
+      + ' <span style="color:#dc2626">(+Rp '+buf.toLocaleString('id-ID')+')</span></span>'
+      + '</div>';
+  } else {
+    el.innerHTML = '<span class="text-muted" style="font-size:.75rem">Masukkan a# &gt; 0 — nilai semua rekening akan dikalikan (1 + a#)</span>';
   }
-  var cg = Math.round(_g * pct / 100), ct = Math.round(_t * pct / 100), ca = Math.round(_a * pct / 100);
-  el.innerHTML = '<div class="d-flex flex-wrap gap-4" style="font-size:.78rem">'
-    + '<div><div style="color:#64748b;font-size:.68rem">Total Asal</div>'
-    + '<div>Gaji <b>Rp '+fmt(_g)+'</b> + TPP <b>Rp '+fmt(_t)+'</b> = <b>Rp '+fmt(_a)+'</b></div></div>'
-    + '<div><div style="color:#64748b;font-size:.68rem">+ Cadangan a# ('+pct+'%)</div>'
-    + '<div>Gaji <b style="color:#dc2626">+Rp '+fmt(cg)+'</b>'
-    + ' + TPP <b style="color:#dc2626">+Rp '+fmt(ct)+'</b>'
-    + ' = <b style="color:#dc2626">+Rp '+fmt(ca)+'</b></div></div>'
-    + '<div><div style="color:#4c1d95;font-size:.68rem;font-weight:700">= Proyeksi Total</div>'
-    + '<div style="color:#4c1d95;font-weight:700">Gaji Rp '+fmt(_g+cg)+' + TPP Rp '+fmt(_t+ct)
-    + ' = <span style="font-size:.9rem">Rp '+fmt(_a+ca)+'</span></div></div>'
-    + '</div>';
 }
 
 function renderRingkasan(res) {
@@ -476,39 +474,39 @@ function renderRingkasan(res) {
     if (r.type === 'group') {
       grp_pns  = {g:0,t:0};
       grp_pppk = {g:0,t:0};
-      html += '<tr style="background:#334155;color:#e2e8f0">'
-        +'<td colspan="10" style="padding:7px 14px;font-weight:700;font-size:.78rem;letter-spacing:.04em">'+esc(r.lbl)+'</td></tr>';
+      html += '<tr style="background:#1e3a8a;color:#e0e7ff">'
+        +'<td colspan="10" style="padding:8px 14px;font-weight:700;font-size:.78rem;letter-spacing:.06em;text-transform:uppercase">'+esc(r.lbl)+'</td></tr>';
       return;
     }
     if (r.type === 'subtotal_group') {
       var sg=grp_pns.g, st=grp_pns.t, sppg=grp_pppk.g, sppt=grp_pppk.t;
-      html += '<tr style="background:#1e293b;color:#94a3b8;font-weight:600;font-size:.76rem">'
-        +'<td style="padding:5px 14px 5px 24px">Σ &nbsp;'+esc(r.lbl)+'</td>'
-        +'<td class="text-end">'+rh(sg)+'</td>'
-        +'<td class="text-end">'+rh(st)+'</td>'
-        +'<td class="text-end" style="color:#e2e8f0">'+rh(sg+st)+'</td>'
-        +'<td class="text-end">'+rh(sppg)+'</td>'
-        +'<td class="text-end">'+rh(sppt)+'</td>'
-        +'<td class="text-end" style="color:#e2e8f0">'+rh(sppg+sppt)+'</td>'
-        +'<td class="text-end">'+rh(sg+sppg)+'</td>'
-        +'<td class="text-end">'+rh(st+sppt)+'</td>'
-        +'<td class="text-end" style="color:#fff">'+rh(sg+st+sppg+sppt)+'</td>'
+      html += '<tr style="background:#dbeafe;color:#1e3a8a;font-weight:600;font-size:.77rem;border-top:2px solid #93c5fd;border-bottom:2px solid #93c5fd">'
+        +'<td style="padding:6px 14px 6px 22px">Σ&nbsp; '+esc(r.lbl)+'</td>'
+        +'<td class="text-end" data-orig="'+sg+'">'+rh(sg)+'</td>'
+        +'<td class="text-end" data-orig="'+st+'">'+rh(st)+'</td>'
+        +'<td class="text-end fw-bold" data-orig="'+(sg+st)+'" style="background:#bfdbfe;color:#1e40af">'+rh(sg+st)+'</td>'
+        +'<td class="text-end" data-orig="'+sppg+'">'+rh(sppg)+'</td>'
+        +'<td class="text-end" data-orig="'+sppt+'">'+rh(sppt)+'</td>'
+        +'<td class="text-end fw-bold" data-orig="'+(sppg+sppt)+'" style="background:#fde68a;color:#92400e">'+rh(sppg+sppt)+'</td>'
+        +'<td class="text-end" data-orig="'+(sg+sppg)+'">'+rh(sg+sppg)+'</td>'
+        +'<td class="text-end" data-orig="'+(st+sppt)+'">'+rh(st+sppt)+'</td>'
+        +'<td class="text-end fw-bold" data-orig="'+(sg+st+sppg+sppt)+'" style="background:#ddd6fe;color:#4c1d95">'+rh(sg+st+sppg+sppt)+'</td>'
         +'</tr>';
       return;
     }
     if (r.type === 'jumlah') {
       var pg=gt_pns.g, pt=gt_pns.t, ppg=gt_pppk.g, ppt=gt_pppk.t;
-      html += '<tr style="background:#0f172a;color:#fff;font-weight:700">'
-        +'<td style="padding:9px 14px">JUMLAH</td>'
-        +'<td class="text-end" style="background:#1e3a8a">'+rh(pg)+'</td>'
-        +'<td class="text-end" style="background:#1e3a8a">'+rh(pt)+'</td>'
-        +'<td class="text-end" style="background:#1d4ed8">'+rh(pg+pt)+'</td>'
-        +'<td class="text-end" style="background:#78350f">'+rh(ppg)+'</td>'
-        +'<td class="text-end" style="background:#78350f">'+rh(ppt)+'</td>'
-        +'<td class="text-end" style="background:#b45309">'+rh(ppg+ppt)+'</td>'
-        +'<td class="text-end" style="background:#3730a3">'+rh(pg+ppg)+'</td>'
-        +'<td class="text-end" style="background:#3730a3">'+rh(pt+ppt)+'</td>'
-        +'<td class="text-end" style="background:#5b21b6">'+rh(pg+pt+ppg+ppt)+'</td>'
+      html += '<tr style="background:#0f172a;color:#fff;font-weight:700;border-top:3px solid #4c1d95">'
+        +'<td style="padding:10px 14px;font-size:.85rem;letter-spacing:.04em">JUMLAH</td>'
+        +'<td class="text-end" data-orig="'+pg+'" style="background:#1e3a8a">'+rh(pg)+'</td>'
+        +'<td class="text-end" data-orig="'+pt+'" style="background:#1e3a8a">'+rh(pt)+'</td>'
+        +'<td class="text-end" data-orig="'+(pg+pt)+'" style="background:#1d4ed8">'+rh(pg+pt)+'</td>'
+        +'<td class="text-end" data-orig="'+ppg+'" style="background:#78350f">'+rh(ppg)+'</td>'
+        +'<td class="text-end" data-orig="'+ppt+'" style="background:#78350f">'+rh(ppt)+'</td>'
+        +'<td class="text-end" data-orig="'+(ppg+ppt)+'" style="background:#b45309">'+rh(ppg+ppt)+'</td>'
+        +'<td class="text-end" data-orig="'+(pg+ppg)+'" style="background:#3730a3">'+rh(pg+ppg)+'</td>'
+        +'<td class="text-end" data-orig="'+(pt+ppt)+'" style="background:#3730a3">'+rh(pt+ppt)+'</td>'
+        +'<td class="text-end" data-orig="'+(pg+pt+ppg+ppt)+'" style="background:#5b21b6">'+rh(pg+pt+ppg+ppt)+'</td>'
         +'</tr>';
       return;
     }
@@ -519,21 +517,21 @@ function renderRingkasan(res) {
     grp_pns.g+=pg;  grp_pns.t+=pt;
     grp_pppk.g+=ppg; grp_pppk.t+=ppt;
     var isZ=(pg+pt+ppg+ppt===0);
-    var zs=isZ?'color:#bbb':'';
+    var zs=isZ?'color:#b0b8c8':'';
     html += '<tr style="'+zs+'">'
-      +'<td style="padding-left:28px">'
-      +'<span style="font-family:monospace;font-size:.68rem;background:#e8eaf6;color:#3949ab;'
-      +'padding:1px 5px;border-radius:3px;margin-right:8px">'+esc(r.rek)+'</span>'
+      +'<td style="padding:5px 5px 5px 28px;color:#374151">'
+      +'<span style="font-family:monospace;font-size:.67rem;background:#e8eaf6;color:#3949ab;'
+      +'padding:1px 5px;border-radius:3px;margin-right:6px">'+esc(r.rek)+'</span>'
       +esc(r.lbl)+'</td>'
-      +'<td class="text-end">'+rh(pg)+'</td>'
-      +'<td class="text-end">'+rh(pt)+'</td>'
-      +'<td class="text-end fw-semibold"'+(isZ?'':' style="background:#eff6ff"')+'>'+rh(pg+pt)+'</td>'
-      +'<td class="text-end">'+rh(ppg)+'</td>'
-      +'<td class="text-end">'+rh(ppt)+'</td>'
-      +'<td class="text-end fw-semibold"'+(isZ?'':' style="background:#fffbeb"')+'>'+rh(ppg+ppt)+'</td>'
-      +'<td class="text-end">'+rh(tg)+'</td>'
-      +'<td class="text-end">'+rh(tt)+'</td>'
-      +'<td class="text-end fw-semibold"'+(isZ?'':' style="background:#f5f3ff"')+'>'+rh(tg+tt)+'</td>'
+      +'<td class="text-end" data-orig="'+pg+'">'+rh(pg)+'</td>'
+      +'<td class="text-end" data-orig="'+pt+'">'+rh(pt)+'</td>'
+      +'<td class="text-end fw-semibold" data-orig="'+(pg+pt)+'"'+(isZ?'':' style="background:#eff6ff;color:#1e40af"')+'>'+rh(pg+pt)+'</td>'
+      +'<td class="text-end" data-orig="'+ppg+'">'+rh(ppg)+'</td>'
+      +'<td class="text-end" data-orig="'+ppt+'">'+rh(ppt)+'</td>'
+      +'<td class="text-end fw-semibold" data-orig="'+(ppg+ppt)+'"'+(isZ?'':' style="background:#fef9c3;color:#92400e"')+'>'+rh(ppg+ppt)+'</td>'
+      +'<td class="text-end" data-orig="'+tg+'">'+rh(tg)+'</td>'
+      +'<td class="text-end" data-orig="'+tt+'">'+rh(tt)+'</td>'
+      +'<td class="text-end fw-semibold" data-orig="'+(tg+tt)+'"'+(isZ?'':' style="background:#f5f3ff;color:#4c1d95"')+'>'+rh(tg+tt)+'</td>'
       +'</tr>';
   });
   $('#ringkasanBody').html(html);

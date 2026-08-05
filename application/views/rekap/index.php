@@ -449,38 +449,42 @@ $uniq_pppk = count(array_filter($peg_rows, fn($r) => $r['jenis'] === 'PPPK'));
         $grp_pns  = ['gaji'=>0,'tpp'=>0];
         $grp_pppk = ['gaji'=>0,'tpp'=>0];
       ?>
-        <tr style="background:#334155;color:#e2e8f0">
-          <td colspan="10" style="padding:7px 14px;font-weight:700;font-size:.78rem;letter-spacing:.04em"><?= html_escape($r[2]) ?></td>
+        <tr style="background:#1e3a8a;color:#e0e7ff">
+          <td colspan="10" style="padding:8px 14px;font-weight:700;font-size:.78rem;letter-spacing:.06em;text-transform:uppercase">
+            <?= html_escape($r[2]) ?>
+          </td>
         </tr>
       <?php elseif ($type === 'subtotal_group'):
         $sg=$grp_pns['gaji']; $st=$grp_pns['tpp']; $sppg=$grp_pppk['gaji']; $sppt=$grp_pppk['tpp'];
       ?>
-        <tr style="background:#1e293b;color:#94a3b8;font-weight:600;font-size:.76rem">
-          <td style="padding:5px 14px 5px 24px">&#931; &nbsp;<?= html_escape($r[1]) ?></td>
-          <td class="text-end"><?= $rc($sg) ?></td>
-          <td class="text-end"><?= $rc($st) ?></td>
-          <td class="text-end" style="color:#e2e8f0"><?= $rc($sg+$st) ?></td>
-          <td class="text-end"><?= $rc($sppg) ?></td>
-          <td class="text-end"><?= $rc($sppt) ?></td>
-          <td class="text-end" style="color:#e2e8f0"><?= $rc($sppg+$sppt) ?></td>
-          <td class="text-end"><?= $rc($sg+$sppg) ?></td>
-          <td class="text-end"><?= $rc($st+$sppt) ?></td>
-          <td class="text-end" style="color:#fff"><?= $rc($sg+$st+$sppg+$sppt) ?></td>
+        <tr style="background:#dbeafe;color:#1e3a8a;font-weight:600;font-size:.77rem;border-top:2px solid #93c5fd;border-bottom:2px solid #93c5fd">
+          <td style="padding:6px 14px 6px 22px">
+            &#931;&nbsp; <?= html_escape($r[1]) ?>
+          </td>
+          <td class="text-end" data-orig="<?= $sg ?>"><?= $rc($sg) ?></td>
+          <td class="text-end" data-orig="<?= $st ?>"><?= $rc($st) ?></td>
+          <td class="text-end fw-bold" data-orig="<?= $sg+$st ?>" style="background:#bfdbfe;color:#1e40af"><?= $rc($sg+$st) ?></td>
+          <td class="text-end" data-orig="<?= $sppg ?>"><?= $rc($sppg) ?></td>
+          <td class="text-end" data-orig="<?= $sppt ?>"><?= $rc($sppt) ?></td>
+          <td class="text-end fw-bold" data-orig="<?= $sppg+$sppt ?>" style="background:#fde68a;color:#92400e"><?= $rc($sppg+$sppt) ?></td>
+          <td class="text-end" data-orig="<?= $sg+$sppg ?>"><?= $rc($sg+$sppg) ?></td>
+          <td class="text-end" data-orig="<?= $st+$sppt ?>"><?= $rc($st+$sppt) ?></td>
+          <td class="text-end fw-bold" data-orig="<?= $sg+$st+$sppg+$sppt ?>" style="background:#ddd6fe;color:#4c1d95"><?= $rc($sg+$st+$sppg+$sppt) ?></td>
         </tr>
       <?php elseif ($type === 'jumlah'):
         $pg=$gt_pns['gaji']; $pt=$gt_pns['tpp']; $ppg=$gt_pppk['gaji']; $ppt=$gt_pppk['tpp'];
       ?>
-        <tr style="background:#0f172a;color:#fff;font-weight:700">
-          <td style="padding:9px 14px">JUMLAH</td>
-          <td class="text-end" style="background:#1e3a8a"><?= $rc($pg) ?></td>
-          <td class="text-end" style="background:#1e3a8a"><?= $rc($pt) ?></td>
-          <td class="text-end" style="background:#1d4ed8"><?= $rc($pg+$pt) ?></td>
-          <td class="text-end" style="background:#78350f"><?= $rc($ppg) ?></td>
-          <td class="text-end" style="background:#78350f"><?= $rc($ppt) ?></td>
-          <td class="text-end" style="background:#b45309"><?= $rc($ppg+$ppt) ?></td>
-          <td class="text-end" style="background:#3730a3"><?= $rc($pg+$ppg) ?></td>
-          <td class="text-end" style="background:#3730a3"><?= $rc($pt+$ppt) ?></td>
-          <td class="text-end" style="background:#5b21b6"><?= $rc($pg+$pt+$ppg+$ppt) ?></td>
+        <tr style="background:#0f172a;color:#fff;font-weight:700;border-top:3px solid #4c1d95">
+          <td style="padding:10px 14px;font-size:.85rem;letter-spacing:.04em">JUMLAH</td>
+          <td class="text-end" data-orig="<?= $pg ?>" style="background:#1e3a8a"><?= $rc($pg) ?></td>
+          <td class="text-end" data-orig="<?= $pt ?>" style="background:#1e3a8a"><?= $rc($pt) ?></td>
+          <td class="text-end" data-orig="<?= $pg+$pt ?>" style="background:#1d4ed8"><?= $rc($pg+$pt) ?></td>
+          <td class="text-end" data-orig="<?= $ppg ?>" style="background:#78350f"><?= $rc($ppg) ?></td>
+          <td class="text-end" data-orig="<?= $ppt ?>" style="background:#78350f"><?= $rc($ppt) ?></td>
+          <td class="text-end" data-orig="<?= $ppg+$ppt ?>" style="background:#b45309"><?= $rc($ppg+$ppt) ?></td>
+          <td class="text-end" data-orig="<?= $pg+$ppg ?>" style="background:#3730a3"><?= $rc($pg+$ppg) ?></td>
+          <td class="text-end" data-orig="<?= $pt+$ppt ?>" style="background:#3730a3"><?= $rc($pt+$ppt) ?></td>
+          <td class="text-end" data-orig="<?= $pg+$pt+$ppg+$ppt ?>" style="background:#5b21b6"><?= $rc($pg+$pt+$ppg+$ppt) ?></td>
         </tr>
       <?php else: // 'row'
         $fn_g=$r[3]; $fn_t=$r[4];
@@ -493,20 +497,20 @@ $uniq_pppk = count(array_filter($peg_rows, fn($r) => $r['jenis'] === 'PPPK'));
         $grp_pppk['gaji']+=$ppg; $grp_pppk['tpp']+=$ppt;
         $z=($pg+$pt+$ppg+$ppt===0);
       ?>
-        <tr<?= $z?' style="color:#bbb"':'' ?>>
-          <td style="padding-left:28px">
-            <span style="font-family:monospace;font-size:.68rem;background:#e8eaf6;color:#3949ab;padding:1px 5px;border-radius:3px;margin-right:8px"><?= html_escape($r[1]) ?></span>
+        <tr<?= $z?' style="color:#b0b8c8"':'' ?>>
+          <td style="padding:5px 5px 5px 28px;color:#374151">
+            <span style="font-family:monospace;font-size:.67rem;background:#e8eaf6;color:#3949ab;padding:1px 5px;border-radius:3px;margin-right:6px"><?= html_escape($r[1]) ?></span>
             <?= html_escape($r[2]) ?>
           </td>
-          <td class="text-end"><?= $rc($pg) ?></td>
-          <td class="text-end"><?= $rc($pt) ?></td>
-          <td class="text-end fw-semibold"<?= $z?'':' style="background:#eff6ff"' ?>><?= $rc($pg+$pt) ?></td>
-          <td class="text-end"><?= $rc($ppg) ?></td>
-          <td class="text-end"><?= $rc($ppt) ?></td>
-          <td class="text-end fw-semibold"<?= $z?'':' style="background:#fffbeb"' ?>><?= $rc($ppg+$ppt) ?></td>
-          <td class="text-end"><?= $rc($tg) ?></td>
-          <td class="text-end"><?= $rc($tt) ?></td>
-          <td class="text-end fw-semibold"<?= $z?'':' style="background:#f5f3ff"' ?>><?= $rc($tg+$tt) ?></td>
+          <td class="text-end" data-orig="<?= $pg ?>"><?= $rc($pg) ?></td>
+          <td class="text-end" data-orig="<?= $pt ?>"><?= $rc($pt) ?></td>
+          <td class="text-end fw-semibold" data-orig="<?= $pg+$pt ?>"<?= $z?'':' style="background:#eff6ff;color:#1e40af"' ?>><?= $rc($pg+$pt) ?></td>
+          <td class="text-end" data-orig="<?= $ppg ?>"><?= $rc($ppg) ?></td>
+          <td class="text-end" data-orig="<?= $ppt ?>"><?= $rc($ppt) ?></td>
+          <td class="text-end fw-semibold" data-orig="<?= $ppg+$ppt ?>"<?= $z?'':' style="background:#fef9c3;color:#92400e"' ?>><?= $rc($ppg+$ppt) ?></td>
+          <td class="text-end" data-orig="<?= $tg ?>"><?= $rc($tg) ?></td>
+          <td class="text-end" data-orig="<?= $tt ?>"><?= $rc($tt) ?></td>
+          <td class="text-end fw-semibold" data-orig="<?= $tg+$tt ?>"<?= $z?'':' style="background:#f5f3ff;color:#4c1d95"' ?>><?= $rc($tg+$tt) ?></td>
         </tr>
       <?php endif; endforeach; ?>
       </tbody>
@@ -539,31 +543,29 @@ $uniq_pppk = count(array_filter($peg_rows, fn($r) => $r['jenis'] === 'PPPK'));
     </div>
     <script>
     (function(){
-      var _g=<?= (int)$r_tot_g ?>, _t=<?= (int)$r_tot_t ?>, _a=<?= (int)$r_tot_all ?>;
-      function fmt(n){return Math.round(n).toLocaleString('id-ID');}
-      function calc(){
-        var pct=parseFloat(document.getElementById('rCadPct').value)||0;
-        var el=document.getElementById('rCadResult');
-        if(pct<=0){
-          el.innerHTML='<span class="text-muted" style="font-size:.75rem">Masukkan a# &gt; 0 untuk proyeksi cadangan anggaran</span>';
-          return;
+      var _a = <?= (int)$r_tot_all ?>;
+      function applyAdj() {
+        var pct = parseFloat(document.getElementById('rCadPct').value) || 0;
+        var mult = 1 + pct / 100;
+        document.querySelectorAll('#tblRingkasan tbody td[data-orig]').forEach(function(td) {
+          var v = parseInt(td.dataset.orig) || 0;
+          td.textContent = v ? Math.round(v * mult).toLocaleString('id-ID') : '—';
+        });
+        var el = document.getElementById('rCadResult');
+        if (pct > 0) {
+          var buf = Math.round(_a * pct / 100);
+          el.innerHTML = '<div class="d-flex flex-wrap gap-3 align-items-center" style="font-size:.78rem">'
+            + '<span class="badge bg-warning text-dark fw-semibold">a# ' + pct + '% aktif — nilai tabel sudah disesuaikan</span>'
+            + '<span class="text-muted">Total asal: <b>Rp ' + _a.toLocaleString('id-ID') + '</b>'
+            + ' &rarr; Proyeksi: <b style="color:#4c1d95">Rp ' + Math.round(_a * mult).toLocaleString('id-ID') + '</b>'
+            + ' <span style="color:#dc2626">(+Rp ' + buf.toLocaleString('id-ID') + ')</span></span>'
+            + '</div>';
+        } else {
+          el.innerHTML = '<span class="text-muted" style="font-size:.75rem">Masukkan a# &gt; 0 — nilai semua rekening akan dikalikan (1 + a#)</span>';
         }
-        var cg=Math.round(_g*pct/100), ct=Math.round(_t*pct/100), ca=Math.round(_a*pct/100);
-        el.innerHTML='<div class="d-flex flex-wrap gap-4" style="font-size:.78rem">'
-          +'<div><div style="color:#64748b;font-size:.68rem">Total Asal</div>'
-          +'<div>Gaji <b>Rp '+fmt(_g)+'</b> + TPP <b>Rp '+fmt(_t)+'</b> = <b>Rp '+fmt(_a)+'</b></div></div>'
-          +'<div><div style="color:#64748b;font-size:.68rem">+ Cadangan a# ('+pct+'%)</div>'
-          +'<div>Gaji <b style="color:#dc2626">+Rp '+fmt(cg)+'</b>'
-          +' + TPP <b style="color:#dc2626">+Rp '+fmt(ct)+'</b>'
-          +' = <b style="color:#dc2626">+Rp '+fmt(ca)+'</b></div></div>'
-          +'<div><div style="color:#4c1d95;font-size:.68rem;font-weight:700">= Proyeksi Total</div>'
-          +'<div style="color:#4c1d95;font-weight:700">'
-          +'Gaji Rp '+fmt(_g+cg)+' + TPP Rp '+fmt(_t+ct)
-          +' = <span style="font-size:.9rem">Rp '+fmt(_a+ca)+'</span></div></div>'
-          +'</div>';
       }
-      var inp=document.getElementById('rCadPct');
-      if(inp){inp.addEventListener('input',calc);calc();}
+      var inp = document.getElementById('rCadPct');
+      if (inp) { inp.addEventListener('input', applyAdj); applyAdj(); }
     })();
     </script>
   </div>
