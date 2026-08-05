@@ -146,7 +146,8 @@ class Gaji extends MY_Controller {
 			't_pangan' => 0, 't_pembulatan' => 0,
 			'tpp' => 0, 'bruto' => 0,
 			'pot_bpjs_kes' => 0, 'pot_bpjs_tpp_peg' => 0,
-			'pot_pensiun' => 0, 'pot_jht' => 0, 'pot_jp' => 0,
+			'pot_pensiun' => 0, 'pot_pensiun_peg' => 0, 'pot_jht_taspen' => 0,
+			'pot_jht' => 0, 'pot_jp' => 0,
 			'pot_total' => 0, 'bersih' => 0,
 			'bel_bpjs_gaji' => 0, 'bel_bpjs_tpp' => 0,
 			'bel_pph21' => 0, 'bel_pph21_tpp' => 0,
@@ -183,6 +184,8 @@ class Gaji extends MY_Controller {
 				$totals[$tk]['pot_bpjs_kes']     += $h['iuran']['bpjs_kes_pegawai'];
 				$totals[$tk]['pot_bpjs_tpp_peg'] += ($h['iuran']['bpjs_tpp_pegawai'] ?? 0);
 				$totals[$tk]['pot_pensiun']      += $h['iuran']['pensiun_pegawai'] + ($h['iuran']['jht_taspen'] ?? 0);
+				$totals[$tk]['pot_pensiun_peg']  += $h['iuran']['pensiun_pegawai'];
+				$totals[$tk]['pot_jht_taspen']   += ($h['iuran']['jht_taspen'] ?? 0);
 				$totals[$tk]['pot_jht']          += $h['iuran']['jht'];
 				$totals[$tk]['pot_jp']           += $h['iuran']['jp'];
 				$totals[$tk]['pot_total']        += $h['total_potong'];
@@ -283,7 +286,32 @@ class Gaji extends MY_Controller {
 		{
 			$lahir_date   = new DateTime($peg['tgl_lahir']);
 			$usia_target  = (int) $lahir_date->diff($target_date)->y;
-			$pensiun_target = ($usia_target >= $bup);
+			// Cek usia di akhir bulan agar pegawai lahir di pertengahan/akhir bulan
+			// terdeteksi pensiun pada bulan ulang tahun BUP-nya, bukan bulan berikutnya.
+			$bulan_akhir  = (clone $target_date)->modify('last day of this month');
+			$pensiun_target = ((int) $lahir_date->diff($bulan_akhir)->y >= $bup);
+		}
+
+		// ── KPP — Kenaikan Pangkat Pengabdian (PP 11/2017 Ps.166) ───────────────────
+		// PNS yang mencapai BUP di bulan target → gaji terakhir dihitung 1 pangkat di atas.
+		// MKG di golongan baru = 0 (baru masuk pangkat).
+		$kpp_aktif    = FALSE;
+		$golongan_asli = $golongan;
+		if ($pensiun_target && $jenis === 'PNS' && $golongan)
+		{
+			$pns_gol = array(
+				'I/a','I/b','I/c','I/d',
+				'II/a','II/b','II/c','II/d',
+				'III/a','III/b','III/c','III/d',
+				'IV/a','IV/b','IV/c','IV/d','IV/e',
+			);
+			$kpp_idx = array_search($golongan, $pns_gol);
+			if ($kpp_idx !== FALSE && $kpp_idx < count($pns_gol) - 1)
+			{
+				$golongan  = $pns_gol[$kpp_idx + 1];
+				$kpp_aktif = TRUE;
+				// MKG tetap (tidak di-reset ke 0): KPP naik pangkat, bukan mengulang masa kerja.
+			}
 		}
 
 		// ── 1. GAJI POKOK ────────────────────────────────────────────────────────────
@@ -547,6 +575,8 @@ class Gaji extends MY_Controller {
 				'bup'             => $bup,
 				'sisa_bup'        => $sisa_bup,
 				'pensiun_di_target' => $pensiun_target,
+				'kpp_aktif'       => $kpp_aktif,
+				'golongan_asli'   => $golongan_asli,
 				'tmt_kp'          => $peg['tmt_kenaikan_pangkat'],
 				'hari_kp'         => $hari_kp,
 				'target_bulan'    => $target_bulan,
@@ -569,8 +599,13 @@ class Gaji extends MY_Controller {
 				'tpp'              => $tpp,
 			),
 			'penghasilan' => array_values(array_filter(array(
-				array('rekening' => '5.1.01.01.001'.$rek_sfx, 'label' => 'Gaji Pokok (Gol.'.$golongan.', MKG'.($gapok_row?$gapok_row['masa_kerja']:0).')'.($persen_gaji!==100?' ['.$persen_gaji.'%]':''),
-					'nominal' => $gaji_pokok, 'catatan' => ($gapok_row ? $gapok_row['pp_nomor'] : 'Data gaji pokok belum tersedia').($kgb_info?' · '.$kgb_info:'').($persen_gaji!==100?' · '.$persen_gaji.'% (CPNS/Hudis)':'')),
+				array('rekening' => '5.1.01.01.001'.$rek_sfx,
+					'label' => 'Gaji Pokok (Gol.'.$golongan.($kpp_aktif?' [KPP dari '.$golongan_asli.']':'').', MKG'.($gapok_row?$gapok_row['masa_kerja']:0).')'.($persen_gaji!==100?' ['.$persen_gaji.'%]':''),
+					'nominal' => $gaji_pokok,
+					'catatan' => ($gapok_row ? $gapok_row['pp_nomor'] : 'Data gaji pokok belum tersedia')
+						.($kpp_aktif ? ' · KPP: pangkat naik '.$golongan_asli.' → '.$golongan.' (PP 11/2017 Ps.166)' : '')
+						.($kgb_info?' · '.$kgb_info:'')
+						.($persen_gaji!==100?' · '.$persen_gaji.'% (CPNS/Hudis)':'')),
 				array('rekening' => '5.1.01.01.002'.$rek_sfx, 'label' => 'Tunjangan Suami/Istri (10%)',
 					'nominal' => $t_istri,
 					'catatan' => $status_nik !== 'KAWIN' ? '—' : ($terima_tk ? '' : 'Tidak diklaim — pasangan ASN dengan gapok lebih tinggi')),

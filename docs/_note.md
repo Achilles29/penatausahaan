@@ -117,249 +117,6 @@ Tahap 3–5 setelahnya
 
 
 
-
-sebelum masuk NPD, kita pindah tema sebentar
-
-rencananya aplikasi ini juga akan saya gunakan untuk perhitungan gaji. untuk perencaan kebutuhan gaji
-jadi saya butuh master pegawai mengakomodir data data yang digunakan untuk perhitungan gaji, seperti istri, jumlah anak, BUP, tmt kenaikan pangkat YAD, jabatan (struktural / fungsional), dan lain sebagainya.
-lalu master gaji pns dan p3k, master golongan pns dan p3k, intinya semua yang berkaitan untuk perhitungan gaji asn.
- ada ide ? coba cari pengetahuan tentang itu dan sesuaikan. kejutkan saya!
-
-
-
-
- - rapikan modal edit dan tambah pegawai, karena data yang masuk sekarnag banyak , agar lebih nyaman
- - rekening gaji pegawai seperti yang ada di master rekening 5.1.01, coba cari referensi masing masing rumusnya, lalu data apa saja yang kira kira dibutuhkan untuk master pegawai yang belum ada.
- misal : 
- gaji pokok PNS => golongan dan masa kerja, berarti butuh tmt cpns / masa kerja
- tunjangan beras =>  Rp7.242 per jiwa per bulan
- dan seterusnya
-- yang agak kesulitan adalah rumus perhitungan pajak / pph dan pembulatan, saya belum nemu rumusnya
-- untuk tambahan penghasilan pegawai besaran diambil dari perbup tpp rembang sesuai kelas jabatan. kita buat master tpp yang tertaging langsung dengan  jabatan terntentu
-- Belanja PPH dan Iuran Jaminan Kesehatan ini diperhitungkan untuk gaji dan tpp (bpjs untuk tpp dihitung 4% dari tpp yang diterima masing masing pegawai). pisahkan perhitungannya, tapi nanti tetap bisa disatukan di UI untuk rekening yang sama
-
-- kunci dari perhitungan gaji adalah data pegawai yang valid.
-
-- hasil akhir adalah dengan klik hitung, bisa menghitung estimasi gaji pegawai berdasarkan data dasar sampai dengan bulan tertentu. data dihitung per pegawai, dengan memperhatikan kenaikan pangkat, kenaikan gaji berkala, pensiun, dan tunjangan lainnya.
-
-sesuaikan database dan UI yang perlu disesuaikan. kalau sudah nanti saya eksekusi data yang dibutuhkan
-
-ralat tunjangan beras betul 10 kg per jiwa per bulan, tapi harganya yang disesuaikan tadi.
-
-
-revisi ref_gaji_pokok , gaji pokok bukan hanya bergantung pada golongan, tapi juga masa kerja. yang tertulis di tabel baru masa kerja 0
-
-
-
-
-- jangan lupa gaji 13 dan 14. gaji 13 dan 14 ini nanti bisa diatur, besarannya berdasarkan bulan apa. misal gaji 14 berdasarkan bulan maret. lalu ingat pph gaji 13 dan 14 ini jauh lebih besar dari gaji biasa
-- status pegawai ada pns , cpns , ppk. jika pegawai cpns maka ada tanggal pengangkatan cpns nya, karena nanti gajinya berubah dari 80% jadi 100%. lalu untuk gaji sendiri juga memungkinkan 50% jika sedang terkena hudis.
-
-- master tpp bisa kamu isi berdasarkan besaran di lampiran perbup_tpp pada folder master
-
-
-- tmt cpns dan pns kan sudah ada, walaupun master kgb, kp , diisi, tapi tetap perlu pengecekan jika ada anomali data yang tidak sinkron berdasarkan data master yang diinput dan berdasarkan data dasar pegawai tmt cpns dan pns serta tanggal lahirnya
-
-- jangan lupa sebulan sebelum pensiun, pegawai mendapatkan kenaikan pangkat sehingga gaji juga naik
-
-- master tunjangan fungsional (tertentu) dan tunjangan khusus bisa dilihat dari file GARAP_GAJI di master. tunjangan khusus ini tidak semua pegawai dapat, tapi perlu dimasukkan ke data pegawai (opsional) jika memang pegawai tsbt berhak mendapatkan 
-===========
-
-perlu kita perbaiki:
-- di reff kelas jabatan ada kolom tpp tapi kosong
-- di reff tpp seharusnya ada kolom kelas jabatan.
-- reff jabatan perlu diubah , isinya nama jabatan khusus per opd, bukan nama jabatan sesuai perbup tpp, karena jabatan perbup tpp itu global menggabungkan beberapa jabatan. hapus jabatan yang sudah diinput 
-- reff tpp 
- perlu ada resolusi kedua tabel itu, menurut saya kolom tpp dan tukin di kelas jabatan dihapus, lalu di reff tpp tambahkan kolom kelas jabatan id, tidak perlu kolom jabatan, tapi tambahkan uraian yang berisi nama jabatan di excel, jadi logika taging nya dibalik, bukan tpp yang melekat pada jabatan id, tapi jabatan id yang mempunyai tpp id.  dan di crud pegawai cukup form tpp saja tidak perlu kelas jabatan, tapi preview yang ditampilkan : Kelas Jabatan - Nama Jabtan (sesuai excel) - besaran TPP
-
-
- urutkan tampilan /master/pegawai : id opd, eselon tertinggi, pangkat golongan tertinggi, usia tertinggi
-
- 
-rekap gaji (perhitungan gaji) pegawai, buat beberapa modul yang bisa menggenreate :
-- gaji pada range bulan tertentu (misal januari 2027 - desember 2027 , termasuk 13 dan 14)
-- bisa dipisahkan pns dan pppk
-- bisa dipisahkan antara gaji dan tpp , namun bisa tetap menghitung total dikarenakan Pph dan bpjs tpp diambil dari rekening gaji. dan untuk pajak tpp 5% dan 15 % tergantung golongannya
-- bisa dilihat detail per pegawai untuk melihat gaji per bulan per rekeningnya
-
-
-perlu ada penyesuaian pemisahan antara status kawin dan tunjangan istri. jika data di excel tj istri 0 bukan berarti tidak kawin, bisa jadi istrinya juga asn dengan tunjangan yg lebih besar. jadi tunjangannya ikut istri
-
-
-/rekap error, tampilan acak acakan
-Fatal error: Cannot redeclare row_cells() (previously declared in C:\xampp\htdocs\penatausahaan\application\views\rekap\index.php:222) in C:\xampp\htdocs\penatausahaan\application\views\rekap\index.php on line 222
-A PHP Error was encountered
-
-Severity: Error
-
-Message: Cannot redeclare row_cells() (previously declared in C:\xampp\htdocs\penatausahaan\application\views\rekap\index.php:222)
-
-Filename: rekap/index.php
-
-Line Number: 222
-
-Backtrace:
-
-
-/gaji/rekap hasil hitungan buat 2 tab , rekap per rekening dan tab per pegawai. pastikan data ditampilkan berdasarkan rekening belanja pegawai (yang tidak ada hitungannya, misal tidak dikenai pajak berarti ditampilkan 0), urutan tampilan  :  urutkan tampilan /master/pegawai : id opd, eselon tertinggi, pangkat golongan tertinggi, usia tertinggi
-cek juga di master pegawai saya cek tidak ada eselon, HARUSNya ada kolom eselon, dan sinrkon dengan reff jabatan yang dipilih
-
-
-halaman /gaji/rekap kenapa hanya menampilkan pns? pppk mana?
-semua halaman yang menampilkan pegawai, urutan seharusnya adalah id opd, eselon tertinggi, pangkat golongan tertinggi, usia tertinggi
-
-pph dan pbjs memang ditanggung negara, tapi tetap harus dicatat keluar masuknya ya. jadi diterima tetap dicatat, dibayarkan juga dicatat
-
-
-- revisi urutan pegawai, eselon tertinggi itu yang angkanya terendah! II A, IIB, IIIA dan seterusnya, PNS dulu baru PPPK. jadi saya ulangi : PNS , PPPK , baru eselon
-- 
-
-- perbaiki data pegawai, buat semua uppercase agar konsisten, cek UI nya juga
-- saya cek MUKHAMMAD ANWAR FU`ADI, SSTP, M.Si , /gaji/simulasi:
-  =>Tunjangan PPh 21 muncul Rp 164.508 , padahal seharusnya tidak kena pajak. bisa coba jelaskan kenapa muncul pajak?
-  => untuk tunjangan askes / BPJS kesehatan seharunsya 212453 tapi di simulasi muncul 173253 jelaskan
-  => JKK harusnya 9119 , jelaskan	
-  => JKM harusnya 27356, jekaskan
-  => tunjangan pembulatan harusnya 22, jelaskan
-
-  coba cek iwp_beban_pegawai	iwp_beban_pembkerja	iwp_taspen di file excel barangkali dibutuhkan
-
-
-  coba ya kamu cek C:\xampp\htdocs\penatausahaan\docs\master\pegawai.xlsx atas nama MUKHAMMAD ANWAR FU`ADI, SSTP, M.Si , mulai kolom gapok sampai kolom bersih. hitungannya masih beda dengan hitunganmu. (gaji ya, bukan tpp, tpp kita bahas nanti setelah gaji clear)
-
-sekilas saya cek perhitungan tunjangan pajak dan pembulatan belum sesuai. kamu tahu rumusnya nggak sih?
-
-
-untuk pengaturan tpp:
-- pajak dibayarkan oleh negara
-- bpjs dibayarkan negara 4%, dipotong dari tpp 1%.
-- jadi secara total pengurangan tpp hanya 1%
-- paja dan bpjs diperhitungkan dalam perhitungan total tunjangan pph dan tunjangan bpjs (tapi tetap pisahkan tampilannya agar jelas mana gaji mana tpp, walaupun pada akhirnya digabungkan ke rekningnya)
-
-
-a#
-
-
-saya coba untuk sala satu simulasi tpp:
-5.1.01.02.001 Tambahan Penghasilan Pegawai (TPP) — Sekretaris Dinas/Badan/Satpol PPDasar: Perbup Rembang 2024Rp 4.500.000
-5.1.01.02.001 PPh 21 TPP (15%) — Ditanggung Negara Gol IV DTPRp 675.000
-5.1.01.02.001 BPJS Kesehatan dari TPP — Pemberi Kerja (4%) DTPRp 180.000
-5.1.01.02.001 PPh 21 TPP — setor ke kas negara (DTP)(Rp 675.000)
-5.1.01.02.001 BPJS Kes TPP — setor ke BPJS (4%) (DTP)(Rp 180.000)
-5.1.01.02.001 BPJS Kesehatan TPP — Pegawai (1%)
-
-PPH dan BPJS kode rekeningnya salah, harusnya 5.1.01.01.xxx bukan 5.1.01.02.xxx karena masuk ke komponen Gaji dan Tunjangan, bukan komponent tambahan penghasilan. namun untuk tampilannya memang sudah benar dipisah antara Gaji dan tambahan penghasilan. cek lagi!
-
- BPJS Kesehatan TPP — Pegawai (1%) itu tanggungang pegawai yang dipotong dari tpp yang diterima bukan negara, jadi diperhitungkan untuk thp pegawai tapi tidak diperhitungkan sebagai beban negara.
-=====================
-
-
-kemudian, untuk logika model simulasi sudah benar, sekarang tinggal terapkan ke logika /rekap/detail/, /rekap, /gaji/rekap. harusnya modelnya sama.
-
-
-
-- cek KGB apakah sudah diperhitungkan? bagaimana mengitung gaji berkala? apakah dari hitungan masa kerja atau dari kolom KGB yad ?
-
-
-
-- buat agar /gaji/simulasi bisa memilih bulan, termasuk gaji 13 dan 14
-- /gaji/rekap data yang ditampilkan persis sama dengan simulasi per orang, semua rekening muncul termasuk pembulatan bisa memilih 13 dan 14
-- buat tampilan /rekap turun ke bawah per rekening, bulannya ke kanan. dan pastikan rekening mengikuti kodifikasi. pembulatan dijumlahkan berdasarkan hitungan pembulatan per pegawai per orang.
-
-
-Applicacifus competition. Let me sir me, sir. Misa learners.- sesuaikan lagi /rekap dan /gaji/rekap , seharusnya dipisah antara PNS , PPPK, Gaji, TPP, karena rekeningnya masing masing beda. Rekening Gaji dan TPP PNS dan PPPK beda, jadi buat tab nya semua terpisah. dan pastikan semua rekening tampil meskipun 0, jangan ada yang digabung. tampilan rekening urut dari terkecil sampai terbesar yang gunanya untuk menghitung besaran anggaran yang dibutuhkan. lalu buatkan tombol download excel sesuai data yang di generate
-
-- Terkait gaji 13 dan 14, kamu tau ketentuannya nggak? hitungannya beda dengan gaji reguler. pajaknya juga lebih besar. cek lagi
-
-
-
-revisi ya:
-- /gaji/simulasi Tunjangan PPh 21 Gaji ke 13 sepertinya sudah benar, tapi untuk TPP masih salah. Tunjangan PPh 21 TPP tetap flat 15 % dan 5 %. perbaiki juga untuk /gaji/rekap dan /rekap.
-
-- buat tampilan /gaji/rekap dan /rekap seperti /gaji/simulasi yang menampilkan Gaji Bruto dan Gaji Bersih
-
-- tampilan TPP juga seharusnya menampilkan TPP Bruto dan TPP Bersih untuk ketiga halaman agar ketahuan jumlah anggaran yang digunakan
-
-- tampilan /gaji/rekap per pegawai seharusnya menampilkan semua data per rekening seperti simulasi, jangan ada yang digabung. baik Gaji dan TPP. saya lihat PPH belum muncul di gaji kotor. dan potongan masih digabung.
-
-
-- tampilan /rekap/detail/**/*/*/** juga belum menampilkan semua rekening seperti tampilan simulasi
-
-Perbaiki
-
-revisi tampilan /master/pegawai:
-kolom 1:
-NAMA
-NIP
-
-kolom 2:
-STATUS (PNS /CPNS/PPPK)
-PANGKAT
-GOLONGAN
-% GAJI
-
-Kolom 3:
-MKG
-KGB YAD
-KP YAD
-
-Kolom 4:
-ESELON
-JABATAN
-
-
-kOLOM 5:
-TERIMA TUNJANGAN KELUARGA ( YA ATAU TIDAK)
-STATUS KAWIN
-JUMLAH ANAK
-
-KOLOM 6
-OPD
-
-
-
-- hitung /gaji/simulasi malah tidak tampil apa apa
-- /gaji/rekap dan /rekap untuk rekening pph tidak muncul
-yang benar kan 
-5.1.01.01.007	Belanja Tunjangan PPh/Tunjangan Khusus ASN
-5.1.01.01.007.00001	Belanja Tunjangan PPh/Tunjangan Khusus PNS
-5.1.01.01.007.00002	Belanja Tunjangan PPh/Tunjangan Khusus PPPK
-dan PPH masuk disana
-
-- tampilan /gaji/rekap per pegawai masih kacau kolomnya
-
-
-perbaikan tampilan untuk TPP ya. jadi sekali lagi konsep kita adalah menghitung kebutuhan anggaran.
-jadi tampilan seharusnya kurang lebih seperti ini:
-- rekening tpp
-- rekeninf pph
-- rekening bpjs (pemberi kerja)
-
-itu bruto yang dianggarkan
-
-baru dibawahnya bersih nya adalah tpp dikurangi bpjs mandiri 1% 
-secara hitungan memang sudah sesuai tapi secara tampilan kurang pas untuk menghitung kebutuhan anggaran
-
-
-perbaiki
-
-
-download excel kok csv
-
-saya punya pertanyaan, carikan jawabannya, lalu apakah sudah sesuai dengan konsep kita? kalau masih ada yang salah maka perbaiki
-
-- jika seorang ASN sudah menikah dan mempunyai anak, tapi pasangannya juga ASN dengan gaji yang lebih besar, maka tunjangan Keluarga (anak dan istri) ikut ke pasangannya. di database kita sudah ada Status Perkawinan, jumlah anak , Terima tunjangan keluarga , apakah jika status kawin dan jumlah anak ada, tapi terima tunjangan keluarga = 0, pegawai tersebut tetap menerima tunjangan istri dan anak? lalu sesuai ketentuan bagaimana dengan tunjangan beras? apakah jika tujangan ikut pasangan maka pegawai tsbt masih menerima tunjangan beras? untuk pegawa YBS saja atau untuk keluarganya juga? lalu bagaimana dengan konsep kita apakah sudah sesuai ketentuan?
-- jika anak lebih dari 2, maka yang dihitung tunjangan anak hanya 2, apakah aplikasi kita sudah seperti itu? bagaimana dengan tunjangan beras? 
-
-
-
-Gaji terakhir pegawai yang pensiun adalah 1 pangkat diatasnya. saya cek belum dihitung
-=================================
-=================================
-=================================
-
-
-
 sesuaikan lagi hak akses menu:
 - ubah polanya seperti pola hak akses C:\xampp\htdocs\pustaka, dimana ada ijin CRUD nya, bukan hanya ijin modul
 - lalu kecuali superadmin, masing masing user hanya bisa mengakses opd nya masing masing
@@ -429,3 +186,69 @@ jadi mungkin saat membuat pinbuk perlu memilih apakah itu termasuk belanja perja
 
 
 - rapikan lagi tampilan cetak pindah buku
+
+
+=================================
+=================================
+=================================
+
+download excel kok csv
+
+
+Gaji terakhir pegawai yang pensiun adalah 1 pangkat diatasnya. jadi pegawai naik pangkat di bulan terakhir. saya cek belum dihitung. perbaiki
+
+
+/gaji/rekap dan /rekap belum menampilkan rekening sesuai nomoneklatur. cek lagi
+
+
+cek penamaan rekening di /rekap/detail/**** masih belum sesuai rekening
+/gaji/rekap dan /rekap tunjangan pph masih kosong semua
+
+
+/gaji/rekap dan /rekap pph masih kosong (gambar 1 dan 3). per pegawai juga masih kosong semua (gambar 2 dan 4)
+
+hapus  "— T.Khusus"	 di Belanja Tunjangan PPh/Tunjangan Khusus PNS atau PPK — T.Khusus'
+
+
+saya cek SRI BARLIYANT , gaji nya belum naik di bulan terakhir sebelum pensiun
+
+
+REVISI
+/rekap dan /gaji/rekap buat urutan tampilannya jadi:
+
+PNS  (PPPK AKHIRAN 2 SESUAI NOMENKLATUR):
+5.1.01.01.001.00001	Belanja Gaji Pokok PNS
+5.1.01.01.002.00001	Belanja Tunjangan Keluarga PNS
+5.1.01.01.003.00001	Belanja Tunjangan Jabatan PNS
+5.1.01.01.004.00001	Belanja Tunjangan Fungsional PNS
+5.1.01.01.005.00001	Belanja Tunjangan Fungsional Umum PNS
+5.1.01.01.006.00001	Belanja Tunjangan Beras PNS
+5.1.01.01.007.00001	Belanja Tunjangan PPh/Tunjangan Khusus PNS
+5.1.01.01.008.00001	Belanja Pembulatan Gaji PNS
+5.1.01.01.009.00001	Belanja Iuran Jaminan Kesehatan PNS
+5.1.01.01.010.00001	Belanja Iuran Jaminan Kecelakaan Kerja PNS
+5.1.01.01.011.00001	Belanja Iuran Jaminan Kematian PNS
+5.1.01.01.012.00001	Belanja Iuran Simpanan Peserta Tabungan Perumahan Rakyat PNS
+
+Total Bruto Gaji :
+5.1.01.01.009.00001 BPJS Kesehatan Gaji (1%)
+5.1.01.01.013.00001 Taspen — Iuran Pensiun (4,75%)
+5.1.01.01.013.00001 Taspen — JHT (3,25%)
+5.1.01.01.007.00001 Tunjangan PPh 21 — Ditanggung Pemerintah (disetor)
+5.1.01.01.009.00001 BPJS Kesehatan — Pemberi Kerja (4%) (disetor)
+5.1.01.01.010.00001 Iuran JKK — Pemberi Kerja (0,24%) (disetor)
+5.1.01.01.011.00001 Iuran JKM — Pemberi Kerja (0,30%) (disetor)
+
+Total Potongan & Penyetoran
+
+GAJI BERSIH :
+
+
+
+untuk Tapera baiknya tetap dihitung kamu tau hitungannya??
+
+
+
+- Subtotal Belanja kolom JUMLAH juga ditotal
+- perhitungan a# seharusnya untuk semua rekening, bukan hanya total.
+- rapikan lagi tampilan tabel agar terlihat profesional dan tampilan jelas. cek juga pilihan warna

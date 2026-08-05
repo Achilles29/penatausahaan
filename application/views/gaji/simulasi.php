@@ -300,6 +300,7 @@ var SIM = { peg_url:'<?= $peg_url ?>', hitung_url:'<?= $hitung_url ?>' };
       var kpLabel = p.hari_kp > 0 ? 'KP dalam ' + p.hari_kp + ' hari' : 'KP terlambat ' + Math.abs(p.hari_kp) + ' hari';
       chips += '<span class="career-chip ' + kpCls + '"><i class="fa-solid fa-arrow-up"></i> ' + esc(kpLabel) + ' (' + p.tmt_kp + ')</span>';
     }
+    if (p.kpp_aktif)       chips += '<span class="career-chip danger"><i class="fa-solid fa-medal"></i> KPP: Gol. ' + esc(p.golongan_asli) + ' → ' + esc(p.golongan) + ' (gaji pensiun PP 11/2017)</span>';
     if (p.kgb_berikutnya) chips += '<span class="career-chip warn"><i class="fa-solid fa-rotate"></i> KGB berikutnya: ' + p.kgb_berikutnya + '</span>';
     if (p.kgb_info)       chips += '<span class="career-chip ok"><i class="fa-solid fa-circle-up"></i> ' + esc(p.kgb_info) + '</span>';
     if (p.kelas_jabatan)  chips += '<span class="career-chip"><i class="fa-solid fa-layer-group"></i> Kelas ' + p.kelas_jabatan + (p.tpp_uraian ? ' — ' + esc(p.tpp_uraian) : '') + '</span>';

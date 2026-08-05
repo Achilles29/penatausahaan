@@ -19,6 +19,8 @@ $rek_sfx = ($p['jenis'] === 'PNS') ? '.00001' : '.00002';
 .tbl-det tr.dtp-row td { background:#fef9c3; }
 .tbl-det tr.pot-row td { background:#fce7f3; }
 .tbl-det td.neg { color:#b91c1c; }
+.tbl-det th.kpp-col { background:#fee2e2 !important; color:#991b1b; }
+.tbl-det td.kpp-col { background:#fff5f5 !important; }
 .rekening-badge { font-size:.68rem; padding:1px 5px; background:#e8eaf6; color:#3949ab; border-radius:4px; font-family:monospace; }
 </style>
 
@@ -58,11 +60,12 @@ $rek_sfx = ($p['jenis'] === 'PNS') ? '.00001' : '.00002';
     <thead>
       <tr>
         <th class="align-middle" style="min-width:280px">Komponen / Rekening</th>
-        <?php foreach ($detail_months as $dm): if ($dm['pensiun']) continue; ?>
-        <th class="text-center <?= $dm['is_ke'] ? 'ke-row' : '' ?>" style="min-width:110px">
+        <?php foreach ($detail_months as $dm): ?>
+        <th class="text-center <?= !empty($dm['pensiun']) ? 'kpp-col' : ($dm['is_ke'] ? 'ke-row' : '') ?>" style="min-width:110px">
           <?= $bln_names[$dm['bulan']] ?><br>
           <small><?= $dm['tahun'] ?></small>
           <?php if ($dm['is_ke']): ?><br><span class="badge bg-warning text-dark" style="font-size:.65rem">Ke-<?= $dm['is_ke'] ?></span><?php endif; ?>
+          <?php if (!empty($dm['pensiun'])): ?><br><span class="badge bg-danger text-white" style="font-size:.65rem">KPP</span><?php endif; ?>
         </th>
         <?php endforeach; ?>
         <th class="text-center" style="min-width:120px; background:#ede9fe">Total</th>
@@ -70,7 +73,7 @@ $rek_sfx = ($p['jenis'] === 'PNS') ? '.00001' : '.00002';
     </thead>
     <tbody>
     <?php
-    $active_months = array_filter($detail_months, fn($dm) => !$dm['pensiun']);
+    $active_months = $detail_months; // includes KPP pensiun month (shown with red badge)
     $ncols = count($active_months);
 
     // Helper: render a data row
@@ -80,8 +83,9 @@ $rek_sfx = ($p['jenis'] === 'PNS') ? '.00001' : '.00002';
         foreach ($months as $dm) {
             $v = $cb($dm);
             $grand += $v;
-            $keCls = $dm['is_ke'] ? ' mat-ke' : '';
-            $cells .= '<td class="num'.($neg?' neg':'').$keCls.'">'.($v ? number_format($v) : '—').'</td>';
+            $keCls  = $dm['is_ke']           ? ' mat-ke'  : '';
+            $kppCls = !empty($dm['pensiun']) ? ' kpp-col' : '';
+            $cells .= '<td class="num'.($neg?' neg':'').$keCls.$kppCls.'">'.($v ? number_format($v) : '—').'</td>';
         }
         $rowCls = $cls ? ' class="'.$cls.'"' : '';
         return '<tr'.$rowCls.'><td>'.$label.'</td>'.$cells
@@ -92,20 +96,27 @@ $rek_sfx = ($p['jenis'] === 'PNS') ? '.00001' : '.00002';
     }
     ?>
 
-    <!-- ══ KOMPONEN GAJI ══ -->
-    <?= det_section('KOMPONEN GAJI (Rekening 5.1.01.01.xxx'.$rek_sfx.')', $ncols, '#dbeafe', '#1e40af') ?>
+    <!-- ══ KOMPONEN GAJI (001–012) ══ -->
+    <?= det_section('KOMPONEN GAJI (Rekening 5.1.01.01.001–012'.$rek_sfx.')', $ncols, '#dbeafe', '#1e40af') ?>
 
     <?php
+    $jl = $p['jenis']; // 'PNS' atau 'PPPK'
     $k_rows = [
-      ['5.1.01.01.001', 'Gaji Pokok ASN',              fn($dm) => $dm['hitung']['komponen']['gaji_pokok']   ?? 0],
-      ['5.1.01.01.002', 'Tunjangan Istri/Suami (10%)', fn($dm) => $dm['hitung']['komponen']['t_istri']      ?? 0],
-      ['5.1.01.01.002', 'Tunjangan Anak (2%/anak)',    fn($dm) => $dm['hitung']['komponen']['t_anak']       ?? 0],
-      ['5.1.01.01.003', 'Tunjangan Jabatan Struktural',fn($dm) => $dm['hitung']['komponen']['t_jabatan_str']  ?? 0],
-      ['5.1.01.01.004', 'Tunjangan Fungsional',         fn($dm) => $dm['hitung']['komponen']['t_jabatan_fung'] ?? 0],
-      ['5.1.01.01.005', 'Tunjangan Fungsional Umum',   fn($dm) => $dm['hitung']['komponen']['t_jabatan_umum'] ?? 0],
-      ['5.1.01.01.006', 'Tunjangan Pangan / Beras',    fn($dm) => $dm['hitung']['komponen']['t_pangan']     ?? 0],
-      ['5.1.01.01.007', 'Tunjangan Khusus',             fn($dm) => $dm['hitung']['komponen']['t_khusus']    ?? 0],
-      ['5.1.01.01.008', 'Tunjangan Pembulatan',         fn($dm) => $dm['hitung']['komponen']['t_pembulatan'] ?? 0],
+      ['5.1.01.01.001', 'Belanja Gaji Pokok '.$jl,                                    fn($dm) => $dm['hitung']['komponen']['gaji_pokok']    ?? 0],
+      ['5.1.01.01.002', 'Belanja Tunjangan Keluarga '.$jl.' — Istri/Suami (10%)',     fn($dm) => $dm['hitung']['komponen']['t_istri']       ?? 0],
+      ['5.1.01.01.002', 'Belanja Tunjangan Keluarga '.$jl.' — Anak (2%/anak)',        fn($dm) => $dm['hitung']['komponen']['t_anak']        ?? 0],
+      ['5.1.01.01.003', 'Belanja Tunjangan Jabatan '.$jl.' (Struktural)',              fn($dm) => $dm['hitung']['komponen']['t_jabatan_str']  ?? 0],
+      ['5.1.01.01.004', 'Belanja Tunjangan Fungsional '.$jl,                           fn($dm) => $dm['hitung']['komponen']['t_jabatan_fung'] ?? 0],
+      ['5.1.01.01.005', 'Belanja Tunjangan Fungsional Umum '.$jl,                     fn($dm) => $dm['hitung']['komponen']['t_jabatan_umum'] ?? 0],
+      ['5.1.01.01.006', 'Belanja Tunjangan Beras '.$jl,                               fn($dm) => $dm['hitung']['komponen']['t_pangan']      ?? 0],
+      // 007 = t_khusus + PPh DTP (total kewajiban rekening 007)
+      ['5.1.01.01.007', 'Belanja Tunjangan PPh/Tunjangan Khusus '.$jl,
+        fn($dm) => ($dm['hitung']['komponen']['t_khusus']??0)+($dm['hitung']['belanja']['pph21']??0)],
+      ['5.1.01.01.008', 'Belanja Pembulatan Gaji '.$jl,                               fn($dm) => $dm['hitung']['komponen']['t_pembulatan']  ?? 0],
+      ['5.1.01.01.009', 'Belanja Iuran Jaminan Kesehatan '.$jl,                       fn($dm) => $dm['hitung']['belanja']['bpjs_kes_employer'] ?? 0],
+      ['5.1.01.01.010', 'Belanja Iuran Jaminan Kecelakaan Kerja '.$jl,               fn($dm) => $dm['hitung']['belanja']['jkk'] ?? 0],
+      ['5.1.01.01.011', 'Belanja Iuran Jaminan Kematian '.$jl,                       fn($dm) => $dm['hitung']['belanja']['jkm'] ?? 0],
+      ['5.1.01.01.012', 'Belanja Iuran Simpanan Peserta Tapera '.$jl,                fn($dm) => 0],
     ];
     foreach ($k_rows as [$rek, $lbl, $cb]):
         $lbl_html = '<span class="rekening-badge">'.$rek.$rek_sfx.'</span> '.$lbl;
@@ -113,66 +124,70 @@ $rek_sfx = ($p['jenis'] === 'PNS') ? '.00001' : '.00002';
     endforeach;
     ?>
 
-    <!-- Gaji Bruto subtotal -->
+    <!-- Gaji Bruto subtotal — komponen + DTP (PPh + BPJS Empl + JKK + JKM) -->
     <tr class="sub-total">
-      <td><strong>Gaji Bruto (Komponen)</strong></td>
+      <td><strong>Total Bruto Gaji</strong></td>
       <?php $grand_bruto=0; foreach ($active_months as $dm):
         $k = $dm['hitung']['komponen'];
+        $b = $dm['hitung']['belanja'];
         $v = ($k['gaji_pokok']??0)+($k['t_istri']??0)+($k['t_anak']??0)
             +($k['t_jabatan_str']??0)+($k['t_jabatan_fung']??0)+($k['t_jabatan_umum']??0)
-            +($k['t_khusus']??0)+($k['t_pangan']??0)+($k['t_pembulatan']??0);
+            +($k['t_khusus']??0)+($k['t_pangan']??0)+($k['t_pembulatan']??0)
+            +($b['pph21']??0)+($b['bpjs_kes_employer']??0)+($b['jkk']??0)+($b['jkm']??0);
         $grand_bruto += $v;
-      ?><td class="num"><?= number_format($v) ?></td><?php endforeach; ?>
+        $kppCls = !empty($dm['pensiun']) ? ' kpp-col' : '';
+      ?><td class="num<?= $kppCls ?>"><?= number_format($v) ?></td><?php endforeach; ?>
       <td class="num"><?= number_format($grand_bruto) ?></td>
     </tr>
 
-    <!-- ══ DTP + IURAN EMPLOYER ══ -->
-    <?= det_section('DITANGGUNG PEMERINTAH + IURAN PEMBERI KERJA', $ncols, '#fef9c3', '#78350f') ?>
-
-    <?php
-    $dtp_rows = [
-      ['5.1.01.01.007', 'Tunjangan PPh Gaji — Ditanggung Pemerintah',
-        fn($dm) => $dm['hitung']['belanja']['pph21'] ?? 0],
-      ['5.1.01.01.009', 'BPJS Kes Gaji — Pegawai (1%) [anggaran]',
-        fn($dm) => $dm['hitung']['iuran']['bpjs_kes_pegawai'] ?? 0],
-      ['5.1.01.01.009', 'BPJS Kes Gaji — Pemberi Kerja (4%)',
-        fn($dm) => $dm['hitung']['belanja']['bpjs_kes_employer'] ?? 0],
-      ['5.1.01.01.010', 'Iuran JKK — Pemberi Kerja (0,24%)',
-        fn($dm) => $dm['hitung']['belanja']['jkk'] ?? 0],
-      ['5.1.01.01.011', 'Iuran JKM — Pemberi Kerja (0,30%)',
-        fn($dm) => $dm['hitung']['belanja']['jkm'] ?? 0],
-    ];
-    foreach ($dtp_rows as [$rek, $lbl, $cb]):
-        $lbl_html = '<span class="rekening-badge">'.$rek.$rek_sfx.'</span> '.$lbl;
-        echo det_row($lbl_html, $active_months, $cb, 'dtp-row');
-    endforeach;
-    ?>
-
-    <!-- ══ POTONGAN PEGAWAI ══ -->
-    <?= det_section('POTONGAN GAJI — DITANGGUNG PEGAWAI', $ncols, '#fce7f3', '#9d174d') ?>
+    <!-- ══ POTONGAN & PENYETORAN ══ -->
+    <?= det_section('POTONGAN & PENYETORAN (Dipotong dari Gaji + Disetor ke Pihak Ketiga)', $ncols, '#fce7f3', '#9d174d') ?>
 
     <?php
     $pot_rows = [
-      ['5.1.01.01.009', 'BPJS Kesehatan Pegawai (1%)',
+      ['5.1.01.01.009', 'BPJS Kesehatan Gaji '.$jl.' — Pegawai (1%) [dipotong]',
         fn($dm) => $dm['hitung']['iuran']['bpjs_kes_pegawai'] ?? 0],
-      ['5.1.01.01.013', 'Iuran Pensiun / JHT / JP',
-        fn($dm) => ($dm['hitung']['iuran']['pensiun_pegawai']??0)
-                  +($dm['hitung']['iuran']['jht_taspen']??0)
-                  +($dm['hitung']['iuran']['jht']??0)
-                  +($dm['hitung']['iuran']['jp']??0)],
+      ['5.1.01.01.013', 'Taspen — Iuran Pensiun '.$jl.' (4,75%) [dipotong]',
+        fn($dm) => $dm['hitung']['iuran']['pensiun_pegawai'] ?? 0],
+      ['5.1.01.01.013', 'Taspen — JHT '.$jl.' (3,25%) [dipotong]',
+        fn($dm) => $dm['hitung']['iuran']['jht_taspen'] ?? 0],
+      ['5.1.01.01.007', 'Tunjangan PPh 21 '.$jl.' — DTP (disetor ke KPP)',
+        fn($dm) => $dm['hitung']['belanja']['pph21'] ?? 0],
+      ['5.1.01.01.009', 'Belanja Iuran Jaminan Kesehatan '.$jl.' — Pemberi Kerja (4%) (disetor ke BPJS)',
+        fn($dm) => $dm['hitung']['belanja']['bpjs_kes_employer'] ?? 0],
+      ['5.1.01.01.010', 'Belanja Iuran Jaminan Kecelakaan Kerja '.$jl.' (disetor)',
+        fn($dm) => $dm['hitung']['belanja']['jkk'] ?? 0],
+      ['5.1.01.01.011', 'Belanja Iuran Jaminan Kematian '.$jl.' (disetor)',
+        fn($dm) => $dm['hitung']['belanja']['jkm'] ?? 0],
     ];
     foreach ($pot_rows as [$rek, $lbl, $cb]):
         $lbl_html = '<span class="rekening-badge">'.$rek.$rek_sfx.'</span> '.$lbl;
-        echo det_row($lbl_html, $active_months, $cb, 'pot-row', true);
+        echo det_row($lbl_html, $active_months, $cb, 'pot-row');
     endforeach;
     ?>
+
+    <!-- Total Potongan & Penyetoran -->
+    <tr style="background:#fce7f3;color:#9d174d;font-weight:700">
+      <td><strong>Total Potongan &amp; Penyetoran</strong></td>
+      <?php $grand_pot=0; foreach ($active_months as $dm):
+        $iu = $dm['hitung']['iuran'];
+        $b  = $dm['hitung']['belanja'];
+        $v  = ($iu['bpjs_kes_pegawai']??0)
+             +($iu['pensiun_pegawai']??0)+($iu['jht_taspen']??0)+($iu['jht']??0)+($iu['jp']??0)
+             +($b['pph21']??0)+($b['bpjs_kes_employer']??0)+($b['jkk']??0)+($b['jkm']??0);
+        $grand_pot += $v;
+        $kppCls = !empty($dm['pensiun']) ? ' kpp-col' : '';
+      ?><td class="num<?= $kppCls ?>"><?= number_format($v) ?></td><?php endforeach; ?>
+      <td class="num"><?= number_format($grand_pot) ?></td>
+    </tr>
 
     <!-- Bersih Gaji -->
     <tr class="bersih">
       <td><strong>Bersih Gaji (Diterima Pegawai)</strong></td>
       <?php $grand_bg=0; foreach ($active_months as $dm):
         $v = $dm['bersih_gaji'] ?? 0; $grand_bg += $v;
-      ?><td class="num"><?= number_format($v) ?></td><?php endforeach; ?>
+        $kppCls = !empty($dm['pensiun']) ? ' kpp-col' : '';
+      ?><td class="num<?= $kppCls ?>"><?= number_format($v) ?></td><?php endforeach; ?>
       <td class="num"><?= number_format($grand_bg) ?></td>
     </tr>
 
@@ -184,21 +199,22 @@ $rek_sfx = ($p['jenis'] === 'PNS') ? '.00001' : '.00002';
     $tpp_rate_info = (strpos($g, 'IV') === 0) ? 'Pajak flat 15% (Gol IV)' : 'Pajak flat 5%';
     ?>
     <tr class="tpp-hdr">
-      <td><span class="rekening-badge">5.1.01.02.001<?= $rek_sfx ?></span> TPP Bruto
+      <td><span class="rekening-badge">5.1.01.02.001<?= $rek_sfx ?></span>
+        Belanja Tambahan Penghasilan berdasarkan Beban Kerja <?= html_escape($jl) ?>
         <small class="text-muted ms-2">(<?= $tpp_rate_info ?>)</small>
       </td>
       <?php $grand_tpp=0; foreach ($active_months as $dm):
         $v = $dm['hitung']['komponen']['tpp'] ?? 0; $grand_tpp += $v;
-      ?><td class="num"><?= $v ? number_format($v) : '—' ?></td><?php endforeach; ?>
+        $kppCls = !empty($dm['pensiun']) ? ' kpp-col' : '';
+      ?><td class="num<?= $kppCls ?>"><?= $v ? number_format($v) : '—' ?></td><?php endforeach; ?>
       <td class="num fw-semibold"><?= number_format($grand_tpp) ?></td>
     </tr>
 
     <!-- PPh TPP DTP -->
     <?php
-    echo det_row('<span class="rekening-badge">5.1.01.01.007'.$rek_sfx.'</span> Tunjangan PPh TPP — Ditanggung Pemerintah <span class="badge bg-warning text-dark ms-1" style="font-size:.6rem">DTP</span>',
+    echo det_row('<span class="rekening-badge">5.1.01.01.007'.$rek_sfx.'</span> Belanja Tunjangan PPh/Tunjangan Khusus '.html_escape($jl).' — TPP (DTP) <span class="badge bg-warning text-dark ms-1" style="font-size:.6rem">DTP</span>',
         $active_months, fn($dm) => $dm['pajak_tpp'] ?? 0, 'dtp-row');
-    // BPJS TPP Employer DTP
-    echo det_row('<span class="rekening-badge">5.1.01.01.009'.$rek_sfx.'</span> BPJS Kes TPP — Pemberi Kerja (4%) <span class="badge bg-warning text-dark ms-1" style="font-size:.6rem">DTP</span>',
+    echo det_row('<span class="rekening-badge">5.1.01.01.009'.$rek_sfx.'</span> Belanja Iuran Jaminan Kesehatan '.html_escape($jl).' — TPP Pemberi Kerja (4%) <span class="badge bg-warning text-dark ms-1" style="font-size:.6rem">DTP</span>',
         $active_months, fn($dm) => $dm['hitung']['belanja']['bpjs_tpp'] ?? 0, 'dtp-row');
     ?>
 
@@ -210,13 +226,14 @@ $rek_sfx = ($p['jenis'] === 'PNS') ? '.00001' : '.00002';
             +($dm['pajak_tpp']??0)
             +($dm['hitung']['belanja']['bpjs_tpp']??0);
         $grand_tpp_angg += $v;
-      ?><td class="num" style="background:#fef9c3;color:#78350f"><?= $v ? number_format($v) : '—' ?></td><?php endforeach; ?>
+        $kppCls = !empty($dm['pensiun']) ? ' kpp-col' : '';
+      ?><td class="num<?= $kppCls ?>" <?= empty($dm['pensiun']) ? 'style="background:#fef9c3;color:#78350f"' : '' ?>><?= $v ? number_format($v) : '—' ?></td><?php endforeach; ?>
       <td class="num" style="background:#fef9c3;color:#78350f"><?= $grand_tpp_angg ? number_format($grand_tpp_angg) : '—' ?></td>
     </tr>
 
     <!-- BPJS TPP Pegawai (dipotong dari TPP) -->
     <?php
-    echo det_row('<span class="rekening-badge">5.1.01.01.009'.$rek_sfx.'</span> BPJS Kes TPP — Pegawai (1%) <em class="text-muted" style="font-size:.75rem">(dipotong dari TPP)</em>',
+    echo det_row('<span class="rekening-badge">5.1.01.01.009'.$rek_sfx.'</span> Belanja Iuran Jaminan Kesehatan '.html_escape($jl).' — TPP Pegawai (1%) <em class="text-muted" style="font-size:.75rem">(dipotong dari TPP)</em>',
         $active_months, fn($dm) => $dm['bpjs_tpp_peg'] ?? 0, 'pot-row', true);
     ?>
 
@@ -224,7 +241,8 @@ $rek_sfx = ($p['jenis'] === 'PNS') ? '.00001' : '.00002';
       <td><strong>Bersih TPP (Diterima Pegawai)</strong></td>
       <?php $grand_tb=0; foreach ($active_months as $dm):
         $v = $dm['tpp_bersih'] ?? 0; $grand_tb += $v;
-      ?><td class="num"><?= $v ? number_format($v) : '—' ?></td><?php endforeach; ?>
+        $kppCls = !empty($dm['pensiun']) ? ' kpp-col' : '';
+      ?><td class="num<?= $kppCls ?>"><?= $v ? number_format($v) : '—' ?></td><?php endforeach; ?>
       <td class="num"><?= number_format($grand_tb) ?></td>
     </tr>
 
@@ -233,7 +251,8 @@ $rek_sfx = ($p['jenis'] === 'PNS') ? '.00001' : '.00002';
       <td><strong>TOTAL BERSIH TERIMA (Gaji + TPP)</strong></td>
       <?php $grand_tot=0; foreach ($active_months as $dm):
         $v = $dm['bersih_total'] ?? 0; $grand_tot += $v;
-      ?><td class="num"><?= number_format($v) ?></td><?php endforeach; ?>
+        $kppCls = !empty($dm['pensiun']) ? ' kpp-col' : '';
+      ?><td class="num<?= $kppCls ?>"><?= number_format($v) ?></td><?php endforeach; ?>
       <td class="num"><?= number_format($grand_tot) ?></td>
     </tr>
 
@@ -243,11 +262,21 @@ $rek_sfx = ($p['jenis'] === 'PNS') ? '.00001' : '.00002';
   </div>
 </div>
 
-<?php if (count(array_filter($detail_months, fn($dm) => $dm['pensiun']))): ?>
-<div class="alert alert-warning mt-3">
-  <i class="fa-solid fa-triangle-exclamation me-1"></i>
-  Bulan yang tidak dihitung karena sudah BUP: <?= implode(', ', array_map(function($dm) use ($bln_names) {
-    return $bln_names[$dm['bulan']].' '.$dm['tahun'];
-  }, array_filter($detail_months, fn($dm) => $dm['pensiun']))) ?>
+<?php
+$kpp_months = array_values(array_filter($detail_months, fn($dm) => $dm['pensiun']));
+if (count($kpp_months)):
+    $km       = $kpp_months[0];
+    $gol_asli = $km['hitung']['pegawai']['golongan_asli'] ?? '?';
+    $gol_kpp  = $km['hitung']['pegawai']['golongan']      ?? '?';
+    $bup_usia = $km['hitung']['pegawai']['bup']           ?? 58;
+?>
+<div class="alert alert-info mt-3 small">
+  <i class="fa-solid fa-circle-info me-1"></i>
+  <strong>Kenaikan Pangkat Pengabdian (KPP)</strong> —
+  <?= html_escape($p['nama']) ?> mencapai BUP <?= $bup_usia ?> tahun pada
+  <?= $bln_names[$km['bulan']].' '.$km['tahun'] ?>.
+  Kolom <span class="badge bg-danger text-white">KPP</span> menunjukkan gaji bulan pensiun
+  dengan pangkat lebih tinggi (<?= html_escape($gol_asli) ?> → <?= html_escape($gol_kpp) ?>)
+  sesuai PP 11/2017 Ps.166. Tidak termasuk dalam total rekap OPD.
 </div>
 <?php endif; ?>

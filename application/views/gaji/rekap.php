@@ -16,7 +16,8 @@
 .rek-tbl td { font-size:.82rem; }
 .rek-tbl .row-potongan td { color:#dc3545; }
 .rek-tbl .row-zero td { color:#bbb; }
-.rek-tbl .row-subtotal td { background:#dbeafe; font-weight:700; color:#1e3a5f; }
+.rek-tbl .row-subtotal td { background:#fef9c3; font-weight:700; color:#78350f; }
+.rek-tbl .row-subtotal-pot td { background:#fce7f3; font-weight:700; color:#9d174d; }
 .rek-tbl .row-bersih td { background:#d1fae5; font-weight:700; color:#065f46; }
 .rek-tbl tfoot td { font-weight:700; background:#f1f5f9; }
 </style>
@@ -88,7 +89,12 @@
   <!-- Main tabs -->
   <ul class="nav nav-tabs mb-0" id="mainTabs" role="tablist">
     <li class="nav-item" role="presentation">
-      <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabRekening" type="button" role="tab">
+      <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabRingkasan" type="button" role="tab">
+        <i class="fa-solid fa-table-list me-1" style="color:#6d28d9"></i>Ringkasan
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabRekening" type="button" role="tab">
         <i class="fa-solid fa-receipt me-1"></i>Per Rekening
       </button>
     </li>
@@ -101,8 +107,70 @@
 
   <div class="tab-content border border-top-0 rounded-bottom bg-white shadow-sm mb-4">
 
+    <!-- ══ TAB: RINGKASAN ══ -->
+    <div class="tab-pane fade show active p-3" id="tabRingkasan" role="tabpanel">
+      <div id="ringkasanKpi" class="mb-3"></div>
+      <div class="d-flex justify-content-end mb-2">
+        <button class="btn btn-success btn-sm" onclick="downloadTable('tblRingkasan','Ringkasan')">
+          <i class="fa-solid fa-file-excel me-1"></i>Download Excel
+        </button>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-bordered table-sm mb-0" id="tblRingkasan" style="font-size:.8rem">
+          <thead>
+            <tr>
+              <th rowspan="2" class="align-middle" style="min-width:360px;background:#1e293b;color:#f1f5f9">REKENING</th>
+              <th colspan="3" class="text-center" style="background:#1e40af;color:#fff">PNS (.00001)</th>
+              <th colspan="3" class="text-center" style="background:#92400e;color:#fff">PPPK (.00002)</th>
+              <th colspan="3" class="text-center" style="background:#4c1d95;color:#fff">TOTAL PNS + PPPK</th>
+            </tr>
+            <tr>
+              <th class="text-end" style="background:#1e40af;color:#bfdbfe;font-size:.7rem;white-space:nowrap">DARI GAJI</th>
+              <th class="text-end" style="background:#1e40af;color:#bfdbfe;font-size:.7rem;white-space:nowrap">DARI TPP</th>
+              <th class="text-end fw-bold" style="background:#2563eb;color:#fff;font-size:.7rem;white-space:nowrap">JUMLAH</th>
+              <th class="text-end" style="background:#92400e;color:#fde68a;font-size:.7rem;white-space:nowrap">DARI GAJI</th>
+              <th class="text-end" style="background:#92400e;color:#fde68a;font-size:.7rem;white-space:nowrap">DARI TPP</th>
+              <th class="text-end fw-bold" style="background:#b45309;color:#fff;font-size:.7rem;white-space:nowrap">JUMLAH</th>
+              <th class="text-end" style="background:#4c1d95;color:#ddd6fe;font-size:.7rem;white-space:nowrap">DARI GAJI</th>
+              <th class="text-end" style="background:#4c1d95;color:#ddd6fe;font-size:.7rem;white-space:nowrap">DARI TPP</th>
+              <th class="text-end fw-bold" style="background:#6d28d9;color:#fff;font-size:.7rem;white-space:nowrap">JUMLAH</th>
+            </tr>
+          </thead>
+          <tbody id="ringkasanBody">
+            <tr><td colspan="10" class="text-center text-muted py-4">— Tekan <strong>Hitung</strong> untuk memuat data —</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="text-muted mt-2 mb-2" style="font-size:.72rem">
+        <i class="fa-solid fa-circle-info me-1"></i>
+        <strong>DARI GAJI</strong>: komponen yang dibebankan pada periode gaji reguler (001–012).
+        <strong>DARI TPP</strong>: komponen yang dibebankan pada anggaran TPP (PPh &amp; BPJS dari sisi TPP).
+        Rekening 007 dan 009 dapat bersumber dari keduanya.
+      </p>
+      <!-- ── Variabel Cadangan a# ── -->
+      <div class="border rounded p-3" style="background:#f8fafc">
+        <div class="d-flex align-items-start gap-3 flex-wrap">
+          <div>
+            <div class="fw-semibold" style="font-size:.85rem">
+              Variabel Cadangan <code>a#</code>
+              <span class="badge bg-secondary ms-1" style="font-size:.6rem;vertical-align:middle">Opsional</span>
+            </div>
+            <div class="text-muted mt-1" style="font-size:.72rem">Buffer % untuk proyeksi perubahan kebijakan gaji/tunjangan</div>
+          </div>
+          <div class="input-group flex-shrink-0" style="width:155px">
+            <input type="number" class="form-control form-control-sm text-end" id="gCadPct"
+                   value="0" min="0" max="50" step="0.5" placeholder="0">
+            <span class="input-group-text" style="font-size:.8rem">%</span>
+          </div>
+          <div id="gCadResult" class="flex-grow-1 pt-1">
+            <span class="text-muted" style="font-size:.75rem">Tekan Hitung terlebih dahulu, lalu ubah a# untuk proyeksi</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- ══ TAB: PER REKENING ══ -->
-    <div class="tab-pane fade show active p-3" id="tabRekening" role="tabpanel">
+    <div class="tab-pane fade p-3" id="tabRekening" role="tabpanel">
 
       <div class="d-flex align-items-center justify-content-between mb-3">
         <ul class="nav nav-pills" id="rekenSubTabs" role="tablist">
@@ -178,43 +246,46 @@
       </div>
       <div class="table-responsive">
         <table class="table table-sm table-hover tbl-rekap mb-0" id="tblDetail">
-          <thead class="table-light">
+          <thead class="table-light" style="font-size:.72rem">
             <tr>
-              <th rowspan="2">#</th>
-              <th rowspan="2">Nama / NIP</th>
-              <th rowspan="2">Jenis</th>
-              <th rowspan="2">Gol</th>
-              <th rowspan="2">Eselon / Jabatan</th>
-              <th rowspan="2">OPD</th>
-              <th colspan="9" class="text-center" style="background:#dbeafe;color:#1e3a5f">Komponen Gaji</th>
-              <th colspan="4" class="text-center" style="background:#fef9c3;color:#78350f">DTP + Iuran</th>
-              <th colspan="2" class="text-center" style="background:#fce7f3;color:#9d174d">Potongan Peg</th>
-              <th rowspan="2" class="text-end" style="background:#d1fae5;color:#065f46">Bersih Gaji</th>
-              <th colspan="4" class="text-center" style="background:#dcfce7;color:#14532d">TPP</th>
-              <th rowspan="2" class="text-end fw-semibold" style="background:#bbf7d0;color:#14532d">Bersih TPP</th>
-              <th rowspan="2" class="text-end fw-bold" style="background:#ede9fe;color:#4c1d95">Total THP</th>
-              <th rowspan="2" class="text-center">Info</th>
+              <th rowspan="2" class="text-center align-middle">#</th>
+              <th rowspan="2" class="align-middle" style="min-width:140px">Nama / NIP</th>
+              <th rowspan="2" class="text-center align-middle">Jenis</th>
+              <th rowspan="2" class="text-center align-middle">Gol</th>
+              <th rowspan="2" class="align-middle">Eselon / Jabatan</th>
+              <th rowspan="2" class="align-middle">OPD</th>
+              <th colspan="12" class="text-center" style="background:#dbeafe;color:#1e40af">KOMPONEN GAJI (001–012)</th>
+              <th rowspan="2" class="text-end align-middle" style="background:#fef9c3;color:#78350f;min-width:75px">Total Bruto</th>
+              <th colspan="7" class="text-center" style="background:#fce7f3;color:#9d174d">POTONGAN &amp; PENYETORAN</th>
+              <th rowspan="2" class="text-end align-middle" style="background:#fce7f3;color:#9d174d;min-width:75px">Total Pot.</th>
+              <th rowspan="2" class="text-end align-middle" style="background:#d1fae5;color:#065f46;min-width:75px">Gaji Bersih</th>
+              <th colspan="2" class="text-center" style="background:#dcfce7;color:#14532d">TPP</th>
+              <th rowspan="2" class="text-end align-middle" style="background:#dcfce7;color:#14532d;min-width:65px">TPP Bersih</th>
+              <th rowspan="2" class="text-end align-middle fw-bold" style="background:#ede9fe;color:#4c1d95;min-width:75px">Total THP</th>
+              <th rowspan="2" class="text-center align-middle">Info</th>
             </tr>
             <tr>
-              <th class="text-end">Gaji Pokok</th>
-              <th class="text-end">T.Kel</th>
-              <th class="text-end">Jab Str</th>
-              <th class="text-end">Jab Fung</th>
-              <th class="text-end">Jab Umum</th>
-              <th class="text-end">T.Khusus</th>
-              <th class="text-end">T.Pangan</th>
-              <th class="text-end">Pembulatan</th>
-              <th class="text-end fw-semibold" style="background:#dbeafe;color:#1e3a5f">Bruto</th>
-              <th class="text-end">PPh DTP</th>
-              <th class="text-end">BPJS Empl 4%</th>
-              <th class="text-end">JKK</th>
-              <th class="text-end">JKM</th>
-              <th class="text-end">BPJS Peg 1%</th>
-              <th class="text-end">Pensiun/JHT</th>
-              <th class="text-end">TPP</th>
-              <th class="text-end">PPh TPP</th>
-              <th class="text-end">BPJS TPP Empl</th>
-              <th class="text-end">BPJS TPP Peg</th>
+              <th class="text-end">001<br>Gaji Pokok</th>
+              <th class="text-end">002<br>T.Keluarga</th>
+              <th class="text-end">003<br>T.Jabatan</th>
+              <th class="text-end">004<br>T.Fungsional</th>
+              <th class="text-end">005<br>T.Fung.Umum</th>
+              <th class="text-end">006<br>T.Beras</th>
+              <th class="text-end">007<br>T.PPh/Khusus</th>
+              <th class="text-end">008<br>Pembulatan</th>
+              <th class="text-end">009<br>BPJS Empl</th>
+              <th class="text-end">010<br>JKK</th>
+              <th class="text-end">011<br>JKM</th>
+              <th class="text-end">012<br>Tapera</th>
+              <th class="text-end">009 Peg<br>BPJS (1%)</th>
+              <th class="text-end">013<br>Pensiun</th>
+              <th class="text-end">013<br>JHT</th>
+              <th class="text-end">007<br>PPh DTP</th>
+              <th class="text-end">009 Empl<br>BPJS (4%)</th>
+              <th class="text-end">010<br>JKK</th>
+              <th class="text-end">011<br>JKM</th>
+              <th class="text-end">TPP<br>Nominal</th>
+              <th class="text-end">BPJS TPP<br>Peg (1%)</th>
             </tr>
           </thead>
           <tbody id="tblDetailBody"></tbody>
@@ -230,41 +301,305 @@
 var HITUNG_URL = '<?= $hitung_url ?>';
 var BLN_NAMA   = ['','Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 
-// Rekening Gaji (urut 001→011, suffix .00001/.00002 ditambah saat render per tab)
+// Ringkasan: baris per rekening dengan DARI GAJI dan DARI TPP
+var REK_RINGKASAN = [
+  { type:'group', rek:'5.1.01.01', lbl:'5.1.01.01   Belanja Gaji dan Tunjangan ASN' },
+  { rek:'5.1.01.01.001', lbl:'Belanja Gaji Pokok ASN',
+    gaji:function(t){return t.gaji_pokok||0;}, tpp:function(t){return 0;} },
+  { rek:'5.1.01.01.002', lbl:'Belanja Tunjangan Keluarga ASN',
+    gaji:function(t){return t.t_keluarga||0;}, tpp:function(t){return 0;} },
+  { rek:'5.1.01.01.003', lbl:'Belanja Tunjangan Jabatan ASN',
+    gaji:function(t){return t.t_jabatan_str||0;}, tpp:function(t){return 0;} },
+  { rek:'5.1.01.01.004', lbl:'Belanja Tunjangan Fungsional ASN',
+    gaji:function(t){return t.t_jabatan_fung||0;}, tpp:function(t){return 0;} },
+  { rek:'5.1.01.01.005', lbl:'Belanja Tunjangan Fungsional Umum ASN',
+    gaji:function(t){return t.t_jabatan_umum||0;}, tpp:function(t){return 0;} },
+  { rek:'5.1.01.01.006', lbl:'Belanja Tunjangan Beras ASN',
+    gaji:function(t){return t.t_pangan||0;}, tpp:function(t){return 0;} },
+  { rek:'5.1.01.01.007', lbl:'Belanja Tunjangan PPh/Tunjangan Khusus ASN',
+    gaji:function(t){return (t.t_khusus||0)+(t.bel_pph21||0);},
+    tpp:function(t){return t.bel_pph21_tpp||0;} },
+  { rek:'5.1.01.01.008', lbl:'Belanja Pembulatan Gaji ASN',
+    gaji:function(t){return t.t_pembulatan||0;}, tpp:function(t){return 0;} },
+  { rek:'5.1.01.01.009', lbl:'Belanja Iuran Jaminan Kesehatan ASN',
+    gaji:function(t){return t.bel_bpjs_gaji||0;},
+    tpp:function(t){return t.bel_bpjs_tpp||0;} },
+  { rek:'5.1.01.01.010', lbl:'Belanja Iuran Jaminan Kecelakaan Kerja ASN',
+    gaji:function(t){return t.bel_jkk||0;}, tpp:function(t){return 0;} },
+  { rek:'5.1.01.01.011', lbl:'Belanja Iuran Jaminan Kematian ASN',
+    gaji:function(t){return t.bel_jkm||0;}, tpp:function(t){return 0;} },
+  { rek:'5.1.01.01.012', lbl:'Belanja Iuran Simpanan Peserta Tabungan Perumahan Rakyat ASN',
+    gaji:function(t){return 0;}, tpp:function(t){return 0;} },
+  { type:'subtotal_group', lbl:'Subtotal Belanja Gaji dan Tunjangan (5.1.01.01)' },
+  { type:'spacer' },
+  { type:'group', rek:'5.1.01.02', lbl:'5.1.01.02   Belanja Tambahan Penghasilan ASN' },
+  { rek:'5.1.01.02.001', lbl:'Belanja Tambahan Penghasilan berdasarkan Beban Kerja ASN',
+    gaji:function(t){return 0;}, tpp:function(t){return t.tpp||0;} },
+  { type:'subtotal_group', lbl:'Subtotal Belanja Tambahan Penghasilan (5.1.01.02)' },
+  { type:'spacer' },
+  { type:'jumlah', lbl:'JUMLAH' },
+];
+
+var _ringTotals = null; // stored for a# cadangan reactivity
+
+function updateCadanganGaji() {
+  if (!_ringTotals) return;
+  var pct = parseFloat(document.getElementById('gCadPct').value) || 0;
+  var el  = document.getElementById('gCadResult');
+  if (!el) return;
+  var _g = _ringTotals.totG, _t = _ringTotals.totT, _a = _ringTotals.totAll;
+  function fmt(n) { return Math.round(n).toLocaleString('id-ID'); }
+  if (pct <= 0) {
+    el.innerHTML = '<span class="text-muted" style="font-size:.75rem">Masukkan a# &gt; 0 untuk proyeksi cadangan anggaran</span>';
+    return;
+  }
+  var cg = Math.round(_g * pct / 100), ct = Math.round(_t * pct / 100), ca = Math.round(_a * pct / 100);
+  el.innerHTML = '<div class="d-flex flex-wrap gap-4" style="font-size:.78rem">'
+    + '<div><div style="color:#64748b;font-size:.68rem">Total Asal</div>'
+    + '<div>Gaji <b>Rp '+fmt(_g)+'</b> + TPP <b>Rp '+fmt(_t)+'</b> = <b>Rp '+fmt(_a)+'</b></div></div>'
+    + '<div><div style="color:#64748b;font-size:.68rem">+ Cadangan a# ('+pct+'%)</div>'
+    + '<div>Gaji <b style="color:#dc2626">+Rp '+fmt(cg)+'</b>'
+    + ' + TPP <b style="color:#dc2626">+Rp '+fmt(ct)+'</b>'
+    + ' = <b style="color:#dc2626">+Rp '+fmt(ca)+'</b></div></div>'
+    + '<div><div style="color:#4c1d95;font-size:.68rem;font-weight:700">= Proyeksi Total</div>'
+    + '<div style="color:#4c1d95;font-weight:700">Gaji Rp '+fmt(_g+cg)+' + TPP Rp '+fmt(_t+ct)
+    + ' = <span style="font-size:.9rem">Rp '+fmt(_a+ca)+'</span></div></div>'
+    + '</div>';
+}
+
+function renderRingkasan(res) {
+  var tPNS  = res.total_pns  || {};
+  var tPPPK = res.total_pppk || {};
+  var rows  = res.rows || [];
+  var pnsCount  = rows.filter(function(h){ return (h.pegawai.jenis||'').toUpperCase()==='PNS'; }).length;
+  var pppkCount = rows.filter(function(h){ return (h.pegawai.jenis||'').toUpperCase()==='PPPK'; }).length;
+  var rh = function(n) { return n ? Math.round(n).toLocaleString('id-ID') : '—'; };
+
+  // Pre-compute grand totals
+  var gt_pns  = {g:0,t:0}, gt_pppk = {g:0,t:0};
+  var grp_pns = {g:0,t:0}, grp_pppk = {g:0,t:0};
+  REK_RINGKASAN.forEach(function(r) {
+    if (!r.gaji) return;
+    gt_pns.g  += Math.round(r.gaji(tPNS));  gt_pns.t  += Math.round(r.tpp(tPNS));
+    gt_pppk.g += Math.round(r.gaji(tPPPK)); gt_pppk.t += Math.round(r.tpp(tPPPK));
+  });
+
+  // Store for a# cadangan
+  _ringTotals = {
+    totG:   gt_pns.g  + gt_pppk.g,
+    totT:   gt_pns.t  + gt_pppk.t,
+    totAll: gt_pns.g + gt_pns.t + gt_pppk.g + gt_pppk.t
+  };
+
+  // Bersih THP breakdown
+  var pnsBersihG  = Math.round((tPNS.bersih  || 0));
+  var pnsBersihT  = Math.round((tPNS.tpp     || 0) - (tPNS.pot_bpjs_tpp_peg  || 0));
+  var pppkBersihG = Math.round((tPPPK.bersih || 0));
+  var pppkBersihT = Math.round((tPPPK.tpp    || 0) - (tPPPK.pot_bpjs_tpp_peg || 0));
+  var totBersihG  = pnsBersihG + pppkBersihG;
+  var totBersihT  = pnsBersihT + pppkBersihT;
+  var totBersih   = totBersihG + totBersihT;
+
+  // KPI bar — 4 cards
+  $('#ringkasanKpi').html(
+    '<div class="row g-2">'
+    // PNS card
+    +'<div class="col-12 col-sm-6 col-xl-3">'
+    +'<div class="rounded p-3 h-100" style="background:#dbeafe;border-left:4px solid #1e40af">'
+    +'<div class="fw-bold mb-2" style="color:#1e40af;font-size:.75rem;text-transform:uppercase;letter-spacing:.05em">'
+    +'PNS &nbsp;<span class="fw-normal">'+pnsCount+' orang</span></div>'
+    +'<div class="d-flex justify-content-between" style="font-size:.78rem">'
+    +'<span style="color:#64748b">Belanja Gaji</span>'
+    +'<span class="fw-semibold" style="color:#1e3a8a">Rp '+rh(gt_pns.g)+'</span></div>'
+    +'<div class="d-flex justify-content-between" style="font-size:.78rem">'
+    +'<span style="color:#64748b">Belanja TPP</span>'
+    +'<span class="fw-semibold" style="color:#1e3a8a">Rp '+rh(gt_pns.t)+'</span></div>'
+    +'<div class="d-flex justify-content-between mt-1 pt-1 border-top" style="font-size:.8rem">'
+    +'<span style="color:#1e40af;font-weight:600">Total</span>'
+    +'<span style="color:#1e40af;font-weight:700">Rp '+rh(gt_pns.g+gt_pns.t)+'</span></div>'
+    +'</div></div>'
+    // PPPK card
+    +'<div class="col-12 col-sm-6 col-xl-3">'
+    +'<div class="rounded p-3 h-100" style="background:#fef3c7;border-left:4px solid #92400e">'
+    +'<div class="fw-bold mb-2" style="color:#92400e;font-size:.75rem;text-transform:uppercase;letter-spacing:.05em">'
+    +'PPPK &nbsp;<span class="fw-normal">'+pppkCount+' orang</span></div>'
+    +'<div class="d-flex justify-content-between" style="font-size:.78rem">'
+    +'<span style="color:#64748b">Belanja Gaji</span>'
+    +'<span class="fw-semibold" style="color:#78350f">Rp '+rh(gt_pppk.g)+'</span></div>'
+    +'<div class="d-flex justify-content-between" style="font-size:.78rem">'
+    +'<span style="color:#64748b">Belanja TPP</span>'
+    +'<span class="fw-semibold" style="color:#78350f">Rp '+rh(gt_pppk.t)+'</span></div>'
+    +'<div class="d-flex justify-content-between mt-1 pt-1 border-top" style="font-size:.8rem">'
+    +'<span style="color:#92400e;font-weight:600">Total</span>'
+    +'<span style="color:#92400e;font-weight:700">Rp '+rh(gt_pppk.g+gt_pppk.t)+'</span></div>'
+    +'</div></div>'
+    // Total Belanja card
+    +'<div class="col-12 col-sm-6 col-xl-3">'
+    +'<div class="rounded p-3 h-100" style="background:#f1f5f9;border-left:4px solid #475569">'
+    +'<div class="fw-bold mb-2" style="color:#475569;font-size:.75rem;text-transform:uppercase;letter-spacing:.05em">Total Belanja</div>'
+    +'<div class="d-flex justify-content-between" style="font-size:.78rem">'
+    +'<span style="color:#64748b">Dari Gaji</span>'
+    +'<span class="fw-semibold" style="color:#334155">Rp '+rh(_ringTotals.totG)+'</span></div>'
+    +'<div class="d-flex justify-content-between" style="font-size:.78rem">'
+    +'<span style="color:#64748b">Dari TPP</span>'
+    +'<span class="fw-semibold" style="color:#334155">Rp '+rh(_ringTotals.totT)+'</span></div>'
+    +'<div class="d-flex justify-content-between mt-1 pt-1 border-top" style="font-size:.8rem">'
+    +'<span style="color:#475569;font-weight:600">Grand Total</span>'
+    +'<span style="color:#0f172a;font-weight:700">Rp '+rh(_ringTotals.totAll)+'</span></div>'
+    +'</div></div>'
+    // Bersih THP card
+    +'<div class="col-12 col-sm-6 col-xl-3">'
+    +'<div class="rounded p-3 h-100" style="background:#dcfce7;border-left:4px solid #065f46">'
+    +'<div class="fw-bold mb-2" style="color:#065f46;font-size:.75rem;text-transform:uppercase;letter-spacing:.05em">Bersih THP</div>'
+    +'<div class="d-flex justify-content-between" style="font-size:.78rem">'
+    +'<span style="color:#64748b">Bersih Gaji</span>'
+    +'<span class="fw-semibold" style="color:#064e3b">Rp '+rh(totBersihG)+'</span></div>'
+    +'<div class="d-flex justify-content-between" style="font-size:.78rem">'
+    +'<span style="color:#64748b">Bersih TPP</span>'
+    +'<span class="fw-semibold" style="color:#064e3b">Rp '+rh(totBersihT)+'</span></div>'
+    +'<div class="d-flex justify-content-between mt-1 pt-1 border-top" style="font-size:.8rem">'
+    +'<span style="color:#065f46;font-weight:600">Total THP</span>'
+    +'<span style="color:#065f46;font-weight:700">Rp '+rh(totBersih)+'</span></div>'
+    +'</div></div>'
+    +'</div>'
+  );
+
+  // Build table rows (with subtotal_group support)
+  grp_pns  = {g:0,t:0};
+  grp_pppk = {g:0,t:0};
+  var html = '';
+  REK_RINGKASAN.forEach(function(r) {
+    if (r.type === 'spacer') {
+      html += '<tr><td colspan="10" style="padding:3px;background:#f8fafc;border-color:#e2e8f0"></td></tr>';
+      return;
+    }
+    if (r.type === 'group') {
+      grp_pns  = {g:0,t:0};
+      grp_pppk = {g:0,t:0};
+      html += '<tr style="background:#334155;color:#e2e8f0">'
+        +'<td colspan="10" style="padding:7px 14px;font-weight:700;font-size:.78rem;letter-spacing:.04em">'+esc(r.lbl)+'</td></tr>';
+      return;
+    }
+    if (r.type === 'subtotal_group') {
+      var sg=grp_pns.g, st=grp_pns.t, sppg=grp_pppk.g, sppt=grp_pppk.t;
+      html += '<tr style="background:#1e293b;color:#94a3b8;font-weight:600;font-size:.76rem">'
+        +'<td style="padding:5px 14px 5px 24px">Σ &nbsp;'+esc(r.lbl)+'</td>'
+        +'<td class="text-end">'+rh(sg)+'</td>'
+        +'<td class="text-end">'+rh(st)+'</td>'
+        +'<td class="text-end" style="color:#e2e8f0">'+rh(sg+st)+'</td>'
+        +'<td class="text-end">'+rh(sppg)+'</td>'
+        +'<td class="text-end">'+rh(sppt)+'</td>'
+        +'<td class="text-end" style="color:#e2e8f0">'+rh(sppg+sppt)+'</td>'
+        +'<td class="text-end">'+rh(sg+sppg)+'</td>'
+        +'<td class="text-end">'+rh(st+sppt)+'</td>'
+        +'<td class="text-end" style="color:#fff">'+rh(sg+st+sppg+sppt)+'</td>'
+        +'</tr>';
+      return;
+    }
+    if (r.type === 'jumlah') {
+      var pg=gt_pns.g, pt=gt_pns.t, ppg=gt_pppk.g, ppt=gt_pppk.t;
+      html += '<tr style="background:#0f172a;color:#fff;font-weight:700">'
+        +'<td style="padding:9px 14px">JUMLAH</td>'
+        +'<td class="text-end" style="background:#1e3a8a">'+rh(pg)+'</td>'
+        +'<td class="text-end" style="background:#1e3a8a">'+rh(pt)+'</td>'
+        +'<td class="text-end" style="background:#1d4ed8">'+rh(pg+pt)+'</td>'
+        +'<td class="text-end" style="background:#78350f">'+rh(ppg)+'</td>'
+        +'<td class="text-end" style="background:#78350f">'+rh(ppt)+'</td>'
+        +'<td class="text-end" style="background:#b45309">'+rh(ppg+ppt)+'</td>'
+        +'<td class="text-end" style="background:#3730a3">'+rh(pg+ppg)+'</td>'
+        +'<td class="text-end" style="background:#3730a3">'+rh(pt+ppt)+'</td>'
+        +'<td class="text-end" style="background:#5b21b6">'+rh(pg+pt+ppg+ppt)+'</td>'
+        +'</tr>';
+      return;
+    }
+    // Regular row
+    var pg=Math.round(r.gaji(tPNS)), pt=Math.round(r.tpp(tPNS));
+    var ppg=Math.round(r.gaji(tPPPK)), ppt=Math.round(r.tpp(tPPPK));
+    var tg=pg+ppg, tt=pt+ppt;
+    grp_pns.g+=pg;  grp_pns.t+=pt;
+    grp_pppk.g+=ppg; grp_pppk.t+=ppt;
+    var isZ=(pg+pt+ppg+ppt===0);
+    var zs=isZ?'color:#bbb':'';
+    html += '<tr style="'+zs+'">'
+      +'<td style="padding-left:28px">'
+      +'<span style="font-family:monospace;font-size:.68rem;background:#e8eaf6;color:#3949ab;'
+      +'padding:1px 5px;border-radius:3px;margin-right:8px">'+esc(r.rek)+'</span>'
+      +esc(r.lbl)+'</td>'
+      +'<td class="text-end">'+rh(pg)+'</td>'
+      +'<td class="text-end">'+rh(pt)+'</td>'
+      +'<td class="text-end fw-semibold"'+(isZ?'':' style="background:#eff6ff"')+'>'+rh(pg+pt)+'</td>'
+      +'<td class="text-end">'+rh(ppg)+'</td>'
+      +'<td class="text-end">'+rh(ppt)+'</td>'
+      +'<td class="text-end fw-semibold"'+(isZ?'':' style="background:#fffbeb"')+'>'+rh(ppg+ppt)+'</td>'
+      +'<td class="text-end">'+rh(tg)+'</td>'
+      +'<td class="text-end">'+rh(tt)+'</td>'
+      +'<td class="text-end fw-semibold"'+(isZ?'':' style="background:#f5f3ff"')+'>'+rh(tg+tt)+'</td>'
+      +'</tr>';
+  });
+  $('#ringkasanBody').html(html);
+
+  // Wire a# input (once — idempotent via flag)
+  var inp = document.getElementById('gCadPct');
+  if (inp && !inp._wired) {
+    inp._wired = true;
+    inp.addEventListener('input', updateCadanganGaji);
+  }
+  updateCadanganGaji();
+}
+
+// Rekening Gaji (urut 001→013, suffix .00001/.00002 ditambah saat render per tab)
 var REK_GAJI = [
-  { rek:'5.1.01.01.001', lbl:'Gaji Pokok ASN',                              key:'gaji_pokok',     neg:false },
-  { rek:'5.1.01.01.002', lbl:'Tunjangan Keluarga (Istri + Anak)',            key:'t_keluarga',     neg:false },
-  { rek:'5.1.01.01.003', lbl:'Tunjangan Jabatan (Struktural)',               key:'t_jabatan_str',  neg:false },
-  { rek:'5.1.01.01.004', lbl:'Tunjangan Fungsional',                         key:'t_jabatan_fung', neg:false },
-  { rek:'5.1.01.01.005', lbl:'Tunjangan Fungsional Umum',                    key:'t_jabatan_umum', neg:false },
-  { rek:'5.1.01.01.006', lbl:'Tunjangan Pangan / Beras',                     key:'t_pangan',       neg:false },
-  { rek:'5.1.01.01.007', lbl:'Tunjangan Khusus',                             key:'t_khusus',       neg:false },
-  { rek:'5.1.01.01.008', lbl:'Tunjangan Pembulatan',                         key:'t_pembulatan',   neg:false },
-  { type:'subtotal', lbl:'Gaji Bruto (Komponen)', compute: function(t) {
+  { rek:'5.1.01.01.001', lbl:'Belanja Gaji Pokok ASN',                                            key:'gaji_pokok',        neg:false },
+  { rek:'5.1.01.01.002', lbl:'Belanja Tunjangan Keluarga ASN',                                    key:'t_keluarga',        neg:false },
+  { rek:'5.1.01.01.003', lbl:'Belanja Tunjangan Jabatan ASN',                                     key:'t_jabatan_str',     neg:false },
+  { rek:'5.1.01.01.004', lbl:'Belanja Tunjangan Fungsional ASN',                                  key:'t_jabatan_fung',    neg:false },
+  { rek:'5.1.01.01.005', lbl:'Belanja Tunjangan Fungsional Umum ASN',                             key:'t_jabatan_umum',    neg:false },
+  { rek:'5.1.01.01.006', lbl:'Belanja Tunjangan Beras ASN',                                       key:'t_pangan',          neg:false },
+  // 007 = t_khusus + PPh DTP (full rekening obligation)
+  { rek:'5.1.01.01.007', lbl:'Belanja Tunjangan PPh/Tunjangan Khusus ASN',
+    compute: function(t) { return (t.t_khusus||0)+(t.bel_pph21||0); },                                                     neg:false },
+  { rek:'5.1.01.01.008', lbl:'Belanja Pembulatan Gaji ASN',                                       key:'t_pembulatan',      neg:false },
+  { rek:'5.1.01.01.009', lbl:'Belanja Iuran Jaminan Kesehatan ASN',                               key:'bel_bpjs_gaji',     neg:false },
+  { rek:'5.1.01.01.010', lbl:'Belanja Iuran Jaminan Kecelakaan Kerja ASN',                        key:'bel_jkk',           neg:false },
+  { rek:'5.1.01.01.011', lbl:'Belanja Iuran Jaminan Kematian ASN',                                key:'bel_jkm',           neg:false },
+  { rek:'5.1.01.01.012', lbl:'Belanja Iuran Simpanan Peserta Tapera ASN',                         key:'bel_tapera',        neg:false },
+  { type:'subtotal', lbl:'Total Bruto Gaji', compute: function(t) {
       return (t.gaji_pokok||0)+(t.t_keluarga||0)+(t.t_jabatan_str||0)+(t.t_jabatan_fung||0)
-            +(t.t_jabatan_umum||0)+(t.t_khusus||0)+(t.t_pangan||0)+(t.t_pembulatan||0);
+            +(t.t_jabatan_umum||0)+(t.t_khusus||0)+(t.t_pangan||0)+(t.t_pembulatan||0)
+            +(t.bel_pph21||0)+(t.bel_bpjs_gaji||0)+(t.bel_jkk||0)+(t.bel_jkm||0)+(t.bel_tapera||0);
   }},
-  { rek:'5.1.01.01.007', lbl:'Tunjangan PPh Gaji — Ditanggung Pemerintah',  key:'bel_pph21',      neg:false },
-  { rek:'5.1.01.01.009', lbl:'BPJS Kes Gaji — Pegawai (1%)',                key:'pot_bpjs_kes',   neg:false },
-  { rek:'5.1.01.01.009', lbl:'BPJS Kes Gaji — Pemberi Kerja (4%)',          key:'bel_bpjs_gaji',  neg:false },
-  { rek:'5.1.01.01.010', lbl:'Iuran JKK — Pemberi Kerja (0,24%)',           key:'bel_jkk',        neg:false },
-  { rek:'5.1.01.01.011', lbl:'Iuran JKM — Pemberi Kerja (0,30%)',           key:'bel_jkm',        neg:false },
-  { type:'bersih', lbl:'Bersih Gaji (Diterima Pegawai)', compute: function(t) {
+  { rek:'5.1.01.01.009', lbl:'BPJS Kesehatan Gaji ASN — Pegawai (1%)',                            key:'pot_bpjs_kes',      neg:false, noSum:true },
+  { rek:'5.1.01.01.013', lbl:'Taspen — Iuran Pensiun ASN (4,75%)',                                key:'pot_pensiun_peg',   neg:false, noSum:true },
+  { rek:'5.1.01.01.013', lbl:'Taspen — JHT ASN (3,25%)',                                          key:'pot_jht_taspen',   neg:false, noSum:true },
+  { rek:'5.1.01.01.007', lbl:'Tunjangan PPh 21 ASN — DTP (disetor ke KPP)',                       key:'bel_pph21',         neg:false, noSum:true },
+  { rek:'5.1.01.01.009', lbl:'BPJS Kesehatan ASN — Pemberi Kerja (4%) (disetor ke BPJS)',         key:'bel_bpjs_gaji',     neg:false, noSum:true },
+  { rek:'5.1.01.01.010', lbl:'Iuran JKK ASN — Pemberi Kerja (disetor)',                           key:'bel_jkk',           neg:false, noSum:true },
+  { rek:'5.1.01.01.011', lbl:'Iuran JKM ASN — Pemberi Kerja (disetor)',                           key:'bel_jkm',           neg:false, noSum:true },
+  { type:'subtotal-pot', lbl:'Total Potongan & Penyetoran', compute: function(t) {
+      return (t.pot_bpjs_kes||0)+(t.pot_pensiun_peg||0)+(t.pot_jht_taspen||0)
+            +(t.pot_jht||0)+(t.pot_jp||0)
+            +(t.bel_pph21||0)+(t.bel_bpjs_gaji||0)+(t.bel_jkk||0)+(t.bel_jkm||0);
+  }},
+  { type:'bersih', lbl:'Gaji Bersih (Diterima Pegawai)', compute: function(t) {
       var bruto = (t.gaji_pokok||0)+(t.t_keluarga||0)+(t.t_jabatan_str||0)+(t.t_jabatan_fung||0)
-                 +(t.t_jabatan_umum||0)+(t.t_khusus||0)+(t.t_pangan||0)+(t.t_pembulatan||0);
-      return bruto - (t.pot_bpjs_kes||0) - (t.pot_pensiun||0) - (t.pot_jht||0) - (t.pot_jp||0);
+                 +(t.t_jabatan_umum||0)+(t.t_khusus||0)+(t.t_pangan||0)+(t.t_pembulatan||0)
+                 +(t.bel_pph21||0)+(t.bel_bpjs_gaji||0)+(t.bel_jkk||0)+(t.bel_jkm||0);
+      var pot = (t.pot_bpjs_kes||0)+(t.pot_pensiun_peg||0)+(t.pot_jht_taspen||0)
+               +(t.pot_jht||0)+(t.pot_jp||0)
+               +(t.bel_pph21||0)+(t.bel_bpjs_gaji||0)+(t.bel_jkk||0)+(t.bel_jkm||0);
+      return bruto - pot;
   }},
 ];
 
 // Rekening TPP (urut ascending: TPP dulu, lalu DTP items, lalu bersih)
 var REK_TPP = [
-  { rek:'5.1.01.02.001', lbl:'Tambahan Penghasilan Pegawai (TPP)',           key:'tpp',              neg:false },
-  { rek:'5.1.01.01.007', lbl:'Tunjangan PPh TPP — Ditanggung Pemerintah',   key:'bel_pph21_tpp',    neg:false },
-  { rek:'5.1.01.01.009', lbl:'BPJS Kes TPP — Pemberi Kerja (4%)',           key:'bel_bpjs_tpp',     neg:false },
+  { rek:'5.1.01.02.001', lbl:'Belanja Tambahan Penghasilan berdasarkan Beban Kerja ASN',         key:'tpp',              neg:false },
+  { rek:'5.1.01.01.007', lbl:'Belanja Tunjangan PPh/Tunjangan Khusus ASN — TPP (DTP)',          key:'bel_pph21_tpp',    neg:false },
+  { rek:'5.1.01.01.009', lbl:'Belanja Iuran Jaminan Kesehatan ASN — TPP Pemberi Kerja (4%)',    key:'bel_bpjs_tpp',     neg:false },
   { type:'subtotal', lbl:'Bruto Anggaran TPP', compute: function(t) {
       return (t.tpp||0) + (t.bel_pph21_tpp||0) + (t.bel_bpjs_tpp||0);
   }},
-  { rek:'5.1.01.01.009', lbl:'BPJS Kes TPP — Pegawai (1%) [dipotong dari TPP]', key:'pot_bpjs_tpp_peg', neg:false },
+  { rek:'5.1.01.01.009', lbl:'Belanja Iuran Jaminan Kesehatan ASN — TPP Pegawai (1%) [dipotong]', key:'pot_bpjs_tpp_peg', neg:false },
   { type:'bersih', lbl:'Bersih TPP (Diterima Pegawai)', compute: function(t) {
       return (t.tpp||0) - (t.pot_bpjs_tpp_peg||0);
   }},
@@ -309,22 +644,28 @@ function resolveKey(t, key) {
   return t[key] || 0;
 }
 
-// Render one rekening table; suffix = '.00001' (PNS) or '.00002' (PPPK)
-function renderRekTable(bodyId, footId, rekDef, totalObj, suffix) {
+// Render one rekening table; suffix = '.00001' (PNS) or '.00002' (PPPK); jenis = 'PNS'/'PPPK'
+function renderRekTable(bodyId, footId, rekDef, totalObj, suffix, jenis) {
   suffix = suffix || '';
+  jenis  = jenis  || 'ASN';
   var html = '', grandTotal = 0;
   rekDef.forEach(function(r) {
-    if (r.type === 'subtotal' || r.type === 'bersih') {
+    var lbl = r.lbl.replace(/ASN/g, jenis);
+    if (r.type === 'section') {
+      html += '<tr><th colspan="3" style="background:#e8eaf6;color:#3730a3;font-size:.72rem;padding:5px 8px;letter-spacing:.06em">'+esc(r.lbl.toUpperCase())+'</th></tr>';
+      return;
+    }
+    if (r.type === 'subtotal' || r.type === 'subtotal-pot' || r.type === 'bersih') {
       var v = r.compute ? r.compute(totalObj) : resolveKey(totalObj, r.key || '');
-      var rowCls = r.type === 'bersih' ? 'row-bersih' : 'row-subtotal';
+      var rowCls = r.type === 'bersih' ? 'row-bersih' : (r.type === 'subtotal-pot' ? 'row-subtotal-pot' : 'row-subtotal');
       html += '<tr class="'+rowCls+'">'
-        + '<td colspan="2"><strong>'+esc(r.lbl)+'</strong></td>'
+        + '<td colspan="2"><strong>'+esc(lbl)+'</strong></td>'
         + '<td class="text-end"><strong>'+(Math.round(v)===0 ? '—' : rupiah(v))+'</strong></td>'
         + '</tr>';
       return;
     }
-    var v = resolveKey(totalObj, r.key);
-    if (!r.neg) grandTotal += v;
+    var v = r.compute ? r.compute(totalObj) : resolveKey(totalObj, r.key);
+    if (!r.neg && !r.noSum) grandTotal += v;
     var isZero = (Math.round(v) === 0);
     var cls = isZero ? 'row-zero' : (r.neg ? 'row-potongan' : '');
     var valHtml;
@@ -337,7 +678,7 @@ function renderRekTable(bodyId, footId, rekDef, totalObj, suffix) {
     }
     html += '<tr class="'+cls+'">'
       + '<td><span class="rekening-badge">'+esc(r.rek+suffix)+'</span></td>'
-      + '<td>'+esc(r.lbl)+'</td>'
+      + '<td>'+esc(lbl)+'</td>'
       + '<td class="text-end">'+valHtml+'</td>'
       + '</tr>';
   });
@@ -382,11 +723,14 @@ function renderRekap(res) {
   });
   $('#summaryBoxes').html(bhtml);
 
+  // Render ringkasan tab
+  renderRingkasan(res);
+
   // Render 4 rekening sub-tabs (PNS = .00001, PPPK = .00002)
-  renderRekTable('bdyGajiPNS',  'totGajiPNS',  REK_GAJI, tPNS,  '.00001');
-  renderRekTable('bdyGajiPPPK', 'totGajiPPPK', REK_GAJI, tPPPK, '.00002');
-  renderRekTable('bdyTPPPNS',   'totTPPPNS',   REK_TPP,  tPNS,  '.00001');
-  renderRekTable('bdyTPPPPPK',  'totTPPPPPK',  REK_TPP,  tPPPK, '.00002');
+  renderRekTable('bdyGajiPNS',  'totGajiPNS',  REK_GAJI, tPNS,  '.00001', 'PNS');
+  renderRekTable('bdyGajiPPPK', 'totGajiPPPK', REK_GAJI, tPPPK, '.00002', 'PPPK');
+  renderRekTable('bdyTPPPNS',   'totTPPPNS',   REK_TPP,  tPNS,  '.00001', 'PNS');
+  renderRekTable('bdyTPPPPPK',  'totTPPPPPK',  REK_TPP,  tPPPK, '.00002', 'PPPK');
 
   // Per Pegawai tab
   renderPegawai(res);
@@ -413,56 +757,65 @@ function renderPegawai(res) {
 
   var dhtml = '';
   var ft = {
-    gapok:0, tkel:0, tjabStr:0, tjabFung:0, tjabUmum:0, tkhusus:0, tpan:0, tpemb:0, brutoGaji:0,
-    pphDtp:0, bpjsEmpl:0, jkk:0, jkm:0, bpjsPeg:0, pensiun:0, bersihGaji:0,
-    tpp:0, pphTppDtp:0, bpjsTppEmpl:0, bpjsTppPeg:0, tppBersih:0, totalBersih:0
+    gapok:0, tkel:0, tjabStr:0, tjabFung:0, tjabUmum:0, tpan:0, t007:0, tpemb:0,
+    bpjsEmpl:0, jkk:0, jkm:0, bruto:0,
+    bpjsPeg:0, pensiun:0, jht:0, pphDtp:0, bpjsEmplDis:0, jkkDis:0, jkmDis:0,
+    totalPot:0, bersih:0,
+    tpp:0, bpjsTppPeg:0, tppBersih:0, totalBersih:0
   };
 
   sorted.forEach(function(h, idx) {
     var p = h.pegawai, k = h.komponen;
     var bel = h.belanja || {}, iu = h.iuran || {};
-    var tpp       = k.tpp || 0;
-    var tpemb     = k.t_pembulatan || 0;
-    var tjabStr   = k.t_jabatan_str || 0;
-    var tjabFung  = k.t_jabatan_fung || 0;
-    var tjabUmum  = k.t_jabatan_umum || 0;
-    var tkhusus   = k.t_khusus || 0;
-    var tkel      = (k.t_istri||0) + (k.t_anak||0);
-    var brutoGaji = (k.gaji_pokok||0) + tkel + tjabStr + tjabFung + tjabUmum + tkhusus + (k.t_pangan||0) + tpemb;
-    var pphDtp    = bel.pph21 || 0;
-    var bpjsEmpl  = bel.bpjs_kes_employer || 0;
-    var jkk       = bel.jkk || 0;
-    var jkm       = bel.jkm || 0;
-    var bpjsPeg   = iu.bpjs_kes_pegawai || 0;
-    var pensiun   = (iu.pensiun_pegawai||0) + (iu.jht_taspen||0) + (iu.jht||0) + (iu.jp||0);
-    var bersihGaji = brutoGaji - bpjsPeg - pensiun;
-    var pphTppDtp  = bel.pph21_tpp || 0;
-    var bpjsTppEmpl = bel.bpjs_tpp || 0;
-    var bpjsTppPeg = iu.bpjs_tpp_pegawai || (tpp > 0 ? Math.round(tpp * 0.01) : 0);
-    var tppBersih  = tpp - bpjsTppPeg;
-    var totalB     = bersihGaji + tppBersih;
+    var tpp         = k.tpp || 0;
+    var tpemb       = k.t_pembulatan || 0;
+    var tjabStr     = k.t_jabatan_str || 0;
+    var tjabFung    = k.t_jabatan_fung || 0;
+    var tjabUmum    = k.t_jabatan_umum || 0;
+    var tkhusus     = k.t_khusus || 0;
+    var tkel        = (k.t_istri||0) + (k.t_anak||0);
+    var pphDtp      = bel.pph21 || 0;
+    var bpjsEmpl    = bel.bpjs_kes_employer || 0;
+    var jkk         = bel.jkk || 0;
+    var jkm         = bel.jkm || 0;
+    var t007        = tkhusus + pphDtp; // combined rekening 007
+    var bruto       = (k.gaji_pokok||0)+tkel+tjabStr+tjabFung+tjabUmum+tkhusus+(k.t_pangan||0)+tpemb
+                     +pphDtp+bpjsEmpl+jkk+jkm;
+    var bpjsPeg     = iu.bpjs_kes_pegawai || 0;
+    var pensiunPeg  = iu.pensiun_pegawai || 0;
+    var jhtTaspen   = iu.jht_taspen || 0;
+    var jhtBpjs     = iu.jht || 0;
+    var jp          = iu.jp || 0;
+    var totalPot    = bpjsPeg + pensiunPeg + jhtTaspen + jhtBpjs + jp + pphDtp + bpjsEmpl + jkk + jkm;
+    var bersihGaji  = bruto - totalPot;
+    var bpjsTppPeg  = iu.bpjs_tpp_pegawai || (tpp > 0 ? Math.round(tpp * 0.01) : 0);
+    var tppBersih   = tpp - bpjsTppPeg;
+    var totalB      = bersihGaji + tppBersih;
 
-    ft.gapok      += k.gaji_pokok || 0;
-    ft.tkel       += tkel;
-    ft.tjabStr    += tjabStr;
-    ft.tjabFung   += tjabFung;
-    ft.tjabUmum   += tjabUmum;
-    ft.tkhusus    += tkhusus;
-    ft.tpan       += k.t_pangan || 0;
-    ft.tpemb      += tpemb;
-    ft.brutoGaji  += brutoGaji;
-    ft.pphDtp     += pphDtp;
-    ft.bpjsEmpl   += bpjsEmpl;
-    ft.jkk        += jkk;
-    ft.jkm        += jkm;
-    ft.bpjsPeg    += bpjsPeg;
-    ft.pensiun    += pensiun;
-    ft.bersihGaji += bersihGaji;
-    ft.tpp        += tpp;
-    ft.pphTppDtp  += pphTppDtp;
-    ft.bpjsTppEmpl += bpjsTppEmpl;
-    ft.bpjsTppPeg += bpjsTppPeg;
-    ft.tppBersih  += tppBersih;
+    ft.gapok       += k.gaji_pokok || 0;
+    ft.tkel        += tkel;
+    ft.tjabStr     += tjabStr;
+    ft.tjabFung    += tjabFung;
+    ft.tjabUmum    += tjabUmum;
+    ft.tpan        += k.t_pangan || 0;
+    ft.t007        += t007;
+    ft.tpemb       += tpemb;
+    ft.bpjsEmpl    += bpjsEmpl;
+    ft.jkk         += jkk;
+    ft.jkm         += jkm;
+    ft.bruto       += bruto;
+    ft.bpjsPeg     += bpjsPeg;
+    ft.pensiun     += pensiunPeg;
+    ft.jht         += jhtTaspen;
+    ft.pphDtp      += pphDtp;
+    ft.bpjsEmplDis += bpjsEmpl;
+    ft.jkkDis      += jkk;
+    ft.jkmDis      += jkm;
+    ft.totalPot    += totalPot;
+    ft.bersih      += bersihGaji;
+    ft.tpp         += tpp;
+    ft.bpjsTppPeg  += bpjsTppPeg;
+    ft.tppBersih   += tppBersih;
     ft.totalBersih += totalB;
 
     var chips = '';
@@ -470,6 +823,7 @@ function renderPegawai(res) {
       chips += '<span class="peringatan-chip">KP ~'+p.hari_kp+' hr</span> ';
     if (p.sisa_bup !== null && p.sisa_bup !== undefined && p.sisa_bup <= 2)
       chips += '<span class="pensiun-chip">BUP '+p.bup+'th</span> ';
+    if (p.kpp_aktif) chips += '<span class="pensiun-chip" title="Kenaikan Pangkat Pengabdian">KPP '+esc(p.golongan_asli)+'→'+esc(p.golongan)+'</span> ';
     if (p.kgb_info) chips += '<span class="peringatan-chip">'+esc(p.kgb_info)+'</span>';
 
     var eselon  = p.eselon ? '<span class="badge bg-secondary me-1" style="font-size:.65rem">'+esc(p.eselon)+'</span>' : '';
@@ -479,61 +833,83 @@ function renderPegawai(res) {
       : '<span class="badge bg-warning text-dark" style="font-size:.65rem">PPPK</span>';
 
     dhtml += '<tr>'
-      +'<td>'+(idx+1)+'</td>'
+      +'<td class="text-center">'+(idx+1)+'</td>'
       +'<td><strong>'+esc(p.nama)+'</strong><br><small class="text-muted font-monospace">'+esc(p.nip||'—')+'</small></td>'
       +'<td>'+jenisBadge+'</td>'
       +'<td>'+esc(p.golongan)+'<br><small class="text-muted">MKG '+p.mkg+'</small></td>'
       +'<td>'+eselon+esc(jabatan)+'</td>'
       +'<td><small>'+esc(p.opd||'—')+'</small></td>'
+      // komponen 001–012
       +'<td class="text-end">'+rupiah(k.gaji_pokok)+'</td>'
       +'<td class="text-end">'+rupiah(tkel)+'</td>'
       +'<td class="text-end">'+rupiah(tjabStr)+'</td>'
       +'<td class="text-end">'+rupiah(tjabFung)+'</td>'
       +'<td class="text-end">'+rupiah(tjabUmum)+'</td>'
-      +'<td class="text-end">'+rupiah(tkhusus)+'</td>'
       +'<td class="text-end">'+rupiah(k.t_pangan||0)+'</td>'
+      +'<td class="text-end">'+rupiah(t007)+'</td>'
       +'<td class="text-end">'+rupiah(tpemb)+'</td>'
-      +'<td class="text-end fw-semibold" style="background:#dbeafe">'+rupiah(brutoGaji)+'</td>'
+      +'<td class="text-end">'+rupiah(bpjsEmpl)+'</td>'
+      +'<td class="text-end">'+rupiah(jkk)+'</td>'
+      +'<td class="text-end">'+rupiah(jkm)+'</td>'
+      +'<td class="text-end text-muted">—</td>'
+      // Total Bruto
+      +'<td class="text-end fw-semibold" style="background:#fef9c3">'+rupiah(bruto)+'</td>'
+      // potongan
+      +'<td class="text-end">'+rupiah(bpjsPeg)+'</td>'
+      +'<td class="text-end">'+rupiah(pensiunPeg)+'</td>'
+      +'<td class="text-end">'+rupiah(jhtTaspen)+'</td>'
       +'<td class="text-end">'+rupiah(pphDtp)+'</td>'
       +'<td class="text-end">'+rupiah(bpjsEmpl)+'</td>'
       +'<td class="text-end">'+rupiah(jkk)+'</td>'
       +'<td class="text-end">'+rupiah(jkm)+'</td>'
-      +'<td class="text-end">'+rupiah(bpjsPeg)+'</td>'
-      +'<td class="text-end">'+rupiah(pensiun)+'</td>'
+      // Total Potongan
+      +'<td class="text-end fw-semibold" style="background:#fce7f3;color:#9d174d">'+rupiah(totalPot)+'</td>'
+      // Gaji Bersih
       +'<td class="text-end fw-semibold" style="background:#d1fae5;color:#065f46">'+rupiah(bersihGaji)+'</td>'
+      // TPP
       +'<td class="text-end">'+rupiah(tpp)+'</td>'
-      +'<td class="text-end">'+rupiah(pphTppDtp)+'</td>'
-      +'<td class="text-end">'+rupiah(bpjsTppEmpl)+'</td>'
       +'<td class="text-end">'+rupiah(bpjsTppPeg)+'</td>'
+      // TPP Bersih & Total THP
       +'<td class="text-end fw-semibold" style="color:#0d47a1">'+rupiah(tppBersih)+'</td>'
       +'<td class="text-end fw-bold" style="color:#5b21b6">'+rupiah(totalB)+'</td>'
       +'<td class="text-center">'+chips+'</td>'
       +'</tr>';
   });
 
-  $('#tblDetailBody').html(dhtml || '<tr><td colspan="29" class="text-center text-muted py-3">Tidak ada data</td></tr>');
+  $('#tblDetailBody').html(dhtml || '<tr><td colspan="33" class="text-center text-muted py-3">Tidak ada data</td></tr>');
   $('#tblDetailFoot').html(
     '<tr><td colspan="6" class="text-end fw-bold">TOTAL</td>'
+    // komponen 001–012
     +'<td class="text-end">'+rupiah(ft.gapok)+'</td>'
     +'<td class="text-end">'+rupiah(ft.tkel)+'</td>'
     +'<td class="text-end">'+rupiah(ft.tjabStr)+'</td>'
     +'<td class="text-end">'+rupiah(ft.tjabFung)+'</td>'
     +'<td class="text-end">'+rupiah(ft.tjabUmum)+'</td>'
-    +'<td class="text-end">'+rupiah(ft.tkhusus)+'</td>'
     +'<td class="text-end">'+rupiah(ft.tpan)+'</td>'
+    +'<td class="text-end">'+rupiah(ft.t007)+'</td>'
     +'<td class="text-end">'+rupiah(ft.tpemb)+'</td>'
-    +'<td class="text-end fw-bold" style="background:#dbeafe">'+rupiah(ft.brutoGaji)+'</td>'
-    +'<td class="text-end">'+rupiah(ft.pphDtp)+'</td>'
     +'<td class="text-end">'+rupiah(ft.bpjsEmpl)+'</td>'
     +'<td class="text-end">'+rupiah(ft.jkk)+'</td>'
     +'<td class="text-end">'+rupiah(ft.jkm)+'</td>'
+    +'<td class="text-end">—</td>'
+    // Total Bruto
+    +'<td class="text-end fw-bold" style="background:#fef9c3">'+rupiah(ft.bruto)+'</td>'
+    // potongan
     +'<td class="text-end">'+rupiah(ft.bpjsPeg)+'</td>'
     +'<td class="text-end">'+rupiah(ft.pensiun)+'</td>'
-    +'<td class="text-end fw-bold" style="background:#d1fae5;color:#065f46">'+rupiah(ft.bersihGaji)+'</td>'
+    +'<td class="text-end">'+rupiah(ft.jht)+'</td>'
+    +'<td class="text-end">'+rupiah(ft.pphDtp)+'</td>'
+    +'<td class="text-end">'+rupiah(ft.bpjsEmplDis)+'</td>'
+    +'<td class="text-end">'+rupiah(ft.jkkDis)+'</td>'
+    +'<td class="text-end">'+rupiah(ft.jkmDis)+'</td>'
+    // Total Potongan
+    +'<td class="text-end fw-bold" style="background:#fce7f3;color:#9d174d">'+rupiah(ft.totalPot)+'</td>'
+    // Gaji Bersih
+    +'<td class="text-end fw-bold" style="background:#d1fae5;color:#065f46">'+rupiah(ft.bersih)+'</td>'
+    // TPP
     +'<td class="text-end">'+rupiah(ft.tpp)+'</td>'
-    +'<td class="text-end">'+rupiah(ft.pphTppDtp)+'</td>'
-    +'<td class="text-end">'+rupiah(ft.bpjsTppEmpl)+'</td>'
     +'<td class="text-end">'+rupiah(ft.bpjsTppPeg)+'</td>'
+    // TPP Bersih & Total THP
     +'<td class="text-end" style="color:#0d47a1">'+rupiah(ft.tppBersih)+'</td>'
     +'<td class="text-end fw-bold" style="color:#5b21b6">'+rupiah(ft.totalBersih)+'</td>'
     +'<td></td></tr>'
@@ -565,6 +941,13 @@ function downloadCSV(csv, filename) {
   a.href = url; a.download = filename; a.style.display = 'none';
   document.body.appendChild(a); a.click();
   setTimeout(function() { document.body.removeChild(a); URL.revokeObjectURL(url); }, 500);
+}
+
+function downloadTable(tableId, label) {
+  var tbl = document.getElementById(tableId);
+  if (!tbl) return;
+  var periode = ($('#summaryBoxes .sum-box').first().find('.val').text() || 'rekap').replace(/\s+/g,'_');
+  downloadCSV(tableToCSV(tbl), label+'_'+periode+'.csv');
 }
 
 function downloadActiveRekTable() {
