@@ -75,14 +75,14 @@ class Rekap extends Gaji {
 		$detail_months = [];
 		$peg_info = null;
 		foreach ($months as $m) {
-			$h = $this->_hitung_gaji($peg_id, $m['bulan'], $m['tahun']);
+			$h = $this->_hitung_gaji($peg_id, $m['bulan'], $m['tahun'], $m['is_ke']);
 			if (!$h['ok']) continue;
 			if ($peg_info === null) $peg_info = $h['pegawai'];
 			if ($h['pegawai']['pensiun_di_target']) {
 				$detail_months[] = array_merge($m, ['pensiun' => TRUE]);
 				continue;
 			}
-			$pajak_tpp    = $this->_pajak_tpp($h['pegawai']['golongan'], $h['komponen']['tpp']);
+			$pajak_tpp    = $h['belanja']['pph21_tpp'] ?? 0;
 			$bpjs_tpp_peg = $h['iuran']['bpjs_tpp_pegawai'] ?? 0;
 			$detail_months[] = array_merge($m, [
 				'pensiun'     => FALSE,
@@ -160,15 +160,12 @@ class Rekap extends Gaji {
 			];
 
 			foreach ($pegawais as $peg) {
-				// Gaji ke-13/14: gunakan bulan_basis untuk lookup gapok
-				$calc_bulan = ($p['is_ke'] > 0) ? $p['bulan'] : $p['bulan'];
-				$h = $this->_hitung_gaji($peg['id'], $calc_bulan, $p['tahun']);
+				$h = $this->_hitung_gaji($peg['id'], $p['bulan'], $p['tahun'], $p['is_ke']);
 				if (!$h['ok'] || $h['pegawai']['pensiun_di_target']) continue;
 
-				$pajak_tpp = $this->_pajak_tpp($h['pegawai']['golongan'], $h['komponen']['tpp']);
 				$jenis_key = strtolower($peg['jenis_kepegawaian']);
 
-				$t = $this->_totals_from($h, $pajak_tpp);
+				$t = $this->_totals_from($h);
 				$this->_add_totals($row[$jenis_key], $t);
 				$this->_add_totals($row['combined'], $t);
 
@@ -245,59 +242,72 @@ class Rekap extends Gaji {
 	private function _zero_totals()
 	{
 		return [
-			'jml'          => 0,
-			'gaji_pokok'   => 0,
-			't_keluarga'   => 0,
-			't_jabatan'    => 0,
-			't_pangan'     => 0,
-			'bruto_gaji'   => 0,
-			'pot_bpjs'     => 0,
-			'pot_pensiun'  => 0,
-			'pph21'        => 0,
-			'bersih_gaji'  => 0,
-			'tpp_bruto'    => 0,
-			'pajak_tpp'    => 0,
-			'bpjs_tpp_peg' => 0,
-			'tpp_bersih'   => 0,
-			'total_bersih' => 0,
-			'bel_employer' => 0, // BPJS employer + JKK + JKM
-			'bel_tpp_bpjs' => 0, // BPJS 4% dari TPP
+			'jml'           => 0,
+			'gaji_pokok'    => 0,
+			't_keluarga'    => 0,
+			't_jabatan_str' => 0,
+			't_jabatan_fung'=> 0,
+			't_jabatan_umum'=> 0,
+			't_khusus'      => 0,
+			't_pangan'      => 0,
+			't_pembulatan'  => 0,
+			'bruto_gaji'    => 0,
+			'pot_bpjs'      => 0,
+			'pot_pensiun'   => 0,
+			'pph21'         => 0,
+			'bersih_gaji'   => 0,
+			'tpp_bruto'     => 0,
+			'pajak_tpp'     => 0,
+			'bpjs_tpp_peg'  => 0,
+			'tpp_bersih'    => 0,
+			'total_bersih'  => 0,
+			'bel_bpjs_gaji' => 0,
+			'bel_jkk'       => 0,
+			'bel_jkm'       => 0,
+			'bel_tpp_bpjs'  => 0,
 		];
 	}
 
-	private function _totals_from($h, $pajak_tpp)
+	private function _totals_from($h)
 	{
 		$k   = $h['komponen'];
 		$iu  = $h['iuran'];
 		$bel = $h['belanja'];
 		$tpp          = $k['tpp'];
+		$t_pembulatan = $k['t_pembulatan'] ?? 0;
 		$bpjs_tpp_peg = $iu['bpjs_tpp_pegawai'] ?? 0;
 		$pot_bpjs     = $iu['bpjs_kes_pegawai'];
+		$pajak_tpp    = $bel['pph21_tpp'] ?? 0;
 		$pot_pensiun  = $iu['pensiun_pegawai'] + ($iu['jht_taspen'] ?? 0) + $iu['jht'] + $iu['jp'];
-		$bruto_gaji   = $k['gaji_pokok'] + $k['t_istri'] + $k['t_anak'] + $k['t_jabatan'] + $k['t_khusus'] + $k['t_pangan'] + ($k['t_pembulatan'] ?? 0);
-		$pph21        = $bel['pph21'];       // DTP — untuk referensi
-		// PPh21 gaji = DTP, tidak dipotong dari pegawai
+		$bruto_gaji   = $k['gaji_pokok'] + $k['t_istri'] + $k['t_anak'] + $k['t_jabatan'] + $k['t_khusus'] + $k['t_pangan'] + $t_pembulatan;
+		$pph21        = $bel['pph21'];
 		$bersih_gaji  = $bruto_gaji - $pot_bpjs - $pot_pensiun;
 		$tpp_bersih   = $tpp - $bpjs_tpp_peg;
 
 		return [
-			'jml'          => 1,
-			'gaji_pokok'   => $k['gaji_pokok'],
-			't_keluarga'   => $k['t_istri'] + $k['t_anak'],
-			't_jabatan'    => $k['t_jabatan'] + $k['t_khusus'],
-			't_pangan'     => $k['t_pangan'],
-			'bruto_gaji'   => $bruto_gaji,
-			'pot_bpjs'     => $pot_bpjs,
-			'pot_pensiun'  => $pot_pensiun,
-			'pph21'        => $pph21,         // DTP — referensi
-			'bersih_gaji'  => $bersih_gaji,
-			'tpp_bruto'    => $tpp,
-			'pajak_tpp'    => $pajak_tpp,     // DTP — referensi
-			'bpjs_tpp_peg' => $bpjs_tpp_peg,
-			'tpp_bersih'   => $tpp_bersih,
-			'total_bersih' => $bersih_gaji + $tpp_bersih,
-			'bel_employer' => $bel['bpjs_kes_employer'] + $bel['jkk'] + $bel['jkm'],
-			'bel_tpp_bpjs' => $bel['bpjs_tpp'],
+			'jml'           => 1,
+			'gaji_pokok'    => $k['gaji_pokok'],
+			't_keluarga'    => $k['t_istri'] + $k['t_anak'],
+			't_jabatan_str' => $k['t_jabatan_str']  ?? 0,
+			't_jabatan_fung'=> $k['t_jabatan_fung'] ?? 0,
+			't_jabatan_umum'=> $k['t_jabatan_umum'] ?? 0,
+			't_khusus'      => $k['t_khusus']       ?? 0,
+			't_pangan'      => $k['t_pangan'],
+			't_pembulatan'  => $t_pembulatan,
+			'bruto_gaji'    => $bruto_gaji,
+			'pot_bpjs'      => $pot_bpjs,
+			'pot_pensiun'   => $pot_pensiun,
+			'pph21'         => $pph21,
+			'bersih_gaji'   => $bersih_gaji,
+			'tpp_bruto'     => $tpp,
+			'pajak_tpp'     => $pajak_tpp,
+			'bpjs_tpp_peg'  => $bpjs_tpp_peg,
+			'tpp_bersih'    => $tpp_bersih,
+			'total_bersih'  => $bersih_gaji + $tpp_bersih,
+			'bel_bpjs_gaji' => $bel['bpjs_kes_employer'],
+			'bel_jkk'       => $bel['jkk'],
+			'bel_jkm'       => $bel['jkm'],
+			'bel_tpp_bpjs'  => $bel['bpjs_tpp'],
 		];
 	}
 

@@ -42,9 +42,9 @@
     <div class="card mb-4">
       <div class="card-header"><i class="fa-solid fa-calculator me-2 text-primary"></i>Simulasi Slip Gaji ASN</div>
       <div class="card-body">
-        <div class="row g-3 align-items-end">
-          <div class="col-md-8">
-            <label class="form-label fw-semibold">Pilih Pegawai</label>
+        <div class="row g-2 align-items-end">
+          <div class="col-md-6">
+            <label class="form-label fw-semibold mb-1">Pilih Pegawai</label>
             <div class="peg-picker">
               <div class="input-group">
                 <span class="input-group-text"><i class="fa-solid fa-user-tie"></i></span>
@@ -55,13 +55,37 @@
             </div>
             <input type="hidden" id="sel_pegawai_id">
           </div>
-          <div class="col-md-4">
-            <button class="btn btn-primary w-100" id="btnHitung" disabled>
-              <i class="fa-solid fa-calculator me-1"></i> Hitung Gaji
+          <div class="col-md-2">
+            <label class="form-label small mb-1">Tahun</label>
+            <input type="number" class="form-control form-control-sm" id="sel_tahun"
+              value="<?= date('Y') ?>" min="2020" max="2099">
+          </div>
+          <div class="col-md-2">
+            <label class="form-label small mb-1">Bulan</label>
+            <select class="form-select form-select-sm" id="sel_bulan">
+              <?php
+              $bln = ['','Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+              for ($i = 1; $i <= 12; $i++): ?>
+              <option value="<?= $i ?>" <?= $i == (int)date('n') ? 'selected' : '' ?>><?= $bln[$i] ?></option>
+              <?php endfor; ?>
+            </select>
+          </div>
+          <div class="col-md-1">
+            <label class="form-label small mb-1">Jenis</label>
+            <select class="form-select form-select-sm" id="sel_ke">
+              <option value="0">Normal</option>
+              <?php foreach ($ke_rows as $ke): ?>
+              <option value="<?= (int)$ke['no'] ?>"><?= html_escape($ke['nama']) ?></option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+          <div class="col-md-1">
+            <button class="btn btn-primary w-100" id="btnHitung" disabled title="Hitung Gaji">
+              <i class="fa-solid fa-calculator"></i>
             </button>
           </div>
         </div>
-        <div id="peg_preview" class="mt-3" style="display:none">
+        <div id="peg_preview" class="mt-2" style="display:none">
           <div class="d-flex align-items-center gap-2 flex-wrap">
             <i class="fa-solid fa-user-check text-success"></i>
             <strong id="prev_nama"></strong>
@@ -86,6 +110,7 @@
           <span class="badge bg-white text-primary fs-6 fw-bold" id="sl_gol"></span>
           <div class="small opacity-75 mt-1" id="sl_mkg_info"></div>
           <div class="small opacity-75" id="sl_opd"></div>
+          <div class="small opacity-75 mt-1 fw-semibold" id="sl_periode"></div>
         </div>
       </div>
 
@@ -228,8 +253,11 @@ var SIM = { peg_url:'<?= $peg_url ?>', hitung_url:'<?= $hitung_url ?>' };
   // ── Hitung ──────────────────────────────────────────────────────────────
   $('#btnHitung').on('click', function () {
     if (!selId) return;
+    var bulan = parseInt($('#sel_bulan').val(), 10);
+    var tahun = parseInt($('#sel_tahun').val(), 10);
+    var is_ke = parseInt($('#sel_ke').val(), 10);
     $('#slip_wrap').hide(); $('#slip_empty').hide(); $('#slip_loading').show();
-    $.post(SIM.hitung_url, { pegawai_id: selId }, function (res) {
+    $.post(SIM.hitung_url, { pegawai_id: selId, bulan: bulan, tahun: tahun, is_ke: is_ke }, function (res) {
       $('#slip_loading').hide();
       if (!res.ok) { alert(res.msg || 'Error'); showEmpty(); return; }
       renderSlip(res);
@@ -239,8 +267,13 @@ var SIM = { peg_url:'<?= $peg_url ?>', hitung_url:'<?= $hitung_url ?>' };
   function showEmpty() { $('#slip_wrap').hide(); $('#slip_loading').hide(); $('#slip_empty').show(); }
 
   // ── Render slip ──────────────────────────────────────────────────────────
+  var BLN_NAMA = ['','Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
   function renderSlip(d) {
     var p = d.pegawai;
+
+    // Periode label di header
+    var periodeLabel = (p.ke_nama ? p.ke_nama + ' — ' : '') + (BLN_NAMA[p.target_bulan] || '') + ' ' + (p.target_tahun || '');
+    $('#sl_periode').text(periodeLabel);
 
     // Header
     $('#sl_nama').text(p.nama);
@@ -287,20 +320,22 @@ var SIM = { peg_url:'<?= $peg_url ?>', hitung_url:'<?= $hitung_url ?>' };
 
     var tpp = tppRow ? (tppRow.nominal || 0) : 0;
 
-    // PPh21 TPP: DTP, Gol IV → 15%, selain itu → 5%
+    // Gov-paid items
+    var bel = d.belanja || {};
+
+    // PPh21 TPP: DTP, Gol IV → 15%, selain itu → 5% (flat rate, tidak ikut marginal ke-13)
     var golongan = p.golongan || '';
     var rateTpp  = (golongan.indexOf('IV') === 0) ? 0.15 : 0.05;
-    var pajakTpp = (tpp > 0 && p.jenis !== 'NON_ASN') ? Math.round(tpp * rateTpp) : 0;
+    var pajakTpp = (bel.pph21_tpp !== undefined) ? (bel.pph21_tpp || 0)
+                 : (tpp > 0 && p.jenis !== 'NON_ASN' ? Math.round(tpp * rateTpp) : 0);
     // BPJS TPP 1% pegawai (satu-satunya potongan dari TPP)
     var bpjsTppPeg = (d.iuran && d.iuran.bpjs_tpp_pegawai) ? d.iuran.bpjs_tpp_pegawai : 0;
-
-    // Gov-paid items (dicatat diterima dan dibayarkan — keluar masuk)
-    var bel = d.belanja || {};
+    var rek_sfx = (p.jenis === 'PNS') ? '.00001' : '.00002';
     var govGaji = [];
-    if (bel.pph21)             govGaji.push({ rek:'5.1.01.01.007', lbl:'Tunjangan PPh 21 — Ditanggung Pemerintah', val: bel.pph21 });
-    if (bel.bpjs_kes_employer) govGaji.push({ rek:'5.1.01.01.009', lbl:'BPJS Kesehatan — Pemberi Kerja (4%)',      val: bel.bpjs_kes_employer });
-    if (bel.jkk)               govGaji.push({ rek:'5.1.01.01.010', lbl:'Iuran JKK — Pemberi Kerja (0,24%)',        val: bel.jkk });
-    if (bel.jkm)               govGaji.push({ rek:'5.1.01.01.011', lbl:'Iuran JKM — Pemberi Kerja (0,30%)',        val: bel.jkm });
+    if (bel.pph21)             govGaji.push({ rek:'5.1.01.01.007'+rek_sfx, lbl:'Tunjangan PPh 21 — Ditanggung Pemerintah', val: bel.pph21 });
+    if (bel.bpjs_kes_employer) govGaji.push({ rek:'5.1.01.01.009'+rek_sfx, lbl:'BPJS Kesehatan — Pemberi Kerja (4%)',      val: bel.bpjs_kes_employer });
+    if (bel.jkk)               govGaji.push({ rek:'5.1.01.01.010'+rek_sfx, lbl:'Iuran JKK — Pemberi Kerja (0,24%)',        val: bel.jkk });
+    if (bel.jkm)               govGaji.push({ rek:'5.1.01.01.011'+rek_sfx, lbl:'Iuran JKM — Pemberi Kerja (0,30%)',        val: bel.jkm });
     var govGajiTotal = govGaji.reduce(function(s, r) { return s + (r.val || 0); }, 0);
 
     var govTpp = (bel.bpjs_tpp && tpp > 0) ? bel.bpjs_tpp : 0;
@@ -365,47 +400,51 @@ var SIM = { peg_url:'<?= $peg_url ?>', hitung_url:'<?= $hitung_url ?>' };
     $('#sl_total_pot').text(fmt(totalPot));
     $('#sl_bersih_gaji').text(fmt(bersihGaji));
 
-    // ── Render TPP section ──────────────────────────────────────────────
+    // ── Render TPP section (konsep anggaran) ────────────────────────────
     if (tpp > 0 && tppRow) {
       var tppPct = Math.round(rateTpp * 100);
+      var tppAnggaranBruto = tpp + pajakTpp + govTpp;
+
+      // Rekening TPP
       var tppHtml = '<div class="slip-row">'
         + '<span class="label"><span class="rekening-badge me-1">' + esc(tppRow.rekening || '') + '</span> ' + esc(tppRow.label) + '</span>'
         + (tppRow.catatan ? '<span class="catatan-tag">' + esc(tppRow.catatan) + '</span>' : '')
         + '<span class="amount">' + fmt(tpp) + '</span>'
         + '</div>';
+
+      // Rekening PPh DTP
       if (pajakTpp > 0) {
         tppHtml += '<div class="slip-row gov-paid">'
-          + '<span class="label"><span class="rekening-badge me-1">5.1.01.01.007</span> PPh 21 TPP (' + tppPct + '%) — Ditanggung Negara'
+          + '<span class="label"><span class="rekening-badge me-1">5.1.01.01.007'+rek_sfx+'</span> Tunjangan PPh 21 TPP (' + tppPct + '%) — Ditanggung Pemerintah'
           + (tppPct === 15 ? ' <span class="badge bg-warning text-dark ms-1" style="font-size:.6rem">Gol IV</span>' : '')
           + ' <span class="badge bg-warning text-dark ms-1" style="font-size:.6rem">DTP</span></span>'
           + '<span class="amount">' + fmt(pajakTpp) + '</span>'
           + '</div>';
       }
+
+      // Rekening BPJS Pemberi Kerja DTP
       if (govTpp > 0) {
         tppHtml += '<div class="slip-row gov-paid">'
-          + '<span class="label"><span class="rekening-badge me-1">5.1.01.01.009</span> BPJS Kesehatan dari TPP — Pemberi Kerja (4%)'
+          + '<span class="label"><span class="rekening-badge me-1">5.1.01.01.009'+rek_sfx+'</span> BPJS Kesehatan TPP — Pemberi Kerja (4%)'
           + ' <span class="badge bg-warning text-dark ms-1" style="font-size:.6rem">DTP</span></span>'
           + '<span class="amount">' + fmt(govTpp) + '</span>'
           + '</div>';
       }
-      if (pajakTpp > 0) {
-        tppHtml += '<div class="slip-row tpp-deduct">'
-          + '<span class="label"><span class="rekening-badge me-1">5.1.01.01.007</span> PPh 21 TPP — setor ke kas negara <em class="text-muted" style="font-size:.75rem">(DTP)</em></span>'
-          + '<span class="amount">(' + fmt(pajakTpp) + ')</span>'
-          + '</div>';
-      }
-      if (govTpp > 0) {
-        tppHtml += '<div class="slip-row tpp-deduct">'
-          + '<span class="label"><span class="rekening-badge me-1">5.1.01.01.009</span> BPJS Kes TPP — setor ke BPJS (4%) <em class="text-muted" style="font-size:.75rem">(DTP)</em></span>'
-          + '<span class="amount">(' + fmt(govTpp) + ')</span>'
-          + '</div>';
-      }
+
+      // Sub-total bruto anggaran
+      tppHtml += '<div class="slip-total tpp-total" style="background:#fef9c3">'
+        + '<span style="color:#78350f">Bruto Anggaran TPP</span>'
+        + '<span style="color:#78350f">' + fmt(tppAnggaranBruto) + '</span>'
+        + '</div>';
+
+      // Potongan BPJS mandiri pegawai
       if (bpjsTppPeg > 0) {
         tppHtml += '<div class="slip-row tpp-deduct">'
-          + '<span class="label"><span class="rekening-badge me-1">5.1.01.01.009</span> BPJS Kesehatan TPP — Pegawai (1%)</span>'
+          + '<span class="label"><span class="rekening-badge me-1">5.1.01.01.009'+rek_sfx+'</span> BPJS Kesehatan TPP — Pegawai (1%) <em class="text-muted" style="font-size:.75rem">(dipotong dari TPP)</em></span>'
           + '<span class="amount">(' + fmt(bpjsTppPeg) + ')</span>'
           + '</div>';
       }
+
       $('#sl_tpp_rows').html(tppHtml);
       $('#sl_tpp_bersih').text(fmt(tppBersih));
       $('#sl_tpp_section').show();

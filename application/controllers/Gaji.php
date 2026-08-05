@@ -21,9 +21,13 @@ class Gaji extends MY_Controller {
 
 	public function simulasi()
 	{
+		$ke_rows = $this->db->select('no, nama, bulan_basis')
+			->from('ref_gaji_ke')->where('is_active', 1)
+			->order_by('no')->get()->result_array();
 		$this->render('gaji/simulasi', array(
 			'peg_url'    => site_url('gaji/pegawai_search'),
 			'hitung_url' => site_url('gaji/hitung'),
+			'ke_rows'    => $ke_rows,
 		), 'Simulasi Slip Gaji');
 	}
 
@@ -54,12 +58,32 @@ class Gaji extends MY_Controller {
 		$this->_json(array_values($this->db->get()->result_array()));
 	}
 
-	/** AJAX: POST pegawai_id → kalkulasi slip gaji. */
+	/** AJAX: POST pegawai_id, bulan, tahun, is_ke → kalkulasi slip gaji. */
 	public function hitung()
 	{
 		$pegawai_id = (int) $this->input->post('pegawai_id');
 		if ( ! $pegawai_id) { $this->_json(array('ok' => 0, 'msg' => 'Pegawai tidak dipilih')); return; }
-		$this->_json($this->_hitung_gaji($pegawai_id));
+
+		$bulan = (int) $this->input->post('bulan');
+		$tahun = (int) $this->input->post('tahun');
+		$is_ke = (int) $this->input->post('is_ke');
+
+		if ($bulan < 1 || $bulan > 12) $bulan = (int) date('n');
+		if ($tahun < 2020 || $tahun > 2099) $tahun = (int) date('Y');
+
+		$ke_nama = '';
+		if ($is_ke > 0) {
+			$ke_row = $this->db->select('no,nama,bulan_basis')->from('ref_gaji_ke')
+				->where('no', $is_ke)->where('is_active', 1)->limit(1)->get()->row_array();
+			if ($ke_row) {
+				$bulan   = (int) $ke_row['bulan_basis'];
+				$ke_nama = $ke_row['nama'];
+			} else {
+				$is_ke = 0;
+			}
+		}
+
+		$this->_json($this->_hitung_gaji($pegawai_id, $bulan, $tahun, $is_ke, $ke_nama));
 	}
 
 	// =================== REKAP GAJI PER OPD ===================
@@ -71,27 +95,44 @@ class Gaji extends MY_Controller {
 		$opd_list = array();
 		foreach ($opd_options as $o) $opd_list[$o['id']] = $o['label'];
 
+		$ke_rows = $this->db->select('no, nama, bulan_basis')
+			->from('ref_gaji_ke')->where('is_active', 1)
+			->order_by('no')->get()->result_array();
 		$this->render('gaji/rekap', array(
 			'opd_list'       => $opd_list,
 			'hitung_url'     => site_url('gaji/hitung_rekap'),
 			'is_super'       => is_super(),
 			'default_opd'    => is_super() ? 0 : (int) scope_opd_id(),
+			'ke_rows'        => $ke_rows,
 		), 'Rekap Gaji ASN');
 	}
 
-	/** AJAX: POST bulan, tahun, opd_id → kalkulasi semua pegawai. */
+	/** AJAX: POST bulan, tahun, opd_id, is_ke → kalkulasi semua pegawai. */
 	public function hitung_rekap()
 	{
 		$bulan  = (int) $this->input->post('bulan');
 		$tahun  = (int) $this->input->post('tahun');
 		$opd_id = (int) $this->input->post('opd_id');
+		$is_ke  = (int) $this->input->post('is_ke');
 
 		if ($bulan < 1 || $bulan > 12 || $tahun < 2000) {
 			$this->_json(array('ok' => 0, 'msg' => 'Periode tidak valid'));
 			return;
 		}
 
-		$q = $this->db->select('m.id')->from('pegawai m')
+		$ke_nama = '';
+		if ($is_ke > 0) {
+			$ke_row = $this->db->select('no,nama,bulan_basis')->from('ref_gaji_ke')
+				->where('no', $is_ke)->where('is_active', 1)->limit(1)->get()->row_array();
+			if ($ke_row) {
+				$bulan   = (int) $ke_row['bulan_basis'];
+				$ke_nama = $ke_row['nama'];
+			} else {
+				$is_ke = 0;
+			}
+		}
+
+		$q = $this->db->select('m.id, m.jenis_kepegawaian')->from('pegawai m')
 			->where('m.is_active', 1)
 			->where_in('m.jenis_kepegawaian', array('PNS','PPPK'));
 		if ($opd_id) $q->where('m.opd_id', $opd_id);
@@ -99,8 +140,10 @@ class Gaji extends MY_Controller {
 		$pegawais = $this->db->get()->result_array();
 
 		$rows = array();
-		$total = array(
-			'gaji_pokok' => 0, 't_keluarga' => 0, 't_jabatan' => 0, 't_pangan' => 0,
+		$t0 = array(
+			'gaji_pokok' => 0, 't_keluarga' => 0,
+			't_jabatan_str' => 0, 't_jabatan_fung' => 0, 't_jabatan_umum' => 0, 't_khusus' => 0,
+			't_pangan' => 0, 't_pembulatan' => 0,
 			'tpp' => 0, 'bruto' => 0,
 			'pot_bpjs_kes' => 0, 'pot_bpjs_tpp_peg' => 0,
 			'pot_pensiun' => 0, 'pot_jht' => 0, 'pot_jp' => 0,
@@ -110,47 +153,60 @@ class Gaji extends MY_Controller {
 			'bel_jkk' => 0, 'bel_jkm' => 0,
 			'pensiun_count' => 0,
 		);
+		$totals = array('all' => $t0, 'pns' => $t0, 'pppk' => $t0);
 
 		foreach ($pegawais as $p) {
-			$h = $this->_hitung_gaji($p['id'], $bulan, $tahun);
+			$h = $this->_hitung_gaji($p['id'], $bulan, $tahun, $is_ke, $ke_nama);
 			if ( ! $h['ok']) continue;
+
+			$jk = strtolower($p['jenis_kepegawaian']); // 'pns' or 'pppk'
 
 			// Cek pensiun di bulan/tahun target
 			if ($h['pegawai']['pensiun_di_target']) {
-				$total['pensiun_count']++;
-				continue; // tidak dihitung
+				foreach (array('all', $jk) as $tk) $totals[$tk]['pensiun_count']++;
+				continue;
 			}
 
 			$rows[] = $h;
 
-			$total['gaji_pokok']    += $h['komponen']['gaji_pokok'];
-			$total['t_keluarga']    += $h['komponen']['t_istri'] + $h['komponen']['t_anak'];
-			$total['t_jabatan']     += $h['komponen']['t_jabatan'] + $h['komponen']['t_khusus'];
-			$total['t_pangan']      += $h['komponen']['t_pangan'];
-			$total['tpp']           += $h['komponen']['tpp'];
-			$total['bruto']         += $h['bruto'];
-			$total['pot_bpjs_kes']     += $h['iuran']['bpjs_kes_pegawai'];
-			$total['pot_bpjs_tpp_peg'] += ($h['iuran']['bpjs_tpp_pegawai'] ?? 0);
-			$total['pot_pensiun']      += $h['iuran']['pensiun_pegawai'] + ($h['iuran']['jht_taspen'] ?? 0);
-			$total['pot_jht']          += $h['iuran']['jht'];
-			$total['pot_jp']           += $h['iuran']['jp'];
-			$total['pot_total']        += $h['total_potong'];
-			$total['bersih']           += $h['bersih'];
-			$total['bel_bpjs_gaji']    += $h['belanja']['bpjs_kes_employer'];
-			$total['bel_bpjs_tpp']     += $h['belanja']['bpjs_tpp'];
-			$total['bel_pph21']        += $h['belanja']['pph21'];
-			$total['bel_pph21_tpp']    += ($h['belanja']['pph21_tpp'] ?? 0);
-			$total['bel_jkk']          += $h['belanja']['jkk'];
-			$total['bel_jkm']          += $h['belanja']['jkm'];
+			foreach (array('all', $jk) as $tk) {
+				$totals[$tk]['gaji_pokok']     += $h['komponen']['gaji_pokok'];
+				$totals[$tk]['t_keluarga']     += $h['komponen']['t_istri'] + $h['komponen']['t_anak'];
+				$totals[$tk]['t_jabatan_str']  += ($h['komponen']['t_jabatan_str'] ?? 0);
+				$totals[$tk]['t_jabatan_fung'] += ($h['komponen']['t_jabatan_fung'] ?? 0);
+				$totals[$tk]['t_jabatan_umum'] += ($h['komponen']['t_jabatan_umum'] ?? 0);
+				$totals[$tk]['t_khusus']       += ($h['komponen']['t_khusus'] ?? 0);
+				$totals[$tk]['t_pangan']       += $h['komponen']['t_pangan'];
+				$totals[$tk]['t_pembulatan']  += ($h['komponen']['t_pembulatan'] ?? 0);
+				$totals[$tk]['tpp']           += $h['komponen']['tpp'];
+				$totals[$tk]['bruto']         += $h['bruto'];
+				$totals[$tk]['pot_bpjs_kes']     += $h['iuran']['bpjs_kes_pegawai'];
+				$totals[$tk]['pot_bpjs_tpp_peg'] += ($h['iuran']['bpjs_tpp_pegawai'] ?? 0);
+				$totals[$tk]['pot_pensiun']      += $h['iuran']['pensiun_pegawai'] + ($h['iuran']['jht_taspen'] ?? 0);
+				$totals[$tk]['pot_jht']          += $h['iuran']['jht'];
+				$totals[$tk]['pot_jp']           += $h['iuran']['jp'];
+				$totals[$tk]['pot_total']        += $h['total_potong'];
+				$totals[$tk]['bersih']           += $h['bersih'];
+				$totals[$tk]['bel_bpjs_gaji']    += $h['belanja']['bpjs_kes_employer'];
+				$totals[$tk]['bel_bpjs_tpp']     += $h['belanja']['bpjs_tpp'];
+				$totals[$tk]['bel_pph21']        += $h['belanja']['pph21'];
+				$totals[$tk]['bel_pph21_tpp']    += ($h['belanja']['pph21_tpp'] ?? 0);
+				$totals[$tk]['bel_jkk']          += $h['belanja']['jkk'];
+				$totals[$tk]['bel_jkm']          += $h['belanja']['jkm'];
+			}
 		}
 
 		$this->_json(array(
-			'ok'     => 1,
-			'bulan'  => $bulan,
-			'tahun'  => $tahun,
-			'rows'   => $rows,
-			'total'  => $total,
-			'jumlah' => count($rows),
+			'ok'         => 1,
+			'bulan'      => $bulan,
+			'tahun'      => $tahun,
+			'is_ke'      => $is_ke,
+			'ke_nama'    => $ke_nama,
+			'rows'       => $rows,
+			'total'      => $totals['all'],
+			'total_pns'  => $totals['pns'],
+			'total_pppk' => $totals['pppk'],
+			'jumlah'     => count($rows),
 		));
 	}
 
@@ -161,7 +217,7 @@ class Gaji extends MY_Controller {
 	 * Jika bulan/tahun NULL → pakai bulan saat ini (simulasi realtime).
 	 * Mendukung proyeksi KGB (Kenaikan Gaji Berkala) otomatis dari tgl_pns.
 	 */
-	protected function _hitung_gaji($pegawai_id, $target_bulan = NULL, $target_tahun = NULL)
+	protected function _hitung_gaji($pegawai_id, $target_bulan = NULL, $target_tahun = NULL, $is_ke = 0, $ke_nama = '')
 	{
 		$now = new DateTime();
 		if ($target_bulan === NULL) $target_bulan = (int) $now->format('n');
@@ -251,9 +307,10 @@ class Gaji extends MY_Controller {
 		}
 
 		// ── 2. TUNJANGAN KELUARGA ────────────────────────────────────────────────────
-		// $terima_tk=0 → pasangan ASN dengan gapok lebih tinggi; tunjangan ikut pasangan
-		$t_istri   = ($status_nik === 'KAWIN' && $terima_tk) ? (int) round($gaji_pokok * 0.10) : 0;
-		$anak_kena = min($jml_anak, 2);
+		// $terima_tk=0 → pasangan ASN dengan gapok lebih tinggi; tunjangan keluarga (istri + anak) ikut pasangan
+		$t_istri = ($status_nik === 'KAWIN' && $terima_tk) ? (int) round($gaji_pokok * 0.10) : 0;
+		// Anak kena T.Anak: max 2; jika KAWIN dan terima_tk=0 maka anak terdaftar di pasangan → 0
+		$anak_kena = ($status_nik === 'KAWIN' && !$terima_tk) ? 0 : min($jml_anak, 2);
 		$t_anak    = (int) round($gaji_pokok * 0.02 * $anak_kena);
 
 		// ── 3. TUNJANGAN JABATAN ─────────────────────────────────────────────────────
@@ -302,8 +359,9 @@ class Gaji extends MY_Controller {
 		}
 
 		// ── 4. TUNJANGAN PANGAN ──────────────────────────────────────────────────────
-		// 10 kg per jiwa per bulan × harga_per_kg (Rp 7.242/kg sesuai ketentuan Rembang)
-		// Jiwa pasangan hanya dihitung jika terima_tk=1 (bukan pasangan ASN lebih tinggi)
+		// 10 kg per jiwa per bulan × harga_per_kg
+		// Jiwa: diri sendiri (1) + pasangan jika terima_tk=1 (1) + anak_kena
+		// $anak_kena sudah = 0 jika terima_tk=0 (KAWIN, tunjangan di pasangan), sehingga jiwa_pangan = 1
 		$jiwa_pangan = 1 + ($status_nik === 'KAWIN' && $terima_tk ? 1 : 0) + $anak_kena;
 		$beras_row   = $this->db->select('harga_per_kg')->from('ref_harga_beras')
 			->order_by('berlaku_mulai DESC')->limit(1)->get()->row_array();
@@ -389,6 +447,39 @@ class Gaji extends MY_Controller {
 		$total_potong_pegawai += $bpjs_tpp_pegawai;
 		$bruto = $bruto_tanpa_bulat + $t_pembulatan;
 
+		// ── GAJI KE-13/14: per PP 14/2024 — komponen Gapok+TKel+TJab+TPangan saja ──────
+		// Tidak ada pembulatan; tidak ada potongan BPJS/pensiun dari gaji;
+		// PPh21 metode marginal: TER(bruto_reguler + bruto_ke13) × total − PPh21_reguler.
+		// TPP ke-13/14 sama seperti reguler (1% BPJS peg, 4% employer + pajak DTP).
+		if ($is_ke > 0) {
+			$t_pembulatan        = 0;
+			$bpjs_kes_pegawai    = 0;
+			$pensiun_pegawai     = 0;
+			$jht_taspen          = 0;
+			$jht                 = 0;
+			$jp                  = 0;
+			$bpjs_kes_employer   = 0;
+			$jkk                 = 0;
+			$jkm                 = 0;
+
+			// Metode marginal PPh21 ke-13: selisih TER gabungan dengan PPh21 reguler
+			$pph21_reguler  = $pph21;
+			$bruto_regular  = $gaji_pokok + $t_istri + $t_anak + $t_jabatan + $t_khusus + $t_pangan;
+			$bruto_ke13     = $gaji_pokok + $t_istri + $t_anak + $t_jabatan + $t_pangan;
+			$bruto_gabungan = $bruto_regular + $bruto_ke13;
+			if ($status_nik === 'KAWIN' && $jenis_kelamin === 'L') {
+				if ($jml_anak >= 3)     $ter_kat = 'C';
+				elseif ($jml_anak >= 1) $ter_kat = 'B';
+				else                    $ter_kat = 'A';
+			} else {
+				$ter_kat = ($jml_anak >= 2) ? 'B' : 'A';
+			}
+			$pph21 = max(0, (int) round($bruto_gabungan * $this->_ter_rate($ter_kat, $bruto_gabungan)) - $pph21_reguler);
+
+			$total_potong_pegawai = $bpjs_tpp_pegawai;
+			$bruto = $bruto_ke13 + $tpp;
+		}
+
 		// ── 10. MARKER KARIR ─────────────────────────────────────────────────────────
 		$usia_sekarang = NULL; $sisa_bup = NULL; $hari_kp = NULL;
 		if ( ! empty($peg['tgl_lahir']))
@@ -415,6 +506,8 @@ class Gaji extends MY_Controller {
 		{
 			$kgb_berikutnya = $peg['tmt_kgb'];
 		}
+
+		$rek_sfx = ($jenis === 'PNS') ? '.00001' : '.00002';
 
 		return array(
 			'ok'      => 1,
@@ -458,35 +551,41 @@ class Gaji extends MY_Controller {
 				'hari_kp'         => $hari_kp,
 				'target_bulan'    => $target_bulan,
 				'target_tahun'    => $target_tahun,
+				'is_ke'           => $is_ke,
+				'ke_nama'         => $ke_nama,
 			),
 			'komponen' => array(
-				'gaji_pokok'   => $gaji_pokok,
-				't_istri'      => $t_istri,
-				't_anak'       => $t_anak,
-				't_jabatan'    => $t_jabatan,
-				't_khusus'     => $t_khusus,
-				't_pangan'     => $t_pangan,
-				't_pembulatan' => $t_pembulatan,
-				'tpp'          => $tpp,
+				'gaji_pokok'       => $gaji_pokok,
+				't_istri'          => $t_istri,
+				't_anak'           => $t_anak,
+				't_jabatan'        => $t_jabatan,
+				't_jabatan_type'   => $t_jabatan_type,
+				't_jabatan_str'    => ($t_jabatan_type === 'Struktural') ? $t_jabatan : 0,
+				't_jabatan_fung'   => ($t_jabatan_type === 'Fungsional') ? $t_jabatan : 0,
+				't_jabatan_umum'   => ($t_jabatan_type === 'Umum')       ? $t_jabatan : 0,
+				't_khusus'         => $t_khusus,
+				't_pangan'         => $t_pangan,
+				't_pembulatan'     => $t_pembulatan,
+				'tpp'              => $tpp,
 			),
 			'penghasilan' => array_values(array_filter(array(
-				array('rekening' => '5.1.01.01.001', 'label' => 'Gaji Pokok (Gol.'.$golongan.', MKG'.($gapok_row?$gapok_row['masa_kerja']:0).')'.($persen_gaji!==100?' ['.$persen_gaji.'%]':''),
+				array('rekening' => '5.1.01.01.001'.$rek_sfx, 'label' => 'Gaji Pokok (Gol.'.$golongan.', MKG'.($gapok_row?$gapok_row['masa_kerja']:0).')'.($persen_gaji!==100?' ['.$persen_gaji.'%]':''),
 					'nominal' => $gaji_pokok, 'catatan' => ($gapok_row ? $gapok_row['pp_nomor'] : 'Data gaji pokok belum tersedia').($kgb_info?' · '.$kgb_info:'').($persen_gaji!==100?' · '.$persen_gaji.'% (CPNS/Hudis)':'')),
-				array('rekening' => '5.1.01.01.002', 'label' => 'Tunjangan Suami/Istri (10%)',
+				array('rekening' => '5.1.01.01.002'.$rek_sfx, 'label' => 'Tunjangan Suami/Istri (10%)',
 					'nominal' => $t_istri,
 					'catatan' => $status_nik !== 'KAWIN' ? '—' : ($terima_tk ? '' : 'Tidak diklaim — pasangan ASN dengan gapok lebih tinggi')),
-				array('rekening' => '5.1.01.01.002', 'label' => 'Tunjangan Anak ('.$anak_kena.' anak × 2%)',
+				array('rekening' => '5.1.01.01.002'.$rek_sfx, 'label' => 'Tunjangan Anak ('.$anak_kena.' anak × 2%)',
 					'nominal' => $t_anak, 'catatan' => $anak_kena > 0 ? '' : '—'),
-				array('rekening' => $t_jabatan_type === 'Fungsional' ? '5.1.01.01.004' : ($t_jabatan_type === 'Umum' ? '5.1.01.01.005' : '5.1.01.01.003'),
+				array('rekening' => ($t_jabatan_type === 'Fungsional' ? '5.1.01.01.004' : ($t_jabatan_type === 'Umum' ? '5.1.01.01.005' : '5.1.01.01.003')).$rek_sfx,
 					'label' => ($t_jabatan_nama ?: 'Tunjangan Jabatan').($t_jabatan_type?' ('.$t_jabatan_type.')':''),
 					'nominal' => $t_jabatan, 'catatan' => $t_jabatan ? '' : 'Tidak ada data tunjangan jabatan'),
-				$t_khusus ? array('rekening' => '5.1.01.01.008', 'label' => 'Tunjangan Khusus'.($t_khusus_nama?' — '.$t_khusus_nama:''),
+				$t_khusus ? array('rekening' => '5.1.01.01.007'.$rek_sfx, 'label' => 'Tunjangan Khusus'.($t_khusus_nama?' — '.$t_khusus_nama:''),
 					'nominal' => $t_khusus, 'catatan' => '') : NULL,
-				array('rekening' => '5.1.01.01.006', 'label' => 'Tunjangan Pangan ('.$jiwa_pangan.' jiwa × 10 kg × '.number_format($harga_per_kg,0,',','.').')',
+				array('rekening' => '5.1.01.01.006'.$rek_sfx, 'label' => 'Tunjangan Pangan ('.$jiwa_pangan.' jiwa × 10 kg × '.number_format($harga_per_kg,0,',','.').')',
 					'nominal' => $t_pangan, 'catatan' => $harga_per_kg ? 'Rp '.number_format($harga_per_kg,0,',','.').' / kg' : 'Harga belum diisi'),
-				$t_pembulatan > 0 ? array('rekening' => '5.1.01.01.007', 'label' => 'Tunjangan Pembulatan',
+				$t_pembulatan > 0 ? array('rekening' => '5.1.01.01.008'.$rek_sfx, 'label' => 'Tunjangan Pembulatan',
 					'nominal' => $t_pembulatan, 'catatan' => 'Selisih pembulatan bersih ke kelipatan Rp 100') : NULL,
-				array('rekening' => '5.1.01.02.001', 'label' => 'Tambahan Penghasilan Pegawai (TPP)'.($tpp_uraian?' — '.$tpp_uraian:''),
+				array('rekening' => '5.1.01.02.001'.$rek_sfx, 'label' => 'Tambahan Penghasilan Pegawai (TPP)'.($tpp_uraian?' — '.$tpp_uraian:''),
 					'nominal' => $tpp, 'catatan' => $tpp_perbup ? 'Dasar: '.$tpp_perbup : ($ref_tpp_id ? 'Data TPP tidak ditemukan' : 'Kategori TPP belum di-set')),
 			))),
 			'bruto'   => $bruto,
@@ -499,12 +598,12 @@ class Gaji extends MY_Controller {
 				'bpjs_tpp_pegawai'  => $bpjs_tpp_pegawai,
 			),
 			'potongan' => array_values(array_filter(array(
-				$bpjs_kes_pegawai  ? array('rekening' => '5.1.01.01.009', 'label' => 'BPJS Kesehatan Gaji (1%)',              'nominal' => $bpjs_kes_pegawai) : NULL,
-				$pensiun_pegawai   ? array('rekening' => '5.1.01.01.013', 'label' => 'Taspen — Iuran Pensiun (4,75%)',        'nominal' => $pensiun_pegawai)  : NULL,
-				$jht_taspen        ? array('rekening' => '5.1.01.01.013', 'label' => 'Taspen — JHT (3,25%)',                  'nominal' => $jht_taspen)       : NULL,
-				$jht               ? array('rekening' => '5.1.01.01.013', 'label' => 'BPJS TK — JHT (2%)',                   'nominal' => $jht)              : NULL,
-				$jp                ? array('rekening' => '5.1.01.01.013', 'label' => 'BPJS TK — JP (1%)',                    'nominal' => $jp)               : NULL,
-				$bpjs_tpp_pegawai  ? array('rekening' => '5.1.01.01.009', 'label' => 'BPJS Kesehatan TPP (1%)',              'nominal' => $bpjs_tpp_pegawai) : NULL,
+				$bpjs_kes_pegawai  ? array('rekening' => '5.1.01.01.009'.$rek_sfx, 'label' => 'BPJS Kesehatan Gaji (1%)',         'nominal' => $bpjs_kes_pegawai) : NULL,
+				$pensiun_pegawai   ? array('rekening' => '5.1.01.01.013'.$rek_sfx, 'label' => 'Taspen — Iuran Pensiun (4,75%)',   'nominal' => $pensiun_pegawai)  : NULL,
+				$jht_taspen        ? array('rekening' => '5.1.01.01.013'.$rek_sfx, 'label' => 'Taspen — JHT (3,25%)',             'nominal' => $jht_taspen)       : NULL,
+				$jht               ? array('rekening' => '5.1.01.01.013'.$rek_sfx, 'label' => 'BPJS TK — JHT (2%)',              'nominal' => $jht)              : NULL,
+				$jp                ? array('rekening' => '5.1.01.01.013'.$rek_sfx, 'label' => 'BPJS TK — JP (1%)',               'nominal' => $jp)               : NULL,
+				$bpjs_tpp_pegawai  ? array('rekening' => '5.1.01.01.009'.$rek_sfx, 'label' => 'BPJS Kesehatan TPP (1%)',         'nominal' => $bpjs_tpp_pegawai) : NULL,
 			))),
 			'total_potong' => $total_potong_pegawai,
 			'bersih'       => $bruto - $total_potong_pegawai,

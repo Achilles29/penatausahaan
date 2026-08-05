@@ -1,64 +1,110 @@
 <?php defined('BASEPATH') OR exit('No direct script access allowed');
 $bln_names = ['','Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 function rp($n){ return 'Rp '.number_format((int)$n,0,',','.'); }
-function rp0($n){ return $n ? 'Rp '.number_format((int)$n,0,',','.') : '—'; }
-$p = $params; // shorthand
+$p = $params;
 
-function row_cells($t) {
-  $r = '<td class="num mode-all mode-gaji">'.number_format($t['jml']).'</td>';
-  $r .= '<td class="num mode-all mode-gaji">'.number_format($t['gaji_pokok']).'</td>';
-  $r .= '<td class="num mode-all mode-gaji">'.number_format($t['t_keluarga']).'</td>';
-  $r .= '<td class="num mode-all mode-gaji">'.number_format($t['t_jabatan']).'</td>';
-  $r .= '<td class="num mode-all mode-gaji">'.number_format($t['t_pangan']).'</td>';
-  $r .= '<td class="num mode-all mode-gaji fw-semibold">'.number_format($t['bruto_gaji']).'</td>';
-  $r .= '<td class="num mode-all mode-gaji neg">'.number_format($t['pot_bpjs']).'</td>';
-  $r .= '<td class="num mode-all mode-gaji neg">'.number_format($t['pot_pensiun']).'</td>';
-  $r .= '<td class="num mode-all mode-gaji neg text-muted">'.number_format($t['pph21']).'</td>';
-  $r .= '<td class="num mode-all mode-gaji bersih">'.number_format($t['bersih_gaji']).'</td>';
-  $r .= '<td class="num mode-all mode-tpp tpp-col">'.number_format($t['tpp_bruto']).'</td>';
-  $r .= '<td class="num mode-all mode-tpp neg">'.number_format($t['bpjs_tpp_peg']).'</td>';
-  $r .= '<td class="num mode-all mode-tpp tpp-col bersih">'.number_format($t['tpp_bersih']).'</td>';
-  $r .= '<td class="num mode-all fw-bold" style="color:#5b21b6">'.number_format($t['total_bersih']).'</td>';
-  $r .= '<td class="num mode-all mode-gaji">'.number_format($t['bel_employer']).'</td>';
-  $r .= '<td class="num mode-all mode-gaji">'.number_format($t['bel_tpp_bpjs']).'</td>';
-  return $r;
-}
+// Rekening Gaji (urut 001→011, suffix .00001/.00002 ditambah per tab)
+$rek_gaji = [
+    ['rek'=>'5.1.01.01.001', 'lbl'=>'Gaji Pokok ASN',                        'key'=>'gaji_pokok',    'neg'=>false],
+    ['rek'=>'5.1.01.01.002', 'lbl'=>'Tunjangan Keluarga (Istri+Anak)',        'key'=>'t_keluarga',    'neg'=>false],
+    ['rek'=>'5.1.01.01.003', 'lbl'=>'Tunjangan Jabatan (Struktural)',         'key'=>'t_jabatan_str', 'neg'=>false],
+    ['rek'=>'5.1.01.01.004', 'lbl'=>'Tunjangan Fungsional',                   'key'=>'t_jabatan_fung','neg'=>false],
+    ['rek'=>'5.1.01.01.005', 'lbl'=>'Tunjangan Fungsional Umum',              'key'=>'t_jabatan_umum','neg'=>false],
+    ['rek'=>'5.1.01.01.006', 'lbl'=>'Tunjangan Pangan / Beras',               'key'=>'t_pangan',      'neg'=>false],
+    ['rek'=>'5.1.01.01.007', 'lbl'=>'Tunjangan Khusus',                       'key'=>'t_khusus',      'neg'=>false],
+    ['rek'=>'5.1.01.01.008', 'lbl'=>'Tunjangan Pembulatan',                   'key'=>'t_pembulatan',  'neg'=>false],
+    ['type'=>'subtotal',     'lbl'=>'Gaji Bruto (Komponen)',                   'key'=>'bruto_gaji',    'rek'=>'—'],
+    ['rek'=>'5.1.01.01.007', 'lbl'=>'Tunjangan PPh Gaji — Ditanggung Pemda', 'key'=>'pph21',         'neg'=>false],
+    ['rek'=>'5.1.01.01.009', 'lbl'=>'BPJS Kes Gaji — Pegawai (1%)',          'key'=>'pot_bpjs',      'neg'=>false],
+    ['rek'=>'5.1.01.01.009', 'lbl'=>'BPJS Kes Gaji — Pemberi Kerja (4%)',    'key'=>'bel_bpjs_gaji', 'neg'=>false],
+    ['rek'=>'5.1.01.01.010', 'lbl'=>'Iuran JKK — Pemberi Kerja (0,24%)',     'key'=>'bel_jkk',       'neg'=>false],
+    ['rek'=>'5.1.01.01.011', 'lbl'=>'Iuran JKM — Pemberi Kerja (0,30%)',     'key'=>'bel_jkm',       'neg'=>false],
+    ['type'=>'bersih',       'lbl'=>'Bersih Gaji (Diterima Pegawai)',          'key'=>'bersih_gaji',   'rek'=>'—'],
+];
 
-function footer_cells($t) {
-  $r = '<td class="num mode-all mode-gaji fw-bold">'.number_format($t['jml']).'</td>';
-  $r .= '<td class="num mode-all mode-gaji fw-bold">'.number_format($t['gaji_pokok']).'</td>';
-  $r .= '<td class="num mode-all mode-gaji fw-bold">'.number_format($t['t_keluarga']).'</td>';
-  $r .= '<td class="num mode-all mode-gaji fw-bold">'.number_format($t['t_jabatan']).'</td>';
-  $r .= '<td class="num mode-all mode-gaji fw-bold">'.number_format($t['t_pangan']).'</td>';
-  $r .= '<td class="num mode-all mode-gaji fw-bold">'.number_format($t['bruto_gaji']).'</td>';
-  $r .= '<td class="num mode-all mode-gaji neg fw-bold">'.number_format($t['pot_bpjs']).'</td>';
-  $r .= '<td class="num mode-all mode-gaji neg fw-bold">'.number_format($t['pot_pensiun']).'</td>';
-  $r .= '<td class="num mode-all mode-gaji neg fw-bold text-muted">'.number_format($t['pph21']).'</td>';
-  $r .= '<td class="num mode-all mode-gaji bersih fw-bold">'.number_format($t['bersih_gaji']).'</td>';
-  $r .= '<td class="num mode-all mode-tpp tpp-col fw-bold">'.number_format($t['tpp_bruto']).'</td>';
-  $r .= '<td class="num mode-all mode-tpp neg fw-bold">'.number_format($t['bpjs_tpp_peg']).'</td>';
-  $r .= '<td class="num mode-all mode-tpp tpp-col bersih fw-bold">'.number_format($t['tpp_bersih']).'</td>';
-  $r .= '<td class="num mode-all fw-bold" style="color:#5b21b6">'.number_format($t['total_bersih']).'</td>';
-  $r .= '<td class="num mode-all mode-gaji fw-bold">'.number_format($t['bel_employer']).'</td>';
-  $r .= '<td class="num mode-all mode-gaji fw-bold">'.number_format($t['bel_tpp_bpjs']).'</td>';
-  return $r;
+// Rekening TPP (urut: TPP → PPh DTP → BPJS empl DTP → bruto anggaran → BPJS peg → bersih)
+$rek_tpp = [
+    ['rek'=>'5.1.01.02.001', 'lbl'=>'Tambahan Penghasilan Pegawai (TPP)',          'key'=>'tpp_bruto',    'neg'=>false],
+    ['rek'=>'5.1.01.01.007', 'lbl'=>'Tunjangan PPh TPP — Ditanggung Pemerintah',  'key'=>'pajak_tpp',    'neg'=>false],
+    ['rek'=>'5.1.01.01.009', 'lbl'=>'BPJS Kes TPP — Pemberi Kerja (4%)',          'key'=>'bel_tpp_bpjs', 'neg'=>false],
+    ['type'=>'subtotal', 'lbl'=>'Bruto Anggaran TPP', 'rek'=>'—',
+        'compute'=>function($d){ return ($d['tpp_bruto']??0)+($d['pajak_tpp']??0)+($d['bel_tpp_bpjs']??0); }],
+    ['rek'=>'5.1.01.01.009', 'lbl'=>'BPJS Kes TPP — Pegawai (1%) [dipotong]',    'key'=>'bpjs_tpp_peg', 'neg'=>false],
+    ['type'=>'bersih',       'lbl'=>'Bersih TPP (Diterima Pegawai)',                'key'=>'tpp_bersih',   'rek'=>'—'],
+];
+
+function rekap_mat_table($tbl_id, $rek_def, $months, $grand_jenis, $bln_names, $jenis_key = 'pns', $rek_suffix = '.00001') {
+    echo '<div class="table-responsive"><table class="table table-bordered table-sm mat-tbl mb-0" id="'.$tbl_id.'">';
+    // Header
+    echo '<thead><tr>';
+    echo '<th class="lbl-col" style="min-width:130px">Rekening</th>';
+    echo '<th class="lbl-col" style="min-width:220px">Komponen</th>';
+    foreach ($months as $md) {
+        $cls = $md['is_ke'] ? ' class="ke-col"' : '';
+        echo '<th'.$cls.' style="min-width:110px;text-align:right">';
+        if ($md['is_ke']) {
+            echo html_escape($md['ke_nama']);
+            echo '<div class="fw-normal" style="font-size:.68rem;color:#7a5d00">'.$bln_names[$md['bulan']].' '.$md['tahun'].'</div>';
+        } else {
+            echo $bln_names[$md['bulan']];
+            echo '<div class="fw-normal text-muted" style="font-size:.68rem">'.$md['tahun'].'</div>';
+        }
+        echo '</th>';
+    }
+    echo '<th style="min-width:120px;text-align:right;background:#dbeafe!important;color:#1e3a5f">TOTAL</th>';
+    echo '</tr></thead>';
+    // Body
+    echo '<tbody>';
+    foreach ($rek_def as $r) {
+        $type = $r['type'] ?? '';
+        if ($type === 'subtotal' || $type === 'bersih') {
+            $rowBg  = $type === 'subtotal' ? 'background:#fef9c3;color:#78350f' : 'background:#d1fae5;color:#065f46';
+            $compute = $r['compute'] ?? null;
+            $grandVal = $compute ? (int)$compute($grand_jenis) : (int)($grand_jenis[$r['key']] ?? 0);
+            echo '<tr style="'.$rowBg.';font-weight:700">';
+            echo '<td style="'.$rowBg.'">—</td>';
+            echo '<td style="'.$rowBg.'">'.html_escape($r['lbl']).'</td>';
+            foreach ($months as $md) {
+                $val = $compute ? (int)$compute($md[$jenis_key]) : (int)($md[$jenis_key][$r['key']] ?? 0);
+                $keCls = $md['is_ke'] ? ' mat-ke' : '';
+                $display = $val ? number_format($val) : '—';
+                echo '<td class="num'.$keCls.'" style="'.$rowBg.'">'.$display.'</td>';
+            }
+            $display = $grandVal ? number_format($grandVal) : '—';
+            echo '<td class="num total-col" style="'.$rowBg.'">'.$display.'</td>';
+            echo '</tr>';
+            continue;
+        }
+        $neg = !empty($r['neg']);
+        $grandVal = (int)($grand_jenis[$r['key']] ?? 0);
+        $negCls = $neg ? ' neg' : '';
+        echo '<tr>';
+        echo '<td><span class="rek-badge">'.html_escape($r['rek'].$rek_suffix).'</span></td>';
+        echo '<td>'.html_escape($r['lbl']).'</td>';
+        foreach ($months as $md) {
+            $val = (int)($md[$jenis_key][$r['key']] ?? 0);
+            $keCls = $md['is_ke'] ? ' mat-ke' : '';
+            $display = $val ? number_format($val) : '—';
+            echo '<td class="num'.$negCls.$keCls.'">'.$display.'</td>';
+        }
+        $display = $grandVal ? number_format($grandVal) : '—';
+        echo '<td class="num total-col'.$negCls.'">'.$display.'</td>';
+        echo '</tr>';
+    }
+    echo '</tbody>';
+    // Footer: jumlah pegawai
+    echo '<tfoot><tr style="background:#f8fafc;font-weight:600;font-size:.72rem;color:#475569">';
+    echo '<td colspan="2">Jumlah Pegawai (orang)</td>';
+    foreach ($months as $md) {
+        echo '<td class="num">'.(int)($md[$jenis_key]['jml'] ?? 0).'</td>';
+    }
+    echo '<td class="num">'.(int)($grand_jenis['jml'] ?? 0).'</td>';
+    echo '</tr></tfoot>';
+    echo '</table></div>';
 }
 ?>
 <style>
 .rekap-hdr { background:linear-gradient(135deg,#0f4c81,#1d6fa4); color:#fff; border-radius:10px 10px 0 0; }
-.tbl-rekap { font-size:.79rem; }
-.tbl-rekap th { font-size:.73rem; white-space:nowrap; background:#f1f5f9; }
-.tbl-rekap td { white-space:nowrap; vertical-align:middle; }
-.tbl-rekap tr.ke-row { background:#fef9c3; }
-.tbl-rekap tr.footer-row td { font-weight:700; background:#e8f4fd; }
-.tbl-rekap td.num { text-align:right; font-variant-numeric:tabular-nums; }
-.tbl-rekap td.bersih { color:#0f5132; font-weight:600; }
-.tbl-rekap td.tpp-col { background:#f0fdf4; }
-.tbl-rekap td.neg { color:#b91c1c; }
-.chip-tab { border:none; background:#e2e8f0; border-radius:20px; padding:3px 14px; font-size:.8rem; cursor:pointer; }
-.chip-tab.active { background:#0f4c81; color:#fff; }
-.mode-tab { border:none; background:#e8f4fd; border-radius:20px; padding:3px 14px; font-size:.8rem; cursor:pointer; margin-left:4px; }
-.mode-tab.active { background:#0ea5e9; color:#fff; }
 .sum-chip { background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:8px 14px; text-align:center; }
 .sum-chip .lbl { font-size:.7rem; color:#64748b; text-transform:uppercase; letter-spacing:.04em; }
 .sum-chip .val { font-size:1rem; font-weight:700; color:#0f172a; }
@@ -67,6 +113,19 @@ function footer_cells($t) {
 .peg-tbl { font-size:.78rem; }
 .peg-tbl th { font-size:.72rem; background:#f8fafc; white-space:nowrap; }
 .peg-tbl td { vertical-align:middle; white-space:nowrap; }
+.mat-tbl { font-size:.77rem; }
+.mat-tbl th { font-size:.72rem; white-space:nowrap; background:#f1f5f9; vertical-align:middle; text-align:right; }
+.mat-tbl th.lbl-col { text-align:left; }
+.mat-tbl td { white-space:nowrap; vertical-align:middle; }
+.mat-tbl td.num { text-align:right; font-variant-numeric:tabular-nums; padding-right:10px; }
+.mat-tbl td.neg { color:#b91c1c; }
+.mat-tbl tr.mat-ke td { background:#fef9c3; }
+.mat-tbl td.total-col { background:#e8f4fd; font-weight:700; }
+.mat-tbl td.total-col.neg { color:#b91c1c; }
+.mat-tbl tr.row-subtotal td { background:#dbeafe; font-weight:700; color:#1e3a5f; }
+.mat-tbl tr.row-bersih td { background:#d1fae5; font-weight:700; color:#065f46; }
+.rek-badge { font-size:.65rem; padding:1px 5px; background:#e8eaf6; color:#3949ab; border-radius:3px; font-family:monospace; }
+th.ke-col { background:#fef9c3 !important; color:#7a5d00; }
 </style>
 
 <!-- FORM -->
@@ -117,14 +176,6 @@ function footer_cells($t) {
           <?php endfor; ?>
         </select>
       </div>
-      <div class="col-md-2">
-        <label class="form-label small mb-1">Jenis ASN</label>
-        <select class="form-select form-select-sm" name="jenis_filter">
-          <option value="SEMUA" <?= (!$p || $p['jenis_filter']==='SEMUA')?'selected':'' ?>>Semua (PNS+PPPK)</option>
-          <option value="PNS"   <?= ($p && $p['jenis_filter']==='PNS')?'selected':'' ?>>PNS saja</option>
-          <option value="PPPK"  <?= ($p && $p['jenis_filter']==='PPPK')?'selected':'' ?>>PPPK saja</option>
-        </select>
-      </div>
       <div class="col-md-1 d-flex align-items-end pb-1">
         <div class="form-check">
           <input class="form-check-input" type="checkbox" name="include_ke" id="chk_ke" value="1"
@@ -132,7 +183,7 @@ function footer_cells($t) {
           <label class="form-check-label small" for="chk_ke">+Ke-13/14</label>
         </div>
       </div>
-      <div class="col-md-1">
+      <div class="col-md-2">
         <button type="submit" class="btn btn-primary btn-sm w-100">
           <i class="fa-solid fa-play me-1"></i>Hitung
         </button>
@@ -146,244 +197,181 @@ function footer_cells($t) {
 <?php endif; ?>
 
 <?php if ($result): ?>
-<?php $grand = $result['grand']; $months = $result['months']; $peg_rows = $result['peg_rows']; ?>
-
-<!-- CHIPS SUMMARY -->
 <?php
-$jf = $p['jenis_filter'];
-$show_pns  = ($jf !== 'PPPK');
-$show_pppk = ($jf !== 'PNS');
-$combined  = $grand['combined'];
-$total_jml = ($show_pns ? $grand['pns']['jml'] : 0) + ($show_pppk ? $grand['pppk']['jml'] : 0);
-// Ambil unique count pegawai
+$grand    = $result['grand'];
+$months   = $result['months'];
+$peg_rows = $result['peg_rows'];
+$gPNS     = $grand['pns']      ?? [];
+$gPPPK    = $grand['pppk']     ?? [];
+$gAll     = $grand['combined'] ?? [];
 $uniq_pns  = count(array_filter($peg_rows, fn($r) => $r['jenis'] === 'PNS'));
 $uniq_pppk = count(array_filter($peg_rows, fn($r) => $r['jenis'] === 'PPPK'));
 ?>
+
+<!-- SUMMARY -->
 <div class="row g-2 mb-3">
-  <?php if ($show_pns && $show_pppk): ?>
-  <div class="col-6 col-md-3">
-    <div class="sum-chip"><div class="lbl">Pegawai PNS</div><div class="val"><?= $uniq_pns ?> orang</div></div>
+  <div class="col-6 col-md-auto flex-grow-1">
+    <div class="sum-chip"><div class="lbl">PNS</div><div class="val"><?= $uniq_pns ?> orang</div></div>
   </div>
-  <div class="col-6 col-md-3">
-    <div class="sum-chip"><div class="lbl">Pegawai PPPK</div><div class="val"><?= $uniq_pppk ?> orang</div></div>
+  <div class="col-6 col-md-auto flex-grow-1">
+    <div class="sum-chip"><div class="lbl">PPPK</div><div class="val"><?= $uniq_pppk ?> orang</div></div>
   </div>
-  <?php else: ?>
-  <div class="col-6 col-md-3">
-    <div class="sum-chip"><div class="lbl">Jumlah Pegawai</div><div class="val"><?= $show_pns ? $uniq_pns : $uniq_pppk ?> orang</div></div>
+  <div class="col-6 col-md-auto flex-grow-1">
+    <div class="sum-chip"><div class="lbl">Bersih Gaji</div><div class="val blue"><?= rp($gAll['bersih_gaji'] ?? 0) ?></div></div>
   </div>
-  <div class="col-6 col-md-3">
-    <div class="sum-chip"><div class="lbl">&nbsp;</div><div class="val">&nbsp;</div></div>
+  <div class="col-6 col-md-auto flex-grow-1">
+    <div class="sum-chip"><div class="lbl">TPP Bersih</div><div class="val green"><?= rp($gAll['tpp_bersih'] ?? 0) ?></div></div>
   </div>
-  <?php endif; ?>
-  <div class="col-6 col-md-3">
-    <div class="sum-chip"><div class="lbl">Total Bersih Gaji</div><div class="val blue"><?= rp($combined['bersih_gaji']) ?></div></div>
+  <div class="col-6 col-md-auto flex-grow-1">
+    <div class="sum-chip"><div class="lbl">Total THP</div><div class="val"><?= rp($gAll['total_bersih'] ?? 0) ?></div></div>
   </div>
-  <div class="col-6 col-md-3">
-    <div class="sum-chip"><div class="lbl">Total TPP Bersih</div><div class="val green"><?= rp($combined['tpp_bersih']) ?></div></div>
+  <div class="col-6 col-md-auto flex-grow-1">
+    <div class="sum-chip"><div class="lbl">Periode</div>
+      <div class="val" style="font-size:.8rem"><?= $bln_names[$p['bm']] ?> — <?= $bln_names[$p['ba']] ?> <?= $p['tahun'] ?></div>
+    </div>
   </div>
-</div>
-
-<!-- TABS JENIS + MODE -->
-<div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
-  <span class="small text-muted me-1">Tampilkan:</span>
-  <?php if ($show_pns && $show_pppk): ?>
-  <button class="chip-tab active" onclick="switchJenis('combined',this)">Semua</button>
-  <button class="chip-tab"        onclick="switchJenis('pns',this)">PNS</button>
-  <button class="chip-tab"        onclick="switchJenis('pppk',this)">PPPK</button>
-  <?php elseif ($show_pns): ?>
-  <button class="chip-tab active" onclick="switchJenis('pns',this)">PNS</button>
-  <?php else: ?>
-  <button class="chip-tab active" onclick="switchJenis('pppk',this)">PPPK</button>
-  <?php endif; ?>
-  <span class="ms-3 small text-muted me-1">Kolom:</span>
-  <button class="mode-tab active" onclick="switchMode('all',this)">Gaji &amp; TPP</button>
-  <button class="mode-tab"        onclick="switchMode('gaji',this)">Gaji saja</button>
-  <button class="mode-tab"        onclick="switchMode('tpp',this)">TPP saja</button>
-</div>
-
-<!-- TABEL REKAP BULANAN -->
-<div class="card shadow-sm mb-4">
-  <div class="card-header py-2 px-3"><strong>Rekap Bulanan</strong>
-    <span class="badge bg-secondary ms-2" id="lbl_opd"><?= html_escape($p['opd_nama'] ?: 'Semua OPD') ?></span>
-  </div>
-  <div class="card-body p-0">
-    <div class="table-responsive">
-    <table class="table table-bordered table-sm tbl-rekap mb-0" id="tblBulanan">
-      <thead>
-        <tr>
-          <th rowspan="2" class="text-center align-middle">#</th>
-          <th rowspan="2" class="align-middle">Periode</th>
-          <th rowspan="2" class="text-center align-middle mode-all mode-gaji">Jml</th>
-          <!-- GAJI -->
-          <th colspan="5" class="text-center mode-all mode-gaji" style="background:#dbeafe">Komponen Gaji</th>
-          <th colspan="3" class="text-center mode-all mode-gaji" style="background:#fce7f3">Potongan Gaji</th>
-          <th rowspan="2" class="text-center align-middle mode-all mode-gaji" style="background:#d1fae5">Bersih Gaji</th>
-          <!-- TPP -->
-          <th colspan="3" class="text-center mode-all mode-tpp" style="background:#dcfce7">TPP</th>
-          <!-- TOTAL -->
-          <th rowspan="2" class="text-center align-middle mode-all" style="background:#ede9fe">Total Bersih</th>
-          <!-- BELANJA PEM -->
-          <th colspan="2" class="text-center mode-all mode-gaji" style="background:#fef3c7">Belanja Pemerintah</th>
-        </tr>
-        <tr>
-          <!-- Gaji -->
-          <th class="text-end mode-all mode-gaji" style="background:#dbeafe">Gaji Pokok</th>
-          <th class="text-end mode-all mode-gaji" style="background:#dbeafe">T.Keluarga</th>
-          <th class="text-end mode-all mode-gaji" style="background:#dbeafe">T.Jabatan</th>
-          <th class="text-end mode-all mode-gaji" style="background:#dbeafe">T.Pangan</th>
-          <th class="text-end mode-all mode-gaji" style="background:#bfdbfe">Bruto Gaji</th>
-          <th class="text-end mode-all mode-gaji" style="background:#fce7f3">BPJS (1%)</th>
-          <th class="text-end mode-all mode-gaji" style="background:#fce7f3">Pensiun/JHT</th>
-          <th class="text-end mode-all mode-gaji" style="background:#fce7f3">PPh21 DTP</th>
-          <!-- TPP -->
-          <th class="text-end mode-all mode-tpp" style="background:#dcfce7">TPP Bruto</th>
-          <th class="text-end mode-all mode-tpp" style="background:#dcfce7">BPJS TPP (1%)</th>
-          <th class="text-end mode-all mode-tpp tpp-col" style="background:#bbf7d0">TPP Bersih</th>
-          <!-- Belanja Pem -->
-          <th class="text-end mode-all mode-gaji" style="background:#fef3c7">BPJS Employer</th>
-          <th class="text-end mode-all mode-gaji" style="background:#fef3c7">BPJS TPP</th>
-        </tr>
-      </thead>
-      <tbody>
-      <?php foreach ($months as $idx => $md): ?>
-      <?php
-        // Data dipilih berdasarkan jenis aktif (JS akan filter kolom, tapi kita pre-render semua)
-        // Akan di-toggle by JS; render data-pns / data-pppk / data-combined sebagai data attrs
-        $d_combined = json_encode($md['combined']);
-        $d_pns      = json_encode($md['pns']);
-        $d_pppk     = json_encode($md['pppk']);
-      ?>
-      <tr class="<?= $md['is_ke'] ? 'ke-row' : '' ?>"
-          data-combined='<?= $d_combined ?>'
-          data-pns='<?= $d_pns ?>'
-          data-pppk='<?= $d_pppk ?>'>
-        <td class="text-center"><?= $idx+1 ?></td>
-        <td><?= html_escape($md['label']) ?><?= $md['is_ke'] ? ' <span class="badge bg-warning text-dark ms-1">Ke-'.$md['is_ke'].'</span>' : '' ?></td>
-        <?= row_cells($md['combined']) ?>
-      </tr>
-      <?php endforeach; ?>
-      </tbody>
-      <tfoot>
-        <tr class="footer-row">
-          <td colspan="2" class="fw-bold">TOTAL</td>
-          <?= footer_cells($grand['combined']) ?>
-        </tr>
-      </tfoot>
-    </table>
+  <div class="col-6 col-md-auto flex-grow-1">
+    <div class="sum-chip"><div class="lbl">OPD</div>
+      <div class="val" style="font-size:.8rem"><?= html_escape($p['opd_nama'] ?: 'Semua OPD') ?></div>
     </div>
   </div>
 </div>
 
-<!-- TABEL PER PEGAWAI -->
-<div class="card shadow-sm mb-4">
-  <div class="card-header py-2 px-3 d-flex justify-content-between align-items-center">
-    <strong>Akumulasi Per Pegawai</strong>
-    <span class="text-muted small">Klik nama untuk lihat detail per bulan</span>
+<!-- 4-TAB REKENING + PER PEGAWAI TAB -->
+<ul class="nav nav-tabs mb-0" id="rekapMainTabs" role="tablist">
+  <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabGajiPNS"  type="button"><i class="fa-solid fa-file-invoice-dollar me-1 text-primary"></i>Gaji PNS</button></li>
+  <li class="nav-item"><button class="nav-link"        data-bs-toggle="tab" data-bs-target="#tabGajiPPPK" type="button"><i class="fa-solid fa-file-invoice-dollar me-1 text-warning"></i>Gaji PPPK</button></li>
+  <li class="nav-item"><button class="nav-link"        data-bs-toggle="tab" data-bs-target="#tabTPPPNS"   type="button"><i class="fa-solid fa-coins me-1 text-success"></i>TPP PNS</button></li>
+  <li class="nav-item"><button class="nav-link"        data-bs-toggle="tab" data-bs-target="#tabTPPPPPK"  type="button"><i class="fa-solid fa-coins me-1 text-info"></i>TPP PPPK</button></li>
+  <li class="nav-item"><button class="nav-link"        data-bs-toggle="tab" data-bs-target="#tabPegawai"  type="button"><i class="fa-solid fa-users me-1"></i>Per Pegawai</button></li>
+</ul>
+
+<div class="tab-content border border-top-0 rounded-bottom bg-white shadow-sm mb-4">
+
+  <!-- ══ TAB: GAJI PNS ══ -->
+  <div class="tab-pane fade show active" id="tabGajiPNS" role="tabpanel">
+    <div class="d-flex align-items-center justify-content-between p-2 border-bottom">
+      <span class="fw-semibold text-primary"><i class="fa-solid fa-file-invoice-dollar me-1"></i>Rekap Belanja Gaji PNS</span>
+      <button class="btn btn-success btn-sm" onclick="downloadTable('tblGajiPNS','Gaji_PNS')"><i class="fa-solid fa-file-excel me-1"></i>Download Excel</button>
+    </div>
+    <?php rekap_mat_table('tblGajiPNS', $rek_gaji, $months, $gPNS, $bln_names, 'pns', '.00001'); ?>
   </div>
-  <div class="card-body p-0">
+
+  <!-- ══ TAB: GAJI PPPK ══ -->
+  <div class="tab-pane fade" id="tabGajiPPPK" role="tabpanel">
+    <div class="d-flex align-items-center justify-content-between p-2 border-bottom">
+      <span class="fw-semibold text-warning"><i class="fa-solid fa-file-invoice-dollar me-1"></i>Rekap Belanja Gaji PPPK</span>
+      <button class="btn btn-success btn-sm" onclick="downloadTable('tblGajiPPPK','Gaji_PPPK')"><i class="fa-solid fa-file-excel me-1"></i>Download Excel</button>
+    </div>
+    <?php rekap_mat_table('tblGajiPPPK', $rek_gaji, $months, $gPPPK, $bln_names, 'pppk', '.00002'); ?>
+  </div>
+
+  <!-- ══ TAB: TPP PNS ══ -->
+  <div class="tab-pane fade" id="tabTPPPNS" role="tabpanel">
+    <div class="d-flex align-items-center justify-content-between p-2 border-bottom">
+      <span class="fw-semibold text-success"><i class="fa-solid fa-coins me-1"></i>Rekap Belanja TPP PNS</span>
+      <button class="btn btn-success btn-sm" onclick="downloadTable('tblTPPPNS','TPP_PNS')"><i class="fa-solid fa-file-excel me-1"></i>Download Excel</button>
+    </div>
+    <?php rekap_mat_table('tblTPPPNS', $rek_tpp, $months, $gPNS, $bln_names, 'pns', '.00001'); ?>
+  </div>
+
+  <!-- ══ TAB: TPP PPPK ══ -->
+  <div class="tab-pane fade" id="tabTPPPPPK" role="tabpanel">
+    <div class="d-flex align-items-center justify-content-between p-2 border-bottom">
+      <span class="fw-semibold text-info"><i class="fa-solid fa-coins me-1"></i>Rekap Belanja TPP PPPK</span>
+      <button class="btn btn-success btn-sm" onclick="downloadTable('tblTPPPPPK','TPP_PPPK')"><i class="fa-solid fa-file-excel me-1"></i>Download Excel</button>
+    </div>
+    <?php rekap_mat_table('tblTPPPPPK', $rek_tpp, $months, $gPPPK, $bln_names, 'pppk', '.00002'); ?>
+  </div>
+
+  <!-- ══ TAB: PER PEGAWAI ══ -->
+  <div class="tab-pane fade" id="tabPegawai" role="tabpanel">
+    <div class="d-flex align-items-center justify-content-between p-2 border-bottom">
+      <span class="fw-semibold"><i class="fa-solid fa-users me-1"></i>Akumulasi Per Pegawai</span>
+      <button class="btn btn-success btn-sm" onclick="downloadTable('tblPegawai','Per_Pegawai')"><i class="fa-solid fa-file-excel me-1"></i>Download Excel</button>
+    </div>
     <div class="table-responsive">
-    <table class="table table-bordered table-sm table-hover peg-tbl mb-0" id="tblPegawai">
-      <thead>
+      <table class="table table-bordered table-sm table-hover peg-tbl mb-0" id="tblPegawai">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Nama / NIP</th>
+            <th class="text-center">Jenis</th>
+            <th class="text-center">Gol</th>
+            <th class="text-end">Gaji Pokok</th>
+            <th class="text-end">Bruto Gaji</th>
+            <th class="text-end">Potongan</th>
+            <th class="text-end" style="color:#0f5132">Bersih Gaji</th>
+            <th class="text-end">TPP Nominal</th>
+            <th class="text-end">BPJS TPP (1%)</th>
+            <th class="text-end" style="color:#0d47a1">TPP Bersih</th>
+            <th class="text-end fw-bold" style="color:#5b21b6">Total THP</th>
+          </tr>
+        </thead>
+        <tbody>
+        <?php $no=0; foreach ($peg_rows as $pr):
+          $no++;
+          $t = $pr['totals'];
+          $detail_url = site_url('rekap/detail/'.$pr['id'].'/'.$p['tahun'].'/'.$p['bm'].'/'.$p['ba']);
+        ?>
         <tr>
-          <th>#</th>
-          <th>Nama / NIP</th>
-          <th class="text-center">Gol</th>
-          <th class="text-center">Jenis</th>
-          <th class="text-end mode-all mode-gaji">Gaji Pokok</th>
-          <th class="text-end mode-all mode-gaji">Bruto Gaji</th>
-          <th class="text-end mode-all mode-gaji">Potongan</th>
-          <th class="text-end mode-all mode-gaji">Bersih Gaji</th>
-          <th class="text-end mode-all mode-tpp">TPP Bruto</th>
-          <th class="text-end mode-all mode-tpp">BPJS TPP (1%)</th>
-          <th class="text-end mode-all mode-tpp">TPP Bersih</th>
-          <th class="text-end mode-all">Total Bersih</th>
+          <td><?= $no ?></td>
+          <td>
+            <a href="<?= $detail_url ?>" target="_blank" class="fw-semibold text-decoration-none">
+              <?= html_escape($pr['nama']) ?>
+            </a><br>
+            <small class="text-muted font-monospace"><?= $pr['nip'] ?></small>
+          </td>
+          <td class="text-center">
+            <span class="badge <?= $pr['jenis']==='PNS'?'bg-primary':'bg-warning text-dark' ?>">
+              <?= $pr['jenis'] ?>
+            </span>
+          </td>
+          <td class="text-center"><?= html_escape($pr['golongan']) ?></td>
+          <td class="text-end"><?= number_format($t['gaji_pokok']) ?></td>
+          <td class="text-end"><?= number_format($t['bruto_gaji']) ?></td>
+          <td class="text-end" style="color:#b91c1c"><?= number_format($t['pot_bpjs']+$t['pot_pensiun']) ?></td>
+          <td class="text-end fw-semibold" style="color:#0f5132"><?= number_format($t['bersih_gaji']) ?></td>
+          <td class="text-end"><?= number_format($t['tpp_bruto']) ?></td>
+          <td class="text-end" style="color:#b91c1c"><?= number_format($t['bpjs_tpp_peg']) ?></td>
+          <td class="text-end fw-semibold" style="color:#0d47a1"><?= number_format($t['tpp_bersih']) ?></td>
+          <td class="text-end fw-bold" style="color:#5b21b6"><?= number_format($t['total_bersih']) ?></td>
         </tr>
-      </thead>
-      <tbody>
-      <?php $no=0; foreach ($peg_rows as $pr):
-        $jf2 = $p['jenis_filter'];
-        if ($jf2 !== 'SEMUA' && $pr['jenis'] !== $jf2) continue;
-        $no++;
-        $t = $pr['totals'];
-        $detail_url = site_url('rekap/detail/'.$pr['id'].'/'.$p['tahun'].'/'.$p['bm'].'/'.$p['ba']);
-      ?>
-      <tr class="peg-row-<?= strtolower($pr['jenis']) ?>">
-        <td><?= $no ?></td>
-        <td>
-          <a href="<?= $detail_url ?>" target="_blank" class="fw-semibold text-decoration-none">
-            <?= html_escape($pr['nama']) ?>
-          </a><br>
-          <small class="text-muted font-monospace"><?= $pr['nip'] ?></small>
-        </td>
-        <td class="text-center"><?= html_escape($pr['golongan']) ?></td>
-        <td class="text-center">
-          <span class="badge <?= $pr['jenis']==='PNS'?'bg-primary':'bg-success' ?>">
-            <?= $pr['jenis'] ?>
-          </span>
-        </td>
-        <td class="num mode-all mode-gaji"><?= number_format($t['gaji_pokok']) ?></td>
-        <td class="num mode-all mode-gaji"><?= number_format($t['bruto_gaji']) ?></td>
-        <td class="num mode-all mode-gaji neg"><?= number_format($t['pot_bpjs']+$t['pot_pensiun']) ?></td>
-        <td class="num mode-all mode-gaji bersih"><?= number_format($t['bersih_gaji']) ?></td>
-        <td class="num mode-all mode-tpp tpp-col"><?= number_format($t['tpp_bruto']) ?></td>
-        <td class="num mode-all mode-tpp neg"><?= number_format($t['bpjs_tpp_peg']) ?></td>
-        <td class="num mode-all mode-tpp tpp-col bersih"><?= number_format($t['tpp_bersih']) ?></td>
-        <td class="num mode-all fw-bold" style="color:#5b21b6"><?= number_format($t['total_bersih']) ?></td>
-      </tr>
-      <?php endforeach; ?>
-      </tbody>
-    </table>
+        <?php endforeach; ?>
+        </tbody>
+      </table>
     </div>
   </div>
-</div>
+
+</div><!-- /tab-content -->
 
 <script>
-var currentJenis = '<?= ($show_pns && $show_pppk) ? 'combined' : ($show_pns ? 'pns' : 'pppk') ?>';
-var currentMode  = 'all';
-
-function switchJenis(jenis, btn) {
-  currentJenis = jenis;
-  document.querySelectorAll('.chip-tab').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  updateTable();
-}
-function switchMode(mode, btn) {
-  currentMode = mode;
-  document.querySelectorAll('.mode-tab').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  // Show/hide columns
-  document.querySelectorAll('.mode-gaji').forEach(el => el.style.display = (mode === 'tpp') ? 'none' : '');
-  document.querySelectorAll('.mode-tpp').forEach(el => el.style.display = (mode === 'gaji') ? 'none' : '');
-}
-function fmt(n) { return new Intl.NumberFormat('id-ID').format(Math.round(n||0)); }
-function updateTable() {
-  document.querySelectorAll('#tblBulanan tbody tr').forEach(function(tr) {
-    var d = JSON.parse(tr.getAttribute('data-' + currentJenis));
-    var cells = tr.querySelectorAll('td');
-    // cells[0]=no, cells[1]=label, then data cells
-    var i = 2;
-    cells[i++].textContent = fmt(d.jml);
-    cells[i++].textContent = fmt(d.gaji_pokok);
-    cells[i++].textContent = fmt(d.t_keluarga);
-    cells[i++].textContent = fmt(d.t_jabatan);
-    cells[i++].textContent = fmt(d.t_pangan);
-    cells[i++].textContent = fmt(d.bruto_gaji);
-    cells[i++].textContent = fmt(d.pot_bpjs);
-    cells[i++].textContent = fmt(d.pot_pensiun);
-    cells[i++].textContent = fmt(d.pph21);
-    cells[i++].textContent = fmt(d.bersih_gaji);
-    cells[i++].textContent = fmt(d.tpp_bruto);
-    cells[i++].textContent = fmt(d.bpjs_tpp_peg);
-    cells[i++].textContent = fmt(d.tpp_bersih);
-    cells[i++].textContent = fmt(d.total_bersih);
-    cells[i++].textContent = fmt(d.bel_employer);
-    cells[i++].textContent = fmt(d.bel_tpp_bpjs);
+function tableToCSV(tableEl) {
+  var rows = tableEl.querySelectorAll('tr');
+  var csv = [];
+  rows.forEach(function(row) {
+    var cols = row.querySelectorAll('th, td');
+    var rowData = [];
+    cols.forEach(function(col) {
+      var txt = col.innerText.replace(/\r?\n/g,' ').replace(/"/g,'""').trim();
+      rowData.push('"'+txt+'"');
+    });
+    csv.push(rowData.join(','));
   });
-  // Filter pegawai rows
-  document.querySelectorAll('#tblPegawai tbody tr').forEach(function(tr) {
-    if (currentJenis === 'combined') tr.style.display = '';
-    else tr.style.display = tr.classList.contains('peg-row-' + currentJenis) ? '' : 'none';
-  });
+  return csv.join('\r\n');
+}
+function downloadTable(tableId, label) {
+  var tbl = document.getElementById(tableId);
+  if (!tbl) return;
+  var periode = '<?= $p['tahun'].'_'.sprintf('%02d',$p['bm']).'-'.sprintf('%02d',$p['ba']) ?>';
+  var csv = tableToCSV(tbl);
+  var BOM = '﻿';
+  var blob = new Blob([BOM+csv], {type:'text/csv;charset=utf-8;'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href=url; a.download='Rekap_'+label+'_'+periode+'.csv'; a.style.display='none';
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){ document.body.removeChild(a); URL.revokeObjectURL(url); },500);
 }
 </script>
 <?php endif; ?>

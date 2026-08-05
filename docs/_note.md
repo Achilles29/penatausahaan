@@ -261,7 +261,96 @@ kemudian, untuk logika model simulasi sudah benar, sekarang tinggal terapkan ke 
 - cek KGB apakah sudah diperhitungkan? bagaimana mengitung gaji berkala? apakah dari hitungan masa kerja atau dari kolom KGB yad ?
 
 
-buat tampilan /rekap turun ke bawah per rekening, bulannya ke kanan. dan pastikan rekening mengikuti kodifikasi. pembulatan dijumlahkan berdasarkan hitungan pembulatan per pegawai per orang.
+
+- buat agar /gaji/simulasi bisa memilih bulan, termasuk gaji 13 dan 14
+- /gaji/rekap data yang ditampilkan persis sama dengan simulasi per orang, semua rekening muncul termasuk pembulatan bisa memilih 13 dan 14
+- buat tampilan /rekap turun ke bawah per rekening, bulannya ke kanan. dan pastikan rekening mengikuti kodifikasi. pembulatan dijumlahkan berdasarkan hitungan pembulatan per pegawai per orang.
+
+
+Applicacifus competition. Let me sir me, sir. Misa learners.- sesuaikan lagi /rekap dan /gaji/rekap , seharusnya dipisah antara PNS , PPPK, Gaji, TPP, karena rekeningnya masing masing beda. Rekening Gaji dan TPP PNS dan PPPK beda, jadi buat tab nya semua terpisah. dan pastikan semua rekening tampil meskipun 0, jangan ada yang digabung. tampilan rekening urut dari terkecil sampai terbesar yang gunanya untuk menghitung besaran anggaran yang dibutuhkan. lalu buatkan tombol download excel sesuai data yang di generate
+
+- Terkait gaji 13 dan 14, kamu tau ketentuannya nggak? hitungannya beda dengan gaji reguler. pajaknya juga lebih besar. cek lagi
+
+
+
+revisi ya:
+- /gaji/simulasi Tunjangan PPh 21 Gaji ke 13 sepertinya sudah benar, tapi untuk TPP masih salah. Tunjangan PPh 21 TPP tetap flat 15 % dan 5 %. perbaiki juga untuk /gaji/rekap dan /rekap.
+
+- buat tampilan /gaji/rekap dan /rekap seperti /gaji/simulasi yang menampilkan Gaji Bruto dan Gaji Bersih
+
+- tampilan TPP juga seharusnya menampilkan TPP Bruto dan TPP Bersih untuk ketiga halaman agar ketahuan jumlah anggaran yang digunakan
+
+- tampilan /gaji/rekap per pegawai seharusnya menampilkan semua data per rekening seperti simulasi, jangan ada yang digabung. baik Gaji dan TPP. saya lihat PPH belum muncul di gaji kotor. dan potongan masih digabung.
+
+
+- tampilan /rekap/detail/**/*/*/** juga belum menampilkan semua rekening seperti tampilan simulasi
+
+Perbaiki
+
+revisi tampilan /master/pegawai:
+kolom 1:
+NAMA
+NIP
+
+kolom 2:
+STATUS (PNS /CPNS/PPPK)
+PANGKAT
+GOLONGAN
+
+Kolom 3:
+MKG
+KGB YAD
+KP YAD
+
+Kolom 4:
+ESELON
+JABATAN
+
+
+kOLOM 5:
+STATUS KAWIN
+STATUS TUNJANGAN ISTRI
+JUMLAH ANAK
+
+
+OPD
+
+
+
+- hitung /gaji/simulasi malah tidak tampil apa apa
+- /gaji/rekap dan /rekap untuk rekening pph tidak muncul
+yang benar kan 
+5.1.01.01.007	Belanja Tunjangan PPh/Tunjangan Khusus ASN
+5.1.01.01.007.00001	Belanja Tunjangan PPh/Tunjangan Khusus PNS
+5.1.01.01.007.00002	Belanja Tunjangan PPh/Tunjangan Khusus PPPK
+dan PPH masuk disana
+
+- tampilan /gaji/rekap per pegawai masih kacau kolomnya
+
+
+perbaikan tampilan untuk TPP ya. jadi sekali lagi konsep kita adalah menghitung kebutuhan anggaran.
+jadi tampilan seharusnya kurang lebih seperti ini:
+- rekening tpp
+- rekeninf pph
+- rekening bpjs (pemberi kerja)
+
+itu bruto yang dianggarkan
+
+baru dibawahnya bersih nya adalah tpp dikurangi bpjs mandiri 1% 
+secara hitungan memang sudah sesuai tapi secara tampilan kurang pas untuk menghitung kebutuhan anggaran
+
+
+perbaiki
+
+
+download excel kok csv
+
+saya punya pertanyaan, carikan jawabannya, lalu apakah sudah sesuai dengan konsep kita? kalau masih ada yang salah maka perbaiki
+
+- jika seorang ASN sudah menikah dan mempunyai anak, tapi pasangannya juga ASN dengan gaji yang lebih besar, maka tunjangan Keluarga (anak dan istri) ikut ke pasangannya. di database kita sudah ada Status Perkawinan, jumlah anak , Terima tunjangan keluarga , apakah jika status kawin dan jumlah anak ada, tapi terima tunjangan keluarga = 0, pegawai tersebut tetap menerima tunjangan istri dan anak? lalu sesuai ketentuan bagaimana dengan tunjangan beras? apakah jika tujangan ikut pasangan maka pegawai tsbt masih menerima tunjangan beras? untuk pegawa YBS saja atau untuk keluarganya juga? lalu bagaimana dengan konsep kita apakah sudah sesuai ketentuan?
+- jika anak lebih dari 2, maka yang dihitung tunjangan anak hanya 2, apakah aplikasi kita sudah seperti itu? bagaimana dengan tunjangan beras? 
+
+
 
 
 sesuaikan lagi hak akses menu:
