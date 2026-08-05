@@ -43,6 +43,8 @@ $stmap = array('draft'=>'badge-soft-secondary','final'=>'badge-soft-primary','di
       $pens = isset($penmap[$d->id]) ? $penmap[$d->id] : array();
       $pen_total = 0; foreach ($pens as $p) $pen_total += (float) $p->jumlah;
       $sisa_alok = (float) $d->jumlah - $pen_total;
+      $jb_def = $d->jenis_belanja ?: jenis_belanja_kategori($d->kategori_pajak);
+      $sk_def = skema_id_by_kategori($d->kategori_pajak);
     ?>
     <div class="border rounded mb-3">
       <div class="d-flex flex-wrap align-items-center gap-2 px-3 py-2 bg-light border-bottom">
@@ -54,6 +56,7 @@ $stmap = array('draft'=>'badge-soft-secondary','final'=>'badge-soft-primary','di
         <?php if ($can_edit): ?>
         <button class="btn btn-sm btn-primary btn-add-pen" data-detail="<?= $d->id ?>" data-sisa="<?= $sisa_alok ?>"
                 data-jumlah="<?= (float) $d->jumlah ?>" data-uraian="<?= html_escape($d->uraian) ?>"
+                data-jenis="<?= html_escape($jb_def) ?>" data-skema="<?= (int) $sk_def ?>"
                 data-rek="<?= html_escape($d->kode_rekening) ?>"><i class="fa-solid fa-user-plus me-1"></i>Penerima</button>
         <?php endif; ?>
       </div>
@@ -95,7 +98,7 @@ $stmap = array('draft'=>'badge-soft-secondary','final'=>'badge-soft-primary','di
                   <td class="text-end fw-semibold"><?= rupiah($p->pajak['netto']) ?></td>
                   <?php if ($can_edit): ?>
                   <td class="text-end">
-                    <button class="btn btn-xs btn-outline-primary btn-edit-pen" data-id="<?= $p->id ?>" data-detail="<?= $d->id ?>" data-sisa="<?= $sisa_alok ?>"><i class="fa-solid fa-pen"></i></button>
+                    <button class="btn btn-xs btn-outline-primary btn-edit-pen" data-id="<?= $p->id ?>" data-detail="<?= $d->id ?>" data-sisa="<?= $sisa_alok ?>" data-jenis="<?= html_escape($jb_def) ?>" data-skema="<?= (int) $sk_def ?>"><i class="fa-solid fa-pen"></i></button>
                     <button class="btn btn-xs btn-outline-danger btn-del-pen" data-id="<?= $p->id ?>"><i class="fa-solid fa-trash"></i></button>
                   </td>
                   <?php endif; ?>
@@ -147,7 +150,7 @@ $stmap = array('draft'=>'badge-soft-secondary','final'=>'badge-soft-primary','di
 </div>
 
 <?php if ($can_edit): ?>
-<!-- Modal Tambah Penerima (multi-baris) -->
+<!-- Modal Tambah Penerima (multi, kartu) -->
 <div class="modal fade" id="penModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-lg"><div class="modal-content">
   <form action="<?= site_url('npd/penerima_batch') ?>" method="post" id="penBatchForm">
     <div class="modal-header">
@@ -158,47 +161,60 @@ $stmap = array('draft'=>'badge-soft-secondary','final'=>'badge-soft-primary','di
       <input type="hidden" name="npd_detail_id" id="p_detail">
       <div class="alert alert-info py-2 small mb-2" id="p_rekinfo"></div>
 
-      <div class="mb-2 position-relative">
-        <label class="form-label mb-1"><i class="fa-solid fa-magnifying-glass me-1 text-primary"></i>Cari Pegawai / Penerima <small class="text-muted">(klik hasil → langsung masuk daftar)</small></label>
-        <input type="text" class="form-control form-control-sm" id="p_search" placeholder="Ketik nama, NIP, atau NPWP…" autocomplete="off">
-        <div id="p_dropdown" class="list-group shadow" style="display:none; position:absolute; z-index:1060; left:0; right:0; max-height:210px; overflow-y:auto; top:100%"></div>
+      <div class="row g-2 mb-2">
+        <div class="col-md-5">
+          <label class="form-label mb-1 small">Jenis Belanja <small class="text-muted">(otomatis dari rekening, dapat diubah)</small></label>
+          <select class="form-select form-select-sm" name="jenis_belanja" id="p_jenis">
+            <option value="perjalanan">Perjalanan Dinas</option>
+            <option value="honor">Honorarium</option>
+            <option value="barang_jasa">Barang / Jasa Lainnya</option>
+          </select>
+        </div>
+        <div class="col-md-7 position-relative">
+          <label class="form-label mb-1 small"><i class="fa-solid fa-magnifying-glass me-1 text-primary"></i>Cari Pegawai / Penerima</label>
+          <input type="text" class="form-control form-control-sm" id="p_search" placeholder="Ketik nama, NIP, atau NPWP…" autocomplete="off">
+          <div id="p_dropdown" class="list-group shadow" style="display:none; position:absolute; z-index:1060; left:0; right:0; max-height:210px; overflow-y:auto; top:100%"></div>
+        </div>
       </div>
       <button type="button" class="btn btn-sm btn-outline-secondary mb-2" id="p_add_manual"><i class="fa-solid fa-plus me-1"></i>Baris manual</button>
 
-      <div class="table-responsive">
-        <table class="table table-sm align-middle mb-1">
-          <thead class="text-muted small"><tr>
-            <th>Nama Penerima</th><th>Uraian</th>
-            <th class="text-end" style="width:70px">Vol</th><th class="text-end" style="width:130px">Harga</th>
-            <th class="text-end" style="width:130px">Jumlah</th><th style="width:34px"></th>
-          </tr></thead>
-          <tbody id="p_rows"></tbody>
-          <tfoot><tr class="fw-semibold"><td colspan="4" class="text-end">Total</td><td class="text-end" id="p_total">Rp 0</td><td></td></tr></tfoot>
-        </table>
+      <div id="p_rows"></div>
+      <div id="p_empty" class="text-center text-muted small py-2 border rounded">Cari &amp; pilih pegawai/penerima, atau klik "Baris manual".</div>
+      <div class="d-flex justify-content-between align-items-center border-top pt-2 mt-2">
+        <span class="small" id="p_remain"></span>
+        <span class="fw-semibold">Total: <span id="p_total">Rp 0</span></span>
       </div>
-      <div id="p_empty" class="text-center text-muted small py-2">Cari &amp; pilih pegawai/penerima, atau klik "Baris manual".</div>
-      <div class="small mt-1" id="p_remain"></div>
     </div>
     <div class="modal-footer"><button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Batal</button><button class="btn btn-primary" id="p_save_btn"><i class="fa-solid fa-floppy-disk me-1"></i>Simpan Semua</button></div>
   </form>
 </div></div></div>
 
 <!-- Modal Edit Penerima (satu) -->
-<div class="modal fade" id="penEditModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+<div class="modal fade" id="penEditModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-lg"><div class="modal-content">
   <form action="<?= site_url('npd/penerima_save') ?>" method="post">
     <div class="modal-header"><h5 class="modal-title"><i class="fa-solid fa-user-pen me-2"></i>Edit Penerima</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
     <div class="modal-body">
       <input type="hidden" name="id" id="e_id"><input type="hidden" name="npd_detail_id" id="e_detail">
       <input type="hidden" name="pegawai_id" id="e_peg"><input type="hidden" name="penerima_id" id="e_pen">
+      <input type="hidden" name="jenis_belanja" id="e_jenis"><input type="hidden" name="punya_npwp" id="e_haspwp" value="0">
       <div class="alert alert-info py-2 small mb-3" id="e_rekinfo"></div>
-      <div class="mb-3"><label class="form-label">Nama Penerima <span class="text-danger">*</span></label><input type="text" class="form-control" name="nama_penerima" id="e_nama" required></div>
-      <div class="mb-3"><label class="form-label">Uraian</label><input type="text" class="form-control" name="uraian" id="e_ur"></div>
-      <div class="row g-2">
-        <div class="col-3"><label class="form-label">Volume</label><input type="text" inputmode="numeric" class="form-control text-end" name="volume" id="e_vol" value="1"></div>
-        <div class="col-5"><label class="form-label">Harga Satuan</label><input type="text" inputmode="numeric" class="form-control text-end" name="harga_satuan" id="e_hrg"></div>
-        <div class="col-4"><label class="form-label">Jumlah</label><input type="text" class="form-control text-end fw-semibold" id="e_jml" value="0" readonly></div>
+      <div class="mb-2"><label class="form-label mb-1">Nama Penerima <span class="text-danger">*</span></label><input type="text" class="form-control form-control-sm" name="nama_penerima" id="e_nama" required></div>
+      <div class="row g-2 mb-2">
+        <div class="col-md-4"><label class="form-label mb-1">No. Rekening <span class="text-danger">*</span></label><input type="text" class="form-control form-control-sm" name="rekening" id="e_rek" required></div>
+        <div class="col-md-4"><label class="form-label mb-1">NPWP</label><input type="text" class="form-control form-control-sm" name="npwp" id="e_npwp"></div>
+        <div class="col-md-4" id="e_komp_wrap"><label class="form-label mb-1">Komponen</label>
+          <select class="form-select form-select-sm" name="komponen" id="e_komp">
+            <option value="">—</option><option value="sppd">SPPD / Uang Harian</option><option value="representasi">Representasi</option><option value="penginapan">Penginapan</option><option value="tol">Tol / Transport</option>
+          </select></div>
       </div>
-      <div class="mt-3"><label class="form-label">Keterangan</label><input type="text" class="form-control" name="keterangan" id="e_ket"></div>
+      <div class="mb-2"><label class="form-label mb-1">Uraian</label><input type="text" class="form-control form-control-sm" name="uraian" id="e_ur"></div>
+      <div class="row g-2">
+        <div class="col-md-2"><label class="form-label mb-1">Volume</label><input type="text" inputmode="numeric" class="form-control form-control-sm text-end" name="volume" id="e_vol" value="1"></div>
+        <div class="col-md-3"><label class="form-label mb-1">Harga Satuan</label><input type="text" inputmode="numeric" class="form-control form-control-sm text-end" name="harga_satuan" id="e_hrg"></div>
+        <div class="col-md-3"><label class="form-label mb-1">Jumlah</label><input type="text" class="form-control form-control-sm text-end fw-semibold" id="e_jml" value="0" readonly></div>
+        <div class="col-md-4"><label class="form-label mb-1">Skema Pajak</label><select class="form-select form-select-sm" name="skema_pajak_id" id="e_skema"></select></div>
+      </div>
+      <div class="mt-2"><label class="form-label mb-1">Keterangan</label><input type="text" class="form-control form-control-sm" name="keterangan" id="e_ket"></div>
     </div>
     <div class="modal-footer"><button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Batal</button><button class="btn btn-primary">Simpan</button></div>
   </form>
@@ -209,71 +225,93 @@ $stmap = array('draft'=>'badge-soft-secondary','final'=>'badge-soft-primary','di
 <script>
 (function(){
   var SEARCH='<?= site_url('npd/penerima_search') ?>', GET='<?= site_url('npd/penerima_get') ?>';
+  var SKEMA=<?= json_encode(skema_pajak_options()) ?>;
   function digits(s){return String(s).replace(/[^\d]/g,'');}
   function num(s){return parseInt(digits(s)||'0',10)||0;}
   function fmt(n){return Number(n||0).toLocaleString('id-ID');}
   function esc(v){return v==null?'':$('<div>').text(String(v)).html();}
+  function skemaOpts(sel){ var h='<option value="">— tanpa pajak —</option>'; SKEMA.forEach(function(s){ h+='<option value="'+s.id+'"'+(String(s.id)===String(sel)?' selected':'')+'>'+esc(s.label)+'</option>'; }); return h; }
 
-  /* ===== Tambah Penerima (multi-baris) ===== */
-  var lineSisa=0, lineUraian='';
-  function rowJml(tr){ return num(tr.querySelector('.r-vol').value) * num(tr.querySelector('.r-hrg').value); }
-  function remaining(){ var used=0; $('#p_rows tr').each(function(){ used+=rowJml(this); }); return lineSisa-used; }
+  var lineSisa=0, lineUraian='', defSkema='', curJenis='barang_jasa';
+  function rowJml(el){ return num(el.querySelector('.r-vol').value) * num(el.querySelector('.r-hrg').value); }
+  function remaining(){ var used=0; $('#p_rows .p-row').each(function(){ used+=rowJml(this); }); return lineSisa-used; }
   function recalcAll(){
     var total=0;
-    $('#p_rows tr').each(function(){ var j=rowJml(this); total+=j; this.querySelector('.r-jml').textContent='Rp '+fmt(j); });
+    $('#p_rows .p-row').each(function(){ var j=rowJml(this); total+=j; this.querySelector('.r-jml').textContent='Rp '+fmt(j); });
     $('#p_total').text('Rp '+fmt(total));
-    var rem=lineSisa-total, over=rem<-0.001, n=$('#p_rows tr').length;
-    $('#p_remain').html('Sisa alokasi setelah ini: <strong class="'+(over?'text-danger':'text-success')+'">Rp '+fmt(rem)+'</strong>'
-      + (over?' <span class="text-danger">— melebihi pagu, kurangi nominal.</span>':''));
+    var rem=lineSisa-total, over=rem<-0.001, n=$('#p_rows .p-row').length;
+    $('#p_remain').html('Sisa setelah ini: <strong class="'+(over?'text-danger':'text-success')+'">Rp '+fmt(rem)+'</strong>'+(over?' — melebihi pagu':''));
     document.getElementById('p_save_btn').disabled = over || n===0;
     $('#p_empty').toggle(n===0);
   }
+  function toggleKomp(){ var show=(curJenis==='perjalanan'); $('#p_rows .r-komp-wrap').toggle(show); if(!show) $('#p_rows .r-komp').val(''); }
   function addRow(d){
     d=d||{};
-    var defHarga = (d.harga!=null) ? d.harga : Math.max(0, remaining());
-    var tr=document.createElement('tr');
-    tr.innerHTML =
-      '<td><input class="form-control form-control-sm r-nama" name="nama_penerima[]" value="'+esc(d.nama||'')+'" placeholder="Nama penerima" required>'
+    var defHarga=(d.harga!=null)?d.harga:Math.max(0,remaining());
+    var req = d.punya_npwp==1;
+    var div=document.createElement('div');
+    div.className='p-row border rounded p-2 mb-2';
+    div.innerHTML =
+      '<div class="d-flex align-items-center gap-2 mb-1">'
+        +'<input class="form-control form-control-sm r-nama" name="nama_penerima[]" value="'+esc(d.nama||'')+'" placeholder="Nama penerima *" required>'
+        +(d.badge?'<span class="badge badge-soft-'+(d.badge==='pegawai'?'primary':'secondary')+'">'+(d.badge==='pegawai'?'Pegawai':'Penerima')+'</span>':'')
+        +'<button type="button" class="btn btn-sm btn-outline-danger r-del ms-auto" title="Hapus"><i class="fa-solid fa-xmark"></i></button>'
         +'<input type="hidden" name="pegawai_id[]" class="r-peg" value="'+esc(d.pegawai_id||'')+'">'
         +'<input type="hidden" name="penerima_id[]" class="r-pen" value="'+esc(d.penerima_id||'')+'">'
+        +'<input type="hidden" name="punya_npwp[]" class="r-haspwp" value="'+(req?'1':'0')+'">'
         +'<input type="hidden" name="keterangan[]" value="">'
-        +(d.badge?'<span class="badge badge-soft-'+(d.badge==='pegawai'?'primary':'secondary')+' mt-1">'+(d.badge==='pegawai'?'Pegawai':'Penerima')+'</span>':'')
-      +'</td>'
-      +'<td><input class="form-control form-control-sm r-ur" name="uraian[]" value="'+esc(d.uraian!=null?d.uraian:lineUraian)+'"></td>'
-      +'<td><input class="form-control form-control-sm text-end r-vol" name="volume[]" value="1"></td>'
-      +'<td><input class="form-control form-control-sm text-end r-hrg" name="harga_satuan[]" value="'+(defHarga?fmt(defHarga):'')+'"></td>'
-      +'<td class="text-end r-jml">Rp 0</td>'
-      +'<td><button type="button" class="btn btn-sm btn-outline-danger r-del" title="Hapus baris"><i class="fa-solid fa-xmark"></i></button></td>';
-    document.getElementById('p_rows').appendChild(tr);
-    recalcAll();
-    if(!d.nama) tr.querySelector('.r-nama').focus();
+      +'</div>'
+      +'<div class="row g-1 mb-1">'
+        +'<div class="col-md-4"><input class="form-control form-control-sm r-rek" name="rekening[]" value="'+esc(d.norek||'')+'" placeholder="No. Rekening Bank *" required></div>'
+        +'<div class="col-md-3"><input class="form-control form-control-sm r-npwp" name="npwp[]" value="'+esc(d.npwp||'')+'" placeholder="NPWP'+(req?' *':'')+'"'+(req?' required':'')+'></div>'
+        +'<div class="col-md-5 r-komp-wrap"><select class="form-select form-select-sm r-komp" name="komponen[]"><option value="">— komponen perjalanan —</option><option value="sppd">SPPD / Uang Harian</option><option value="representasi">Representasi</option><option value="penginapan">Penginapan</option><option value="tol">Tol / Transport</option></select></div>'
+      +'</div>'
+      +'<div class="row g-1">'
+        +'<div class="col-md-4"><input class="form-control form-control-sm r-ur" name="uraian[]" value="'+esc(d.uraian!=null?d.uraian:lineUraian)+'" placeholder="Uraian"></div>'
+        +'<div class="col-md-2"><input class="form-control form-control-sm text-end r-vol" name="volume[]" value="1" title="Volume"></div>'
+        +'<div class="col-md-3"><input class="form-control form-control-sm text-end r-hrg" name="harga_satuan[]" value="'+(defHarga?fmt(defHarga):'')+'" placeholder="Harga"></div>'
+        +'<div class="col-md-3"><select class="form-select form-select-sm r-skema" name="skema_pajak_id[]" title="Skema pajak">'+skemaOpts(d.skema!=null?d.skema:defSkema)+'</select></div>'
+      +'</div>'
+      +'<div class="small text-muted mt-1 text-end">Jumlah: <span class="r-jml fw-semibold">Rp 0</span></div>';
+    document.getElementById('p_rows').appendChild(div);
+    toggleKomp(); recalcAll();
+    if(!d.nama) div.querySelector('.r-nama').focus();
   }
   $('#p_rows').on('input','.r-vol,.r-hrg',function(){ var d=digits(this.value); this.value=d?Number(d).toLocaleString('id-ID'):''; recalcAll(); });
-  $('#p_rows').on('click','.r-del',function(){ $(this).closest('tr').remove(); recalcAll(); });
+  $('#p_rows').on('click','.r-del',function(){ $(this).closest('.p-row').remove(); recalcAll(); });
   $('#p_add_manual').on('click',function(){ addRow({}); });
+  $('#p_jenis').on('change',function(){ curJenis=this.value; toggleKomp(); });
 
   $('.btn-add-pen').on('click',function(){
     lineSisa=parseFloat(this.dataset.sisa||'0'); lineUraian=this.dataset.uraian||'';
+    defSkema=this.dataset.skema||''; curJenis=this.dataset.jenis||'barang_jasa';
+    $('#p_jenis').val(curJenis);
     $('#p_detail').val(this.dataset.detail); $('#p_rows').empty(); $('#p_search').val(''); $('#p_dropdown').hide();
-    $('#p_rekinfo').html('Rekening <strong>'+esc(this.dataset.rek)+'</strong> · sisa alokasi <strong>Rp '+fmt(this.dataset.sisa)+'</strong>. Harga satuan default = sisa yang dicairkan, dapat diedit.');
+    $('#p_rekinfo').html('Rekening <strong>'+esc(this.dataset.rek)+'</strong> · sisa alokasi <strong>Rp '+fmt(this.dataset.sisa)+'</strong>. Harga default = sisa, dapat diedit. <span class="text-danger">Rekening wajib; NPWP wajib bila penerima ber-NPWP.</span>');
     recalcAll();
     new bootstrap.Modal('#penModal').show();
   });
+  $('#penBatchForm').on('submit',function(e){
+    var bad=false;
+    $('#p_rows .p-row').each(function(){
+      var rek=this.querySelector('.r-rek'); if(!rek.value.trim()){ rek.classList.add('is-invalid'); bad=true; } else rek.classList.remove('is-invalid');
+      var np=this.querySelector('.r-npwp'); if(this.querySelector('.r-haspwp').value==='1' && !np.value.trim()){ np.classList.add('is-invalid'); bad=true; } else np.classList.remove('is-invalid');
+    });
+    if(bad){ e.preventDefault(); alert('Lengkapi No. Rekening (wajib) dan NPWP untuk penerima ber-NPWP.'); }
+  });
 
-  // autocomplete -> klik hasil = tambah baris langsung
+  // autocomplete -> klik hasil = tambah kartu
   var t=null;
   $('#p_search').on('input',function(){
     clearTimeout(t); var q=this.value.trim();
     if(q.length<2){ $('#p_dropdown').hide(); return; }
     t=setTimeout(function(){
       $.getJSON(SEARCH+'?q='+encodeURIComponent(q),function(rows){
-        var h=''; if(!rows.length){ h='<div class="list-group-item small text-muted">Tidak ada. Gunakan tombol "Baris manual".</div>'; }
+        var h=''; if(!rows.length){ h='<div class="list-group-item small text-muted">Tidak ada. Gunakan "Baris manual".</div>'; }
         rows.forEach(function(r){
-          var badge = r.source==='pegawai'
-            ? '<span class="badge badge-soft-primary ms-1">Pegawai</span>'
-            : '<span class="badge badge-soft-secondary ms-1">Penerima</span>';
+          var badge = r.source==='pegawai' ? '<span class="badge badge-soft-primary ms-1">Pegawai</span>' : '<span class="badge badge-soft-secondary ms-1">Penerima</span>';
           h+='<button type="button" class="list-group-item list-group-item-action py-1 pen-pick" '
-            +'data-source="'+r.source+'" data-id="'+r.id+'" data-nama="'+esc(r.nama)+'">'
+            +"data-source='"+r.source+"' data-id='"+r.id+"' data-peg='"+(r.pegawai_id||'')+"' data-nama='"+esc(r.nama)+"' data-npwp='"+esc(r.npwp||'')+"' data-haspwp='"+(r.punya_npwp||0)+"' data-norek='"+esc(r.norek||'')+"'>"
             +'<span class="fw-semibold">'+esc(r.nama)+'</span>'+badge
             +(r.sub?'<small class="text-muted d-block">'+esc(r.sub)+'</small>':'')+'</button>';
         });
@@ -282,23 +320,28 @@ $stmap = array('draft'=>'badge-soft-secondary','final'=>'badge-soft-primary','di
     },280);
   });
   $('#p_dropdown').on('click','.pen-pick',function(){
-    var d={nama:this.dataset.nama, badge:this.dataset.source};
-    if(this.dataset.source==='pegawai') d.pegawai_id=this.dataset.id; else d.penerima_id=this.dataset.id;
+    var d={nama:this.dataset.nama, badge:this.dataset.source, npwp:this.dataset.npwp, punya_npwp:this.dataset.haspwp, norek:this.dataset.norek};
+    if(this.dataset.source==='pegawai'){ d.pegawai_id=this.dataset.id; }
+    else { d.penerima_id=this.dataset.id; if(this.dataset.peg) d.pegawai_id=this.dataset.peg; }
     addRow(d);
     $('#p_dropdown').hide(); $('#p_search').val('').focus();
   });
   $(document).on('mousedown',function(e){ if(!$(e.target).closest('#p_search,#p_dropdown').length) $('#p_dropdown').hide(); });
 
-  /* ===== Edit Penerima (satu baris) ===== */
+  /* ===== Edit Penerima ===== */
   function eRecompute(){ $('#e_jml').val(fmt(num($('#e_vol').val())*num($('#e_hrg').val()))); }
   $('#e_vol,#e_hrg').on('input',function(){ var d=digits(this.value); this.value=d?Number(d).toLocaleString('id-ID'):''; eRecompute(); });
   $('.btn-edit-pen').on('click',function(){
-    var sisa=this.dataset.sisa;
+    var sisa=this.dataset.sisa, jenis=this.dataset.jenis||'barang_jasa', dsk=this.dataset.skema||'';
     $.getJSON(GET+'/'+this.dataset.id,function(r){
       document.querySelector('#penEditModal form').reset();
-      $('#e_id').val(r.id); $('#e_detail').val(r.npd_detail_id);
+      $('#e_id').val(r.id); $('#e_detail').val(r.npd_detail_id); $('#e_jenis').val(jenis);
       $('#e_peg').val(r.pegawai_id||''); $('#e_pen').val(r.penerima_id||'');
       $('#e_nama').val(r.nama_penerima); $('#e_ur').val(r.uraian||''); $('#e_ket').val(r.keterangan||'');
+      $('#e_rek').val(r.no_rekening||''); $('#e_npwp').val(r.npwp||'');
+      $('#e_haspwp').val(r.npwp?'1':'0');
+      $('#e_komp').val(r.komponen_pd||''); $('#e_komp_wrap').toggle(jenis==='perjalanan');
+      $('#e_skema').html(skemaOpts(r.skema_pajak_id||dsk));
       $('#e_vol').val(fmt(r.volume)); $('#e_hrg').val(fmt(r.harga_satuan)); eRecompute();
       $('#e_rekinfo').html('Sisa alokasi (belum termasuk baris ini): <strong>Rp '+fmt(sisa)+'</strong>');
       new bootstrap.Modal('#penEditModal').show();

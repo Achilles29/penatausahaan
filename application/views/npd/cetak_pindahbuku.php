@@ -54,13 +54,13 @@ foreach ($row->details as $d) if ( ! empty($penmap[$d->id])) $details[] = $d;
 $last = count($details) - 1;
 
 foreach ($details as $di => $d):
-	$pens = $penmap[$d->id];
-	$kat  = $d->kategori_pajak;
-	$brk  = $di < $last ? ' style="page-break-after:always"' : '';
+	$pens  = $penmap[$d->id];
+	$jenis = $d->jenis_belanja ?: jenis_belanja_kategori($d->kategori_pajak);
+	$brk   = $di < $last ? ' style="page-break-after:always"' : '';
 ?>
 <div class="page"<?= $brk ?>>
 
-<?php if ($kat === 'perjalanan_dinas'): // ===== FORMAT A: PERJALANAN DINAS =====
+<?php if ($jenis === 'perjalanan'): // ===== FORMAT A: PERJALANAN DINAS =====
 	$grp = array();
 	foreach ($pens as $p) {
 		$key = $p->pegawai_id ? 'p' . $p->pegawai_id : ($p->penerima_id ? 'm' . $p->penerima_id : 'n' . $p->nama_live);
@@ -72,7 +72,8 @@ foreach ($details as $di => $d):
 			'norek' => $p->norek_live,
 			'sppd' => 0, 'representasi' => 0, 'penginapan' => 0, 'tol' => 0,
 		);
-		$grp[$key][pinbuk_komponen_pd($p->uraian)] += (float) $p->jumlah;
+		$komp = $p->komponen_pd ?: pinbuk_komponen_pd($p->uraian);
+		$grp[$key][$komp] += (float) $p->jumlah;
 	}
 	$t = array('sppd' => 0, 'representasi' => 0, 'penginapan' => 0, 'tol' => 0, 'total' => 0);
 ?>
@@ -81,12 +82,12 @@ foreach ($details as $di => $d):
 	<table class="grid" border="1" cellspacing="0" style="width:100%">
 		<thead>
 			<tr>
-				<th rowspan="2" style="width:26px">NO</th><th rowspan="2">NAMA</th>
-				<th rowspan="2" style="width:135px">NIP</th><th rowspan="2">JABATAN</th><th rowspan="2" style="width:34px">GOL</th>
-				<th colspan="4">JUMLAH</th>
-				<th rowspan="2" style="width:95px">JUMLAH PENERIMAAN</th><th rowspan="2" style="width:95px">NO REKENING</th>
+				<th rowspan="2" style="width:4%">NO</th><th rowspan="2" style="width:16%">NAMA</th>
+				<th rowspan="2" style="width:14%">NIP</th><th rowspan="2" style="width:7%">JABATAN</th><th rowspan="2" style="width:4%">GOL</th>
+				<th colspan="4" style="width:30%">JUMLAH</th>
+				<th rowspan="2" style="width:12%">JUMLAH PENERIMAAN</th><th rowspan="2" style="width:13%">NO REKENING</th>
 			</tr>
-			<tr><th style="width:78px">SPPD</th><th style="width:80px">REPRESENTASI</th><th style="width:80px">PENGINAPAN</th><th style="width:62px">TOL</th></tr>
+			<tr><th style="width:8%">SPPD</th><th style="width:8%">REPRESENTASI</th><th style="width:8%">PENGINAPAN</th><th style="width:6%">TOL</th></tr>
 		</thead>
 		<tbody>
 			<?php $no = 0; foreach ($grp as $g): $jml = $g['sppd'] + $g['representasi'] + $g['penginapan'] + $g['tol'];
@@ -115,24 +116,25 @@ foreach ($details as $di => $d):
 	</table>
 
 <?php else: // ===== FORMAT B (honor) / C (barang-jasa) =====
-	$is_honor = ($kat === 'honorarium');
+	$is_honor = ($jenis === 'honor');
 	$pph_label = $is_honor ? 'PPh 21' : 'PPh Ps 23';
-	$colspan_left = $is_honor ? 5 : 4; // sampai kolom sebelum PPN untuk baris JUMLAH
+	$has_tax = FALSE; foreach ($pens as $p) if ((float) $p->pajak['total_pajak'] > 0) { $has_tax = TRUE; break; }
 	$tk = 0; $tppn = 0; $tpph = 0; $tb = 0;
 ?>
 	<h1 class="doc-title">PEMINDAHBUKUAN <?= html_escape(strtoupper($d->uraian)) ?></h1>
 	<div class="doc-sub"><?= html_escape(strtoupper($row->perihal)) ?></div>
+	<?php if ($has_tax): // --- ada pajak: tampilkan kolom pajak --- ?>
 	<table class="grid" border="1" cellspacing="0" style="width:100%">
 		<thead>
 			<tr>
-				<th rowspan="2" style="width:26px">No</th><th rowspan="2">Nama Penerima</th>
-				<th rowspan="2" style="width:120px">Nomor Rekening Bank</th>
-				<?php if ($is_honor): ?><th rowspan="2" style="width:105px">Rincian</th><?php endif; ?>
-				<th rowspan="2" style="width:95px">Jumlah Kotor</th>
-				<th colspan="3">Pajak</th>
-				<th rowspan="2" style="width:95px">Jumlah Bersih</th><th rowspan="2" style="width:130px">Keterangan Belanja</th>
+				<th rowspan="2" style="width:4%">No</th><th rowspan="2" style="width:<?= $is_honor ? 18 : 22 ?>%">Nama Penerima</th>
+				<th rowspan="2" style="width:14%">Nomor Rekening Bank</th>
+				<?php if ($is_honor): ?><th rowspan="2" style="width:11%">Rincian</th><?php endif; ?>
+				<th rowspan="2" style="width:11%">Jumlah Kotor</th>
+				<th colspan="3" style="width:25%">Pajak</th>
+				<th rowspan="2" style="width:11%">Jumlah Bersih</th><th rowspan="2" style="width:<?= $is_honor ? 11 : 14 ?>%">Keterangan Belanja</th>
 			</tr>
-			<tr><th style="width:70px">PPN</th><th style="width:70px"><?= $pph_label ?></th><th style="width:75px">Total Pajak</th></tr>
+			<tr><th style="width:8%">PPN</th><th style="width:8%"><?= $pph_label ?></th><th style="width:9%">Total Pajak</th></tr>
 		</thead>
 		<tbody>
 			<?php $no = 0; foreach ($pens as $p):
@@ -153,7 +155,7 @@ foreach ($details as $di => $d):
 			</tr>
 			<?php endforeach; ?>
 			<tr class="totrow">
-				<td colspan="<?= $colspan_left ?>" class="r">Jumlah</td>
+				<td colspan="<?= $is_honor ? 5 : 4 ?>" class="r">Jumlah</td>
 				<td class="r"><?= $rp($tk) ?></td>
 				<td class="r"><?= $tppn ? $rp($tppn) : '' ?></td>
 				<td class="r"><?= $tpph ? $rp($tpph) : '' ?></td>
@@ -162,6 +164,30 @@ foreach ($details as $di => $d):
 			</tr>
 		</tbody>
 	</table>
+	<?php else: // --- tanpa pajak: tabel sederhana --- ?>
+	<table class="grid" border="1" cellspacing="0" style="width:100%">
+		<thead><tr>
+			<th style="width:5%">No</th><th style="width:<?= $is_honor ? 30 : 37 ?>%">Nama Penerima</th>
+			<th style="width:18%">Nomor Rekening Bank</th>
+			<?php if ($is_honor): ?><th style="width:15%">Rincian</th><?php endif; ?>
+			<th style="width:16%">Jumlah</th>
+			<th style="width:<?= $is_honor ? 16 : 24 ?>%">Keterangan Belanja</th>
+		</tr></thead>
+		<tbody>
+			<?php $no = 0; foreach ($pens as $p): $bruto = (float) $p->jumlah; $tk += $bruto; ?>
+			<tr>
+				<td class="c"><?= ++$no ?></td>
+				<td><?= html_escape($p->nama_live) ?></td>
+				<td class="c kode"><?= html_escape($p->norek_live ?: '-') ?></td>
+				<?php if ($is_honor): ?><td class="c"><?= $rp($p->volume) ?> X <?= $rp($p->harga_satuan) ?></td><?php endif; ?>
+				<td class="r"><?= $rp($bruto) ?></td>
+				<td><?= html_escape($p->uraian ? '- ' . $p->uraian : '') ?></td>
+			</tr>
+			<?php endforeach; ?>
+			<tr class="totrow"><td colspan="<?= $is_honor ? 4 : 3 ?>" class="r">Jumlah</td><td class="r"><?= $rp($tk) ?></td><td></td></tr>
+		</tbody>
+	</table>
+	<?php endif; ?>
 <?php endif; ?>
 
 	<?php $ttd(); ?>

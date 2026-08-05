@@ -74,7 +74,7 @@ $logo = $ins['logo'] ? base_url($ins['logo']) : '';
   <?php $kode_sk = trim((string) ($info->kode_subkegiatan ?? '')); ?>
   <table class="grid" border="1" cellspacing="0" style="width:100%">
     <thead><tr>
-      <th style="width:32px">No</th><th style="width:235px">Kode Rekening</th><th>Belanja</th><th style="width:140px">Jumlah (Rp)</th>
+      <th style="width:6%">No</th><th style="width:34%">Kode Rekening</th><th>Belanja</th><th style="width:16%">Jumlah (Rp)</th>
     </tr></thead>
     <tbody>
       <?php foreach ($row->details as $i => $d): ?>

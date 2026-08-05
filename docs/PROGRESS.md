@@ -1,10 +1,43 @@
 # PROGRESS — Catatan Teknis (aman untuk pindah device)
 
-**Terakhir diperbarui:** 2026-08-04 · **Status:** Pindah Buku multi-format per rekening (perjalanan/honor/barang-jasa) + kode rekening NPD + subkeg. Teruji. (Manajemen sidebar sys_menu = ditunda.)
+**Terakhir diperbarui:** 2026-08-05 · **Status:** Modal Penerima diperkaya (rekening/NPWP wajib, jenis belanja, komponen perjalanan, skema pajak) + deploy portable. Teruji. (Manajemen sidebar sys_menu = ditunda.)
 
 ---
 
 ## Log Perkembangan
+
+### [2026-08-05] Deploy portable + Modal Penerima kaya-fitur
+- **Deploy**: `config.php` `base_url` kini **auto-deteksi** (host/subfolder/HTTPS); `sess_save_path`
+  → `APPPATH.cache/sessions` (folder dibuat). Panduan upload di jawaban chat (RewriteBase, database.php,
+  izin folder). Password aman (bcrypt 255).
+- **Migrasi** (`docs/master/2026-08-05_pinbuk_jenis_komponen_skema.sql`): `npd_detail.jenis_belanja`;
+  `npd_penerima.komponen_pd` (sppd/representasi/penginapan/tol), `skema_pajak_id`, `no_rekening`, `npwp`.
+- **Engine pajak** (`pajak_helper`): dipecah jadi `hitung_pajak_detail()` inti + `hitung_pajak_skema($id)`
+  (hitung dari SKEMA pilihan) + `hitung_pajak_rekening()` (reuse). Helper `jenis_belanja_kategori()`,
+  `skema_pajak_options()`, `skema_id_by_kategori()`.
+- **Modal Tambah Penerima (kartu)**: selektor **Jenis Belanja** (auto dari kategori rekening, bisa
+  diubah); tiap penerima: **No. Rekening wajib**, **NPWP** (wajib bila ber-NPWP), **Komponen** perjalanan
+  (SPPD/Representasi/Penginapan/Tol — muncul saat jenis=perjalanan), **Skema Pajak** (dropdown dari
+  `master_skema_pajak`, default sesuai rekening, bisa diubah). Prefill rekening/NPWP dari master.
+  Modal Edit ikut lengkap. Validasi klien + server.
+- **Backend**: `penerima_search` bawa `norek`+`punya_npwp`; `penerima_batch`/`penerima_save` validasi
+  rekening/NPWP, simpan field baru, set `npd_detail.jenis_belanja`, **persist rekening/NPWP ke master**
+  (`ensure_penerima` backfill pegawai/master_penerima). `load_taxed` pakai `skema_pajak_id` bila ada,
+  rekening/NPWP efektif = snapshot→live.
+- **Cetak Pindah Buku** pakai `jenis_belanja` & `komponen_pd` tersimpan (bukan tebak uraian) + skema pajak
+  terpilih. **Teruji**: validasi rekening menolak; perjalanan (INDAH SPPD 340rb+Penginapan 2.788.666=
+  3.128.666) grup benar; skema jasa→PPN 11%+PPh 23 4%; master ter-backfill; semua format 200 OK.
+- **Cetak dirapikan**: ukuran kertas **Folio/F4 (215×330mm)** (screen, print, Excel, Word); tabel
+  `table-layout:fixed` + lebar kolom **persen** + font 10.5px → tidak terpotong lagi; judul + subjudul
+  **bold** semua. Berlaku NPD, Pindah Buku, C5.
+- **Pindah Buku tanpa pajak → tabel sederhana**: bila total pajak rekening = 0 (mis. BBM barang < Rp 2 jt,
+  perjalanan dinas), kolom Pajak (PPN/PPh/Kotor/Bersih) disembunyikan → hanya No·Nama·No Rekening·Jumlah·
+  Keterangan. Bila ada pajak, kolom lengkap tetap tampil. Lebar kolom perjalanan diperbaiki (NO & NO
+  REKENING dilebarkan, JABATAN dikecilkan) agar tidak terpotong.
+- **Pencarian penerima**: `master_penerima` diprioritaskan (kanonik); yang bertaut pegawai tampil dengan
+  data live pegawai (NIP/Gol/rekening/NPWP) & memilihnya menyimpan **pegawai_id + penerima_id** (link
+  live tetap ada di cetak). Pegawai hanya **fallback** bila belum ada di master (NOT EXISTS) → tidak ada
+  lagi duplikat "Pegawai + Penerima". Teruji.
 
 ### [2026-08-04] Cetak NPD kode+subkeg & Pindah Buku multi-format per rekening
 - **NPD**: kolom "Kode Rekening" kini menyertakan **kode sub kegiatan** sebagai prefiks

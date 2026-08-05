@@ -11,8 +11,8 @@ $css = '
   * { box-sizing: border-box; }
   body { font-family: "Times New Roman", Georgia, serif; font-size: 12px; color:#000; }
   .page { background:#fff; }
-  h1.doc-title { text-align:center; font-size:15px; margin:0 0 2px; }
-  .doc-sub { text-align:center; font-size:12px; margin:0 0 10px; }
+  h1.doc-title { text-align:center; font-size:14px; margin:0 0 2px; font-weight:bold; text-transform:uppercase; }
+  .doc-sub { text-align:center; font-size:12px; margin:0 0 10px; font-weight:bold; }
   table { border-collapse:collapse; }
   .kop td { vertical-align:middle; }
   .kop .nm1 { font-size:15px; font-weight:bold; letter-spacing:.3px; }
@@ -21,10 +21,11 @@ $css = '
   .kop-line { border-bottom:3px solid #000; height:3px; margin:2px 0 10px; }
   .meta td { padding:1px 4px; vertical-align:top; }
   .kv td { padding:1px 4px; vertical-align:top; }
-  table.grid th, table.grid td { border:1px solid #000; padding:4px 6px; vertical-align:top; }
+  table.grid { table-layout:fixed; width:100%; }
+  table.grid th, table.grid td { border:1px solid #000; padding:3px 4px; vertical-align:top; font-size:10.5px; word-wrap:break-word; overflow-wrap:break-word; }
   table.grid th { background:#eee; text-align:center; font-weight:bold; }
   .r { text-align:right; } .c { text-align:center; }
-  .kode { font-family:Consolas,monospace; font-size:11px; }
+  .kode { font-family:Consolas,monospace; font-size:10px; }
   .muted { color:#555; }
   .totrow td { font-weight:bold; background:#f3f3f3; }
   .ttd { width:33%; text-align:center; font-size:12px; vertical-align:top; }
@@ -43,14 +44,14 @@ $css = '
 <style>
 <?= $css ?>
 <?php if ($is_dl): ?>
-  @page { size: A4 portrait; margin: 1.4cm 1.8cm; }
+  @page { size: 215mm 330mm; margin: 10mm 8mm; } /* Folio / F4 */
 <?php else: ?>
   body { background:#f0f0f0; margin:0; }
-  .page { width:210mm; margin:12px auto; padding:16mm 18mm; box-shadow:0 0 6px rgba(0,0,0,.2); }
+  .page { width:215mm; margin:12px auto; padding:11mm 9mm; box-shadow:0 0 6px rgba(0,0,0,.2); } /* Folio / F4 */
   .toolbar { text-align:center; padding:10px; }
   .toolbar a, .toolbar button { display:inline-block; padding:7px 16px; margin:0 4px; font-size:13px; cursor:pointer; border:0; border-radius:5px; background:#696cff; color:#fff; text-decoration:none; }
   .toolbar .excel { background:#1d6f42; } .toolbar .word { background:#2b579a; } .toolbar .print { background:#5a5f6a; }
-  @media print { body { background:#fff; } .toolbar { display:none; } .page { box-shadow:none; margin:0; width:auto; padding:0; } @page { size:A4; margin:14mm 16mm; } }
+  @media print { body { background:#fff; } .toolbar { display:none; } .page { box-shadow:none; margin:0; width:auto; padding:0; } @page { size:215mm 330mm; margin:10mm 8mm; } }
 <?php endif; ?>
 </style>
 </head>

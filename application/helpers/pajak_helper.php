@@ -93,6 +93,65 @@ if ( ! function_exists('golongan_roman'))
 	}
 }
 
+if ( ! function_exists('jenis_belanja_kategori'))
+{
+	/** Kelompok form pinbuk dari kategori pajak: perjalanan | honor | barang_jasa. */
+	function jenis_belanja_kategori($kategori)
+	{
+		if ($kategori === 'perjalanan_dinas') return 'perjalanan';
+		if ($kategori === 'honorarium')       return 'honor';
+		return 'barang_jasa';
+	}
+}
+
+if ( ! function_exists('skema_pajak_options'))
+{
+	/** Daftar skema pajak aktif untuk dropdown: [ ['id','kategori','label'], ... ]. */
+	function skema_pajak_options()
+	{
+		$CI =& get_instance();
+		$rows = $CI->db->select('id, kode_skema, nama_skema, kategori')
+			->where('is_active', 1)->order_by('nama_skema')->get('master_skema_pajak')->result();
+		$out = array();
+		foreach ($rows as $r) $out[] = array(
+			'id' => (int) $r->id, 'kategori' => $r->kategori,
+			'label' => $r->nama_skema ?: ($r->kode_skema ?: label_kategori_pajak($r->kategori)),
+		);
+		return $out;
+	}
+}
+
+if ( ! function_exists('skema_id_by_kategori'))
+{
+	/** ID skema pajak default untuk sebuah kategori rekening. */
+	function skema_id_by_kategori($kategori)
+	{
+		if ( ! $kategori) return NULL;
+		$CI =& get_instance();
+		$r = $CI->db->select('id')->get_where('master_skema_pajak', array('kategori' => $kategori, 'is_active' => 1))->row();
+		return $r ? (int) $r->id : NULL;
+	}
+}
+
+if ( ! function_exists('hitung_pajak_skema'))
+{
+	/**
+	 * Hitung pajak dari SKEMA tertentu (hasil pilihan user), bukan dari kategori rekening.
+	 * @param int|null $skema_id
+	 * @param float    $bruto
+	 * @param array    $ctx  ['punya_npwp'=>0|1,'golongan'=>..,'is_pns'=>bool]
+	 */
+	function hitung_pajak_skema($skema_id, $bruto, $ctx = array())
+	{
+		$bruto = round((float) $bruto, 2);
+		$CI =& get_instance();
+		$skema = $skema_id ? $CI->db->get_where('master_skema_pajak', array('id' => (int) $skema_id))->row() : NULL;
+		if ( ! $skema) return array('kategori' => NULL, 'bruto' => $bruto, 'lines' => array(), 'total_pajak' => 0, 'netto' => $bruto);
+		$details = $CI->db->order_by('id')->get_where('master_skema_pajak_detail', array('skema_id' => (int) $skema_id))->result();
+		return hitung_pajak_detail($details, $bruto, $ctx, $skema->kategori);
+	}
+}
+
 if ( ! function_exists('hitung_pajak_rekening'))
 {
 	/**
@@ -105,9 +164,17 @@ if ( ! function_exists('hitung_pajak_rekening'))
 	 */
 	function hitung_pajak_rekening($rekening_id, $bruto, $ctx = array())
 	{
+		$info = pajak_untuk_rekening($rekening_id);
+		return hitung_pajak_detail($info['detail'], $bruto, $ctx, $info['kategori']);
+	}
+}
+
+if ( ! function_exists('hitung_pajak_detail'))
+{
+	/** Inti penghitungan pajak dari sekumpulan aturan (detail skema). */
+	function hitung_pajak_detail($details, $bruto, $ctx = array(), $kategori = NULL)
+	{
 		$bruto      = round((float) $bruto, 2);
-		$info       = pajak_untuk_rekening($rekening_id);
-		$details    = $info['detail'];
 		$punya_npwp = isset($ctx['punya_npwp']) ? (int) $ctx['punya_npwp'] : 0;
 		$gol_roman  = golongan_roman(isset($ctx['golongan']) ? $ctx['golongan'] : '');
 		$is_pns     = ! empty($ctx['is_pns']);
@@ -173,7 +240,7 @@ if ( ! function_exists('hitung_pajak_rekening'))
 		}
 
 		return array(
-			'kategori'    => $info['kategori'],
+			'kategori'    => $kategori,
 			'bruto'       => $bruto,
 			'lines'       => $lines,
 			'total_pajak' => round($total, 2),

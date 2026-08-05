@@ -353,6 +353,12 @@ saya punya pertanyaan, carikan jawabannya, lalu apakah sudah sesuai dengan konse
 
 
 
+Gaji terakhir pegawai yang pensiun adalah 1 pangkat diatasnya. saya cek belum dihitung
+=================================
+=================================
+=================================
+
+
 
 sesuaikan lagi hak akses menu:
 - ubah polanya seperti pola hak akses C:\xampp\htdocs\pustaka, dimana ada ijin CRUD nya, bukan hanya ijin modul
@@ -417,6 +423,9 @@ jadi mungkin saat membuat pinbuk perlu memilih apakah itu termasuk belanja perja
 
 - saat menambah penerima, cek rekening dan npwp. rekening wajib isi. npwp jika ada wajib isi. karena besaran pajak berbeda.
 - setelah itu ada pilihan honor / perjalanan dinas /barang jasa lain (karena berbeda form nya)
+- lalu jika dipilih perjalanan, maka saat tambah baris penerima ada pilihan lagi apakah sppd, representasi,penginapan ata tol
+
+- lalu untuk semuanya tiap input, ada pilihan pajak sesuai yang ada di pengaturan pajak di database. ketika memilih maka secara default dipilhkan tapi tetap bisa diubah barangkali salah
 
 
 - rapikan lagi tampilan cetak pindah buku

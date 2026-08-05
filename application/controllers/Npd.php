@@ -442,10 +442,10 @@ class Npd extends MY_Controller {
 		$pen = $this->db->select('np.*,
 			COALESCE(pg.nama_lengkap, mp.nama_penerima, np.nama_penerima) AS nama_live,
 			pg.nip AS peg_nip, pg.golongan AS peg_gol, pg.jenis_kepegawaian AS peg_jenis,
-			mp.golongan AS pen_gol, mp.nama_bank, mp.no_rekening,
-			COALESCE(pgr.no_rekening, mp.no_rekening) AS norek_live,
+			mp.golongan AS pen_gol,
+			COALESCE(NULLIF(np.no_rekening, ""), pgr.no_rekening, mp.no_rekening) AS norek_live,
 			COALESCE(rb.nama_bank, mp.nama_bank) AS bank_live,
-			COALESCE(pg.npwp, mp.npwp) AS npwp_live,
+			COALESCE(NULLIF(np.npwp, ""), pg.npwp, mp.npwp) AS npwp_live,
 			COALESCE(rjf.nama_jabatan, rjs.nama_jabatan) AS jabatan_live,
 			CASE WHEN np.pegawai_id IS NOT NULL THEN "pegawai"
 			     WHEN np.penerima_id IS NOT NULL THEN "penerima" ELSE "manual" END AS sumber', FALSE)
@@ -467,9 +467,10 @@ class Npd extends MY_Controller {
 			else { $gol = NULL; $is_pns = FALSE; }
 
 			$rek = isset($rek_of_detail[$p->npd_detail_id]) ? $rek_of_detail[$p->npd_detail_id] : NULL;
-			$p->pajak = $rek
-				? hitung_pajak_rekening($rek, $p->jumlah, array('punya_npwp' => $p->npwp_live ? 1 : 0, 'golongan' => $gol, 'is_pns' => $is_pns))
-				: array('lines' => array(), 'total_pajak' => 0, 'netto' => (float) $p->jumlah);
+			$ctx = array('punya_npwp' => $p->npwp_live ? 1 : 0, 'golongan' => $gol, 'is_pns' => $is_pns);
+			if ($p->skema_pajak_id)   $p->pajak = hitung_pajak_skema((int) $p->skema_pajak_id, $p->jumlah, $ctx);
+			elseif ($rek)             $p->pajak = hitung_pajak_rekening($rek, $p->jumlah, $ctx);
+			else                      $p->pajak = array('lines' => array(), 'total_pajak' => 0, 'netto' => (float) $p->jumlah);
 			$penmap[$p->npd_detail_id][] = $p;
 		}
 
@@ -516,25 +517,37 @@ class Npd extends MY_Controller {
 		if (strlen($q) < 2) { $this->json(array()); return; }
 		$out = array();
 
-		// Pegawai (diutamakan; bila dipilih, data ikut perubahan pegawai)
-		$peg = $this->db->select('id, nama_lengkap, nip, npwp, golongan, jenis_kepegawaian', FALSE)
+		// 1) MASTER PENERIMA lebih dulu (kanonik). Yang bertaut pegawai membawa data live pegawai.
+		$pen = $this->db->select('mp.id, mp.nama_penerima, mp.punya_npwp, mp.nama_bank, mp.no_rekening AS mp_norek,
+			mp.pegawai_id, pg.nip AS peg_nip, pg.golongan AS peg_gol,
+			COALESCE(pg.npwp, mp.npwp) AS npwp_eff,
+			COALESCE((SELECT no_rekening FROM pegawai_rekening WHERE pegawai_id = mp.pegawai_id AND is_primary = 1 LIMIT 1), mp.no_rekening) AS norek_eff', FALSE)
+			->from('master_penerima mp')
+			->join('pegawai pg', 'pg.id = mp.pegawai_id', 'left')
+			->group_start()->like('mp.nama_penerima', $q)->or_like('mp.npwp', $q)->or_like('pg.nip', $q)->group_end()
+			->where('mp.is_active', 1)->order_by('mp.nama_penerima')->limit(12)->get()->result();
+		foreach ($pen as $p)
+		{
+			$sub = $p->pegawai_id
+				? ('NIP ' . $p->peg_nip . ($p->peg_gol ? ' · Gol ' . $p->peg_gol : ''))
+				: trim(($p->nama_bank ? $p->nama_bank . ' ' . $p->mp_norek : '') . ($p->npwp_eff ? ' · NPWP ' . $p->npwp_eff : ''));
+			$out[] = array('source' => 'penerima', 'id' => (int) $p->id, 'nama' => $p->nama_penerima,
+				'pegawai_id' => $p->pegawai_id ? (int) $p->pegawai_id : NULL, 'sub' => $sub,
+				'npwp' => $p->npwp_eff, 'punya_npwp' => $p->npwp_eff ? 1 : (int) $p->punya_npwp, 'norek' => $p->norek_eff);
+		}
+
+		// 2) PEGAWAI yang BELUM ada di master_penerima (fallback; hindari duplikat)
+		$peg = $this->db->select('id, nama_lengkap, nip, npwp, golongan, jenis_kepegawaian,
+			(SELECT no_rekening FROM pegawai_rekening WHERE pegawai_id = pegawai.id AND is_primary = 1 LIMIT 1) AS norek', FALSE)
 			->from('pegawai')
 			->group_start()->like('nama_lengkap', $q)->or_like('nip', $q)->group_end()
-			->where('is_active', 1)->order_by('nama_lengkap')->limit(10)->get()->result();
+			->where('is_active', 1)
+			->where('NOT EXISTS (SELECT 1 FROM master_penerima mp WHERE mp.pegawai_id = pegawai.id)', NULL, FALSE)
+			->order_by('nama_lengkap')->limit(12)->get()->result();
 		foreach ($peg as $p)
 			$out[] = array('source' => 'pegawai', 'id' => (int) $p->id, 'nama' => $p->nama_lengkap,
 				'sub' => 'NIP ' . $p->nip . ($p->golongan ? ' · Gol ' . $p->golongan : ''),
-				'npwp' => $p->npwp, 'punya_npwp' => $p->npwp ? 1 : 0);
-
-		// Master penerima (non-pegawai / badan)
-		$pen = $this->db->select('id, nama_penerima, npwp, punya_npwp, nama_bank, no_rekening', FALSE)
-			->from('master_penerima')
-			->group_start()->like('nama_penerima', $q)->or_like('npwp', $q)->group_end()
-			->where('is_active', 1)->order_by('nama_penerima')->limit(10)->get()->result();
-		foreach ($pen as $p)
-			$out[] = array('source' => 'penerima', 'id' => (int) $p->id, 'nama' => $p->nama_penerima,
-				'sub' => trim(($p->nama_bank ? $p->nama_bank . ' ' . $p->no_rekening : '') . ($p->npwp ? ' · NPWP ' . $p->npwp : '')),
-				'npwp' => $p->npwp, 'punya_npwp' => (int) $p->punya_npwp);
+				'npwp' => $p->npwp, 'punya_npwp' => $p->npwp ? 1 : 0, 'norek' => $p->norek);
 
 		$this->json($out);
 	}
@@ -562,9 +575,16 @@ class Npd extends MY_Controller {
 		$volume = (float) str_replace('.', '', (string) $this->input->post('volume')); if ($volume <= 0) $volume = 1;
 		$harga  = (float) str_replace('.', '', (string) $this->input->post('harga_satuan'));
 		$jumlah = round($volume * $harga, 2);
+		$norek  = trim((string) $this->input->post('rekening', TRUE));
+		$npwp   = trim((string) $this->input->post('npwp', TRUE));
+		$has_npwp = (int) $this->input->post('punya_npwp');
+		$komponen = $this->valid_komponen($this->input->post('komponen'));
+		$skema    = $this->input->post('skema_pajak_id') ? (int) $this->input->post('skema_pajak_id') : NULL;
 
 		$errors = array();
-		if ($nama === '') $errors[] = 'Nama penerima wajib diisi.';
+		if ($nama === '')  $errors[] = 'Nama penerima wajib diisi.';
+		if ($norek === '') $errors[] = 'Nomor rekening wajib diisi.';
+		if ($has_npwp && $npwp === '') $errors[] = 'NPWP wajib diisi untuk penerima ini.';
 		if ($jumlah <= 0) $errors[] = 'Nominal (volume × harga satuan) harus lebih dari 0.';
 
 		$sum_other = (float) $this->db->select('COALESCE(SUM(jumlah),0) AS s', FALSE)
@@ -579,23 +599,41 @@ class Npd extends MY_Controller {
 			redirect('npd/view/' . $npd->id);
 		}
 
+		$this->update_jenis_belanja($detail_id, $this->input->post('jenis_belanja'));
 		$pegid = $this->input->post('pegawai_id') ? (int) $this->input->post('pegawai_id') : NULL;
-		$penid = $this->ensure_penerima($pegid, $this->input->post('penerima_id') ? (int) $this->input->post('penerima_id') : NULL, $nama);
+		$penid = $this->ensure_penerima($pegid, $this->input->post('penerima_id') ? (int) $this->input->post('penerima_id') : NULL, $nama, $norek, $npwp);
 		$data = array(
-			'npd_detail_id' => $detail_id,
-			'pegawai_id'    => $pegid,
-			'penerima_id'   => $penid,
-			'nama_penerima' => $nama,
-			'uraian'        => $this->input->post('uraian', TRUE),
-			'volume'        => $volume,
-			'harga_satuan'  => $harga,
-			'jumlah'        => $jumlah,
-			'keterangan'    => $this->input->post('keterangan', TRUE),
+			'npd_detail_id'  => $detail_id,
+			'pegawai_id'     => $pegid,
+			'penerima_id'    => $penid,
+			'nama_penerima'  => $nama,
+			'uraian'         => $this->input->post('uraian', TRUE),
+			'komponen_pd'    => $komponen,
+			'skema_pajak_id' => $skema,
+			'no_rekening'    => $norek !== '' ? $norek : NULL,
+			'npwp'           => $npwp !== '' ? $npwp : NULL,
+			'volume'         => $volume,
+			'harga_satuan'   => $harga,
+			'jumlah'         => $jumlah,
+			'keterangan'     => $this->input->post('keterangan', TRUE),
 		);
 		if ($id) $this->db->where('id', $id)->update('npd_penerima', $data);
 		else $this->db->insert('npd_penerima', $data);
 		$this->session->set_flashdata('success', 'Penerima berhasil disimpan.');
 		redirect('npd/view/' . $npd->id);
+	}
+
+	private function valid_komponen($v)
+	{
+		$v = strtolower(trim((string) $v));
+		return in_array($v, array('sppd', 'representasi', 'penginapan', 'tol'), TRUE) ? $v : NULL;
+	}
+
+	private function update_jenis_belanja($detail_id, $jenis)
+	{
+		$jenis = strtolower(trim((string) $jenis));
+		if (in_array($jenis, array('perjalanan', 'honor', 'barang_jasa'), TRUE))
+			$this->db->where('id', (int) $detail_id)->update('npd_detail', array('jenis_belanja' => $jenis));
 	}
 
 	/** Tambah BANYAK penerima sekaligus (dari modal multi-baris). */
@@ -614,6 +652,11 @@ class Npd extends MY_Controller {
 		$vol_a  = (array) $this->input->post('volume');
 		$hrg_a  = (array) $this->input->post('harga_satuan');
 		$ket_a  = (array) $this->input->post('keterangan');
+		$rek_a  = (array) $this->input->post('rekening');
+		$npwp_a = (array) $this->input->post('npwp');
+		$hasnpwp_a = (array) $this->input->post('punya_npwp');
+		$komp_a = (array) $this->input->post('komponen');
+		$skema_a = (array) $this->input->post('skema_pajak_id');
 
 		$rows = array(); $sum_new = 0; $errors = array();
 		foreach ($nama_a as $i => $nm)
@@ -622,25 +665,35 @@ class Npd extends MY_Controller {
 			$vol = (float) str_replace('.', '', (string) ($vol_a[$i] ?? 1)); if ($vol <= 0) $vol = 1;
 			$hrg = (float) str_replace('.', '', (string) ($hrg_a[$i] ?? 0));
 			$jml = round($vol * $hrg, 2);
-			if ($nm === '' && $jml <= 0) continue; // baris kosong -> lewati
+			$norek = trim((string) ($rek_a[$i] ?? ''));
+			$npwp  = trim((string) ($npwp_a[$i] ?? ''));
+			$has_npwp = ! empty($hasnpwp_a[$i]);
+			if ($nm === '' && $jml <= 0 && $norek === '') continue; // baris kosong -> lewati
 			if ($nm === '') { $errors[] = 'Ada baris tanpa nama penerima.'; continue; }
 			if ($jml <= 0) { $errors[] = 'Nominal "' . $nm . '" harus > 0.'; continue; }
+			if ($norek === '') { $errors[] = 'Nomor rekening "' . $nm . '" wajib diisi.'; continue; }
+			if ($has_npwp && $npwp === '') { $errors[] = 'NPWP "' . $nm . '" wajib diisi.'; continue; }
 			$pegid = ! empty($peg_a[$i]) ? (int) $peg_a[$i] : NULL;
-			$penid = $this->ensure_penerima($pegid, ! empty($pen_a[$i]) ? (int) $pen_a[$i] : NULL, $nm);
+			$penid = $this->ensure_penerima($pegid, ! empty($pen_a[$i]) ? (int) $pen_a[$i] : NULL, $nm, $norek, $npwp);
 			$rows[] = array(
-				'npd_detail_id' => $detail_id,
-				'pegawai_id'    => $pegid,
-				'penerima_id'   => $penid,
-				'nama_penerima' => $nm,
-				'uraian'        => trim((string) ($ur_a[$i] ?? '')),
-				'volume'        => $vol,
-				'harga_satuan'  => $hrg,
-				'jumlah'        => $jml,
-				'keterangan'    => trim((string) ($ket_a[$i] ?? '')),
+				'npd_detail_id'  => $detail_id,
+				'pegawai_id'     => $pegid,
+				'penerima_id'    => $penid,
+				'nama_penerima'  => $nm,
+				'uraian'         => trim((string) ($ur_a[$i] ?? '')),
+				'komponen_pd'    => $this->valid_komponen($komp_a[$i] ?? ''),
+				'skema_pajak_id' => ! empty($skema_a[$i]) ? (int) $skema_a[$i] : NULL,
+				'no_rekening'    => $norek !== '' ? $norek : NULL,
+				'npwp'           => $npwp !== '' ? $npwp : NULL,
+				'volume'         => $vol,
+				'harga_satuan'   => $hrg,
+				'jumlah'         => $jml,
+				'keterangan'     => trim((string) ($ket_a[$i] ?? '')),
 			);
 			$sum_new += $jml;
 		}
 		if (empty($rows) && empty($errors)) $errors[] = 'Tidak ada penerima untuk disimpan.';
+		$this->update_jenis_belanja($detail_id, $this->input->post('jenis_belanja'));
 
 		$sum_exist = (float) $this->db->select('COALESCE(SUM(jumlah),0) AS s', FALSE)
 			->from('npd_penerima')->where('npd_detail_id', $detail_id)->get()->row()->s;
@@ -665,50 +718,90 @@ class Npd extends MY_Controller {
 	 * - manual (nama saja)     -> cari/buat by nama, pegawai_id NULL (dedup by nama).
 	 * Mencegah penerima yang sama masuk lebih dari sekali.
 	 */
-	private function ensure_penerima($pegawai_id, $penerima_id, $nama)
+	private function ensure_penerima($pegawai_id, $penerima_id, $nama, $norek = NULL, $npwp = NULL)
 	{
-		if ($penerima_id) return (int) $penerima_id;
+		$pegawai_id  = $pegawai_id ? (int) $pegawai_id : NULL;
+		$penerima_id = $penerima_id ? (int) $penerima_id : NULL;
+		$norek = trim((string) $norek);
+		$npwp  = trim((string) $npwp);
 
+		// Backfill data sumber pegawai (npwp & rekening primary) bila masih kosong
+		$pg = NULL;
 		if ($pegawai_id)
 		{
-			$ex = $this->db->select('id')->get_where('master_penerima', array('pegawai_id' => (int) $pegawai_id))->row();
-			if ($ex) return (int) $ex->id;
-
 			$pg = $this->db->select('nama_lengkap, npwp, golongan, status_kepegawaian')
-				->get_where('pegawai', array('id' => (int) $pegawai_id))->row();
+				->get_where('pegawai', array('id' => $pegawai_id))->row();
 			if ($pg)
 			{
-				$bank = $this->db->select('rb.nama_bank, pr.no_rekening, pr.nama_pemilik_rekening', FALSE)
-					->from('pegawai_rekening pr')->join('ref_bank rb', 'rb.id = pr.bank_id', 'left')
-					->where('pr.pegawai_id', (int) $pegawai_id)->where('pr.is_primary', 1)
-					->limit(1)->get()->row();
-				$this->db->insert('master_penerima', array(
-					'pegawai_id'     => (int) $pegawai_id,
-					'nama_penerima'  => $pg->nama_lengkap,
-					'jenis_penerima' => $pg->status_kepegawaian === 'ASN' ? 'asn' : 'non_asn',
-					'punya_npwp'     => $pg->npwp ? 1 : 0,
-					'npwp'           => $pg->npwp,
-					'golongan'       => $this->pen_golongan($pg->golongan),
-					'nama_bank'      => $bank ? $bank->nama_bank : NULL,
-					'no_rekening'    => $bank ? $bank->no_rekening : NULL,
-					'nama_rekening'  => ($bank && $bank->nama_pemilik_rekening) ? $bank->nama_pemilik_rekening : $pg->nama_lengkap,
-					'is_active'      => 1,
-				));
-				return (int) $this->db->insert_id();
+				if ($npwp !== '' && ! $pg->npwp) { $this->db->where('id', $pegawai_id)->update('pegawai', array('npwp' => $npwp)); $pg->npwp = $npwp; }
+				if ($norek !== '')
+				{
+					$pr = $this->db->select('id')->get_where('pegawai_rekening', array('pegawai_id' => $pegawai_id, 'is_primary' => 1))->row();
+					if ($pr) $this->db->where('id', $pr->id)->update('pegawai_rekening', array('no_rekening' => $norek));
+				}
 			}
 		}
 
+		// Sudah tertaut master_penerima -> backfill rekening/npwp bila kosong
+		if ($penerima_id)
+		{
+			$mp = $this->db->select('no_rekening, npwp')->get_where('master_penerima', array('id' => $penerima_id))->row();
+			if ($mp)
+			{
+				$upd = array();
+				if ($norek !== '' && ! $mp->no_rekening) $upd['no_rekening'] = $norek;
+				if ($npwp  !== '' && ! $mp->npwp)        { $upd['npwp'] = $npwp; $upd['punya_npwp'] = 1; }
+				if ($upd) $this->db->where('id', $penerima_id)->update('master_penerima', $upd);
+			}
+			return $penerima_id;
+		}
+
+		// Dari pegawai: cari/buat master_penerima ber-pegawai_id (dedup)
+		if ($pegawai_id && $pg)
+		{
+			$ex = $this->db->select('id')->get_where('master_penerima', array('pegawai_id' => $pegawai_id))->row();
+			if ($ex) return (int) $ex->id;
+			$bank = $this->db->select('rb.nama_bank, pr.no_rekening', FALSE)
+				->from('pegawai_rekening pr')->join('ref_bank rb', 'rb.id = pr.bank_id', 'left')
+				->where('pr.pegawai_id', $pegawai_id)->where('pr.is_primary', 1)->limit(1)->get()->row();
+			$use_npwp = $npwp !== '' ? $npwp : $pg->npwp;
+			$use_rek  = $norek !== '' ? $norek : ($bank ? $bank->no_rekening : NULL);
+			$this->db->insert('master_penerima', array(
+				'pegawai_id'     => $pegawai_id,
+				'nama_penerima'  => $pg->nama_lengkap,
+				'jenis_penerima' => $pg->status_kepegawaian === 'ASN' ? 'asn' : 'non_asn',
+				'punya_npwp'     => $use_npwp ? 1 : 0,
+				'npwp'           => $use_npwp,
+				'golongan'       => $this->pen_golongan($pg->golongan),
+				'nama_bank'      => $bank ? $bank->nama_bank : NULL,
+				'no_rekening'    => $use_rek,
+				'nama_rekening'  => $pg->nama_lengkap,
+				'is_active'      => 1,
+			));
+			return (int) $this->db->insert_id();
+		}
+
+		// Manual (nama saja): dedup by nama
 		$nm = trim((string) $nama);
 		if ($nm === '') return NULL;
-		$ex = $this->db->select('id')->from('master_penerima')
+		$ex = $this->db->select('id, no_rekening, npwp')->from('master_penerima')
 			->where('pegawai_id IS NULL', NULL, FALSE)
 			->where('LOWER(nama_penerima)', strtolower($nm))
 			->limit(1)->get()->row();
-		if ($ex) return (int) $ex->id;
+		if ($ex)
+		{
+			$upd = array();
+			if ($norek !== '' && ! $ex->no_rekening) $upd['no_rekening'] = $norek;
+			if ($npwp  !== '' && ! $ex->npwp)        { $upd['npwp'] = $npwp; $upd['punya_npwp'] = 1; }
+			if ($upd) $this->db->where('id', $ex->id)->update('master_penerima', $upd);
+			return (int) $ex->id;
+		}
 		$this->db->insert('master_penerima', array(
 			'nama_penerima'  => $nm,
 			'jenis_penerima' => 'non_asn',
-			'punya_npwp'     => 0,
+			'punya_npwp'     => $npwp !== '' ? 1 : 0,
+			'npwp'           => $npwp !== '' ? $npwp : NULL,
+			'no_rekening'    => $norek !== '' ? $norek : NULL,
 			'is_active'      => 1,
 		));
 		return (int) $this->db->insert_id();
