@@ -236,8 +236,9 @@ class Master extends MY_Controller {
 				'title' => 'Pegawai', 'table' => 'pegawai', 'from' => 'pegawai m', 'alias' => 'm',
 				'modal_size' => 'lg',
 				'select' => 'm.id, m.nama_lengkap, m.jenis_kelamin, m.jenis_kepegawaian, m.nip,'
-					. ' m.golongan, m.pangkat, m.status_pernikahan, m.jumlah_anak,'
-					. ' m.masa_kerja_golongan, m.tgl_lahir, m.tgl_cpns, m.tgl_pns,'
+					. ' m.golongan, m.pangkat, m.persen_gaji, m.status_pernikahan, m.jumlah_anak,'
+					. ' m.terima_tunjangan_keluarga, m.masa_kerja_golongan,'
+					. ' m.tgl_lahir, m.tgl_cpns, m.tgl_pns,'
 					. ' m.tmt_kenaikan_pangkat, m.tmt_kgb, m.ref_tpp_id,'
 					. ' m.jabatan_struktural_id, m.jabatan_penatausahaan_id, m.jabatan_fungsional_id,'
 					. ' o.nama_opd AS opd_nama, o.kode_opd,'
@@ -254,14 +255,12 @@ class Master extends MY_Controller {
 				'order_by' => "o.kode_opd ASC, CASE m.jenis_kepegawaian WHEN 'PNS' THEN 1 WHEN 'PPPK' THEN 2 ELSE 3 END ASC, CASE COALESCE(rjs.eselon,'') WHEN '2A' THEN 1 WHEN '2B' THEN 2 WHEN '3A' THEN 3 WHEN '3B' THEN 4 WHEN '4A' THEN 5 WHEN '4B' THEN 6 ELSE 99 END ASC, FIELD(m.golongan,'I/a','I/b','I/c','I/d','II/a','II/b','II/c','II/d','III/a','III/b','III/c','III/d','IV/a','IV/b','IV/c','IV/d','IV/e','I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII','XIII','XIV','XV','XVI','XVII') DESC, m.tgl_lahir ASC",
 				'order_by_raw' => TRUE,
 				'columns' => array(
-					array('field' => 'nama_lengkap',              'label' => 'Nama',              'order' => 'm.nama_lengkap'),
-					array('field' => 'nip',                       'label' => 'NIP',               'width' => '185px'),
-					array('field' => 'golongan',                  'label' => 'Gol.',              'width' => '60px'),
-					array('field' => 'masa_kerja_golongan',       'label' => 'MKG',              'width' => '50px'),
-					array('field' => 'tmt_kgb',                   'label' => 'TMT KGB Yad',      'width' => '110px', 'order' => 'm.tmt_kgb'),
-					array('field' => 'eselon',                    'label' => 'Eselon',            'width' => '70px'),
-					array('field' => 'jabatan_struktural_nama',   'label' => 'Jabatan', 'render' => 'jabatan_multi'),
-					array('field' => 'opd_nama',                  'label' => 'OPD',              'order' => 'o.kode_opd'),
+					array('field' => 'nama_lengkap',               'label' => 'Nama / NIP',              'render' => 'peg_nama_nip',      'order' => 'm.nama_lengkap'),
+					array('field' => 'jenis_kepegawaian',          'label' => 'Status / Pangkat / Gol',  'render' => 'peg_kepangkatan'),
+					array('field' => 'masa_kerja_golongan',        'label' => 'MKG / KGB / KP',          'render' => 'peg_mkg',            'width' => '145px'),
+					array('field' => 'jabatan_struktural_nama',    'label' => 'Eselon / Jabatan',        'render' => 'peg_jabatan'),
+					array('field' => 'terima_tunjangan_keluarga',  'label' => 'T.Kel / Kawin / Anak',   'render' => 'peg_keluarga',       'width' => '160px'),
+					array('field' => 'opd_nama',                   'label' => 'OPD',                    'order' => 'o.kode_opd'),
 				),
 				'filters' => array(
 					array('name' => 'm.jenis_kepegawaian', 'label' => 'Jenis', 'options' => array('PNS'=>'PNS','PPPK'=>'PPPK','NON_ASN'=>'Non ASN')),
@@ -912,6 +911,63 @@ class Master extends MY_Controller {
 			->limit(15);
 		$rows = $this->db->get()->result_array();
 		$this->output->set_content_type('application/json')->set_output(json_encode(array_values($rows)));
+	}
+
+	// ================= STATISTIK RINGKASAN (PEGAWAI) =================
+	public function stats($entity)
+	{
+		if ($entity !== 'pegawai')
+		{
+			$this->output->set_content_type('application/json')->set_output('{}');
+			return;
+		}
+
+		// Hitung agregat satu query
+		$this->db->select("
+			COUNT(*) AS total,
+			SUM(jenis_kepegawaian='PNS')    AS pns,
+			SUM(jenis_kepegawaian='PPPK')   AS pppk,
+			SUM(jenis_kepegawaian='NON_ASN') AS non_asn,
+			SUM(golongan LIKE 'IV/%')        AS gol_iv,
+			SUM(golongan LIKE 'III/%')       AS gol_iii,
+			SUM(golongan LIKE 'II/%')        AS gol_ii,
+			SUM(golongan LIKE 'I/%' AND golongan NOT LIKE 'II/%' AND golongan NOT LIKE 'III/%' AND golongan NOT LIKE 'IV/%') AS gol_i
+		", FALSE)->from('pegawai');
+
+		// Batasan scope OPD
+		if ( ! is_super())
+		{
+			$opd_id = (int) scope_opd_id();
+			if ($opd_id) $this->db->where('opd_id', $opd_id);
+		}
+
+		$row = $this->db->get()->row();
+
+		// KGB dalam 90 hari ke depan
+		$today = date('Y-m-d');
+		$d90   = date('Y-m-d', strtotime('+90 days'));
+		$q_kgb = $this->db->from('pegawai')
+			->where('tmt_kgb IS NOT NULL', NULL, FALSE)
+			->where('tmt_kgb >=', $today)
+			->where('tmt_kgb <=', $d90);
+		if ( ! is_super())
+		{
+			$opd_id = (int) scope_opd_id();
+			if ($opd_id) $q_kgb->where('opd_id', $opd_id);
+		}
+		$kgb_soon = (int) $this->db->count_all_results();
+
+		$this->output->set_content_type('application/json')->set_output(json_encode(array(
+			'total'    => (int)($row->total   ?? 0),
+			'pns'      => (int)($row->pns     ?? 0),
+			'pppk'     => (int)($row->pppk    ?? 0),
+			'non_asn'  => (int)($row->non_asn ?? 0),
+			'gol_iv'   => (int)($row->gol_iv  ?? 0),
+			'gol_iii'  => (int)($row->gol_iii ?? 0),
+			'gol_ii'   => (int)($row->gol_ii  ?? 0),
+			'gol_i'    => (int)($row->gol_i   ?? 0),
+			'kgb_soon' => $kgb_soon,
+		)));
 	}
 
 	// ================= OPSI CASCADING =================

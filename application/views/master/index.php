@@ -99,6 +99,23 @@ foreach ($cols as $c) {
 	);
 }
 ?>
+<?php if ($entity === 'pegawai'): ?>
+<div id="peg_stats" class="row g-3 mb-4">
+  <?php for ($__i = 0; $__i < 5; $__i++): ?>
+  <div class="col-xl col-md-4 col-6">
+    <div class="card h-100 border-0 shadow-sm">
+      <div class="card-body d-flex align-items-center gap-3 p-3">
+        <div class="rounded-3 bg-light d-flex align-items-center justify-content-center flex-shrink-0" style="width:48px;height:48px">
+          <span class="spinner-border spinner-border-sm text-secondary"></span>
+        </div>
+        <div><div class="fw-bold fs-5 lh-1 mb-1 text-muted">—</div><div class="text-muted small">Memuat…</div></div>
+      </div>
+    </div>
+  </div>
+  <?php endfor; ?>
+</div>
+<?php endif; ?>
+
 <div class="card">
   <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
     <span><i class="fa-solid fa-table-list me-2 text-primary"></i><?= html_escape($cfg['title']) ?></span>
@@ -239,7 +256,6 @@ var MCFG = <?= $cfg_js ?>;
     active: function (v) { return Number(v) ? '<span class="badge badge-soft-success">Aktif</span>' : '<span class="badge badge-soft-secondary">Nonaktif</span>'; },
     badge:  function (v) { return v ? '<span class="badge badge-soft-primary text-uppercase">'+_esc(v)+'</span>' : '-'; },
     pegawai_badge: function (v) { return Number(v) ? '<span class="badge badge-soft-primary"><i class="fa-solid fa-user-tie me-1"></i>Pegawai</span>' : '<span class="badge badge-soft-secondary">Manual</span>'; },
-    // Gabungan jabatan (struktural / keuangan / fungsional) ditumpuk ke bawah
     jabatan_multi: function (v, row) {
       var out = [];
       function add(nm, tag, cls){ if (nm) out.push('<div class="mb-1">'+_esc(nm)+' <span class="badge badge-soft-'+cls+'" style="font-size:8px;vertical-align:middle">'+tag+'</span></div>'); }
@@ -247,6 +263,79 @@ var MCFG = <?= $cfg_js ?>;
       add(row.jabatan_penatausahaan_nama, 'KEUANGAN',   'warning');
       add(row.jabatan_fungsional_nama,    'FUNGSIONAL', 'info');
       return out.length ? out.join('') : '<span class="text-muted">-</span>';
+    },
+    peg_nama_nip: function (v, row) {
+      var h = '<strong>' + _esc(v) + '</strong>';
+      if (row.nip) h += '<br><small class="text-muted font-monospace">' + _esc(row.nip) + '</small>';
+      return h;
+    },
+    peg_kepangkatan: function (v, row) {
+      var clsMap = { PNS: 'primary', PPPK: 'warning', NON_ASN: 'secondary' };
+      var cls = clsMap[v] || 'secondary';
+      var h = '<span class="badge badge-soft-' + cls + ' text-uppercase">' + _esc(v || '-') + '</span>';
+      if (row.pangkat) h += '<br><small class="text-muted">' + _esc(row.pangkat) + '</small>';
+      if (row.golongan) {
+        var gol = row.golongan;
+        var gc = gol.indexOf('IV') === 0 ? '#7b1fa2'
+               : gol.indexOf('III') === 0 ? '#1565c0'
+               : gol.indexOf('II') === 0  ? '#00695c'
+               : '#2e7d32';
+        var pct = (row.persen_gaji && String(row.persen_gaji) !== '100')
+          ? ' <span class="badge bg-warning text-dark" style="font-size:9px">' + _esc(row.persen_gaji) + '%</span>' : '';
+        h += '<br><span class="badge rounded-pill" style="background:' + gc + '20;color:' + gc + ';font-size:10px">Gol. ' + _esc(gol) + '</span>' + pct;
+      }
+      return h;
+    },
+    peg_mkg: function (v, row) {
+      var today = new Date(); today.setHours(0,0,0,0);
+      var h = '';
+      if (v !== null && v !== undefined && v !== '') {
+        h += '<span class="badge rounded-pill" style="background:#e8eaf6;color:#3949ab;font-size:10px">MKG ' + _esc(v) + ' thn</span>';
+      }
+      if (row.tmt_kgb) {
+        var d = new Date(row.tmt_kgb); d.setHours(0,0,0,0);
+        var days = Math.round((d - today) / 86400000);
+        var cc = days <= 90 ? 'text-danger fw-semibold' : days <= 180 ? 'text-warning fw-semibold' : 'text-muted';
+        h += '<br><small class="' + cc + '">KGB: ' + _esc(row.tmt_kgb) + '</small>';
+      }
+      if (row.tmt_kenaikan_pangkat) {
+        var d2 = new Date(row.tmt_kenaikan_pangkat); d2.setHours(0,0,0,0);
+        var days2 = Math.round((d2 - today) / 86400000);
+        var cc2 = days2 <= 90 ? 'text-danger fw-semibold' : days2 <= 180 ? 'text-warning fw-semibold' : 'text-muted';
+        h += '<br><small class="' + cc2 + '">KP: ' + _esc(row.tmt_kenaikan_pangkat) + '</small>';
+      }
+      return h || '-';
+    },
+    peg_jabatan: function (v, row) {
+      var h = '';
+      if (row.eselon) {
+        h += '<span class="badge rounded-pill mb-1" style="background:#e0f7fa;color:#00697a;font-size:9px;font-weight:600">Eselon '
+           + _esc(row.eselon) + '</span><br>';
+      }
+      if (row.jabatan_struktural_nama) {
+        h += '<div class="mb-1"><span style="font-size:.82em">' + _esc(row.jabatan_struktural_nama)
+           + '</span> <span class="badge" style="background:#e8eaf6;color:#3949ab;font-size:7.5px">STR</span></div>';
+      }
+      if (row.jabatan_penatausahaan_nama) {
+        h += '<div class="mb-1"><span style="font-size:.82em">' + _esc(row.jabatan_penatausahaan_nama)
+           + '</span> <span class="badge" style="background:#fff3e0;color:#e65100;font-size:7.5px">KEU</span></div>';
+      }
+      if (row.jabatan_fungsional_nama) {
+        h += '<div><span style="font-size:.82em">' + _esc(row.jabatan_fungsional_nama)
+           + '</span> <span class="badge" style="background:#e8f5e9;color:#2e7d32;font-size:7.5px">FUNG</span></div>';
+      }
+      return h || '<span class="text-muted">-</span>';
+    },
+    peg_keluarga: function (v, row) {
+      var tkBadge = Number(v)
+        ? '<span class="badge badge-soft-success" style="font-size:10px">Ya</span>'
+        : '<span class="badge badge-soft-secondary" style="font-size:10px">Tidak</span>';
+      var h = '<div class="d-flex align-items-center gap-1 mb-1"><small class="text-muted">T.Kel:</small>' + tkBadge + '</div>';
+      var spMap = { KAWIN: 'Kawin', BELUM_KAWIN: 'Belum Kawin', JANDA: 'Janda', DUDA: 'Duda' };
+      var spIc  = { KAWIN: '💍', BELUM_KAWIN: '—', JANDA: '🕊', DUDA: '🕊' };
+      if (row.status_pernikahan) h += '<small class="text-muted">' + _esc(spMap[row.status_pernikahan] || row.status_pernikahan) + '</small>';
+      if (row.jumlah_anak !== null && row.jumlah_anak !== undefined) h += '<br><small class="text-muted">' + _esc(row.jumlah_anak) + ' anak</small>';
+      return h;
     }
   };
   var columns = [{ data: null, orderable:false, searchable:false, title:'#', width:'52px',
@@ -447,6 +536,48 @@ var MCFG = <?= $cfg_js ?>;
       if (!$(e.target).closest('#peg_search_penerima, #peg_dropdown_penerima').length) {
         $('#peg_dropdown_penerima').hide();
       }
+    });
+  }
+
+  // ── Ringkasan statistik pegawai ──────────────────────────────────────────
+  if (MCFG.entity === 'pegawai') {
+    var _golBadge = function (gol, n, color) {
+      return '<span class="d-flex align-items-center gap-1">'
+        + '<span class="badge rounded-pill" style="background:' + color + '20;color:' + color + '">' + gol + '</span>'
+        + '<strong style="color:' + color + '">' + (n || 0) + '</strong>'
+        + '<span class="text-muted small">org</span></span>';
+    };
+    $.getJSON('<?= site_url('master/stats/pegawai') ?>', function (s) {
+      var defs = [
+        { label:'Total Pegawai', val:s.total,    icon:'fa-users',          bg:'#e8eaf6', ic:'#3949ab' },
+        { label:'PNS',           val:s.pns,      icon:'fa-id-badge',       bg:'#e3f2fd', ic:'#1565c0' },
+        { label:'PPPK',          val:s.pppk,     icon:'fa-file-contract',  bg:'#fff3e0', ic:'#e65100' },
+        { label:'Non ASN',       val:s.non_asn,  icon:'fa-user',           bg:'#f3e5f5', ic:'#7b1fa2' },
+        { label:'KGB ≤ 3 Bln',  val:s.kgb_soon, icon:'fa-calendar-check',
+          bg: s.kgb_soon > 0 ? '#fffde7' : '#f5f5f5',
+          ic: s.kgb_soon > 0 ? '#f9a825' : '#9e9e9e' },
+      ];
+      var cardsHtml = defs.map(function (c) {
+        return '<div class="col-xl col-md-4 col-6">'
+          + '<div class="card h-100 border-0 shadow-sm">'
+          + '<div class="card-body d-flex align-items-center gap-3 p-3">'
+          + '<div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"'
+          + ' style="width:48px;height:48px;background:' + c.bg + '">'
+          + '<i class="fa-solid ' + c.icon + ' fa-lg" style="color:' + c.ic + '"></i></div>'
+          + '<div>'
+          + '<div class="fw-bold fs-4 lh-1 mb-1" style="color:' + c.ic + '">' + c.val + '</div>'
+          + '<div class="text-muted small">' + c.label + '</div>'
+          + '</div></div></div></div>';
+      }).join('');
+      var golRow = '<div class="col-12"><div class="card border-0 shadow-sm">'
+        + '<div class="card-body py-2 px-3 d-flex flex-wrap gap-3 align-items-center">'
+        + '<small class="text-muted fw-semibold me-1">Breakdown Gol PNS:</small>'
+        + _golBadge('IV',  s.gol_iv,  '#7b1fa2')
+        + _golBadge('III', s.gol_iii, '#1565c0')
+        + _golBadge('II',  s.gol_ii,  '#00695c')
+        + _golBadge('I',   s.gol_i,   '#2e7d32')
+        + '</div></div></div>';
+      $('#peg_stats').html(cardsHtml + golRow);
     });
   }
 })();
