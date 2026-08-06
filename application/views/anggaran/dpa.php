@@ -45,6 +45,7 @@
 .lv-sk   { background:#bbf7d0; color:#166534; }
 .lv-rek  { background:#fde68a; color:#92400e; }
 .lv-sd   { background:#e9d5ff; color:#6b21a8; }
+.lv-pek  { background:#fbcfe8; color:#9d174e; }
 
 /* sumber dana badge on items */
 .sd-badge { font-size:.63rem; padding:1px 6px; border-radius:99px; margin-left:.4rem; font-weight:600;
@@ -87,6 +88,11 @@
       <li class="nav-item">
         <button class="nav-link active" id="tab-prog-btn" data-tab="0">
           <i class="fa-solid fa-sitemap me-1"></i>Hierarki Program
+        </button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link" id="tab-pek-btn" data-tab="2">
+          <i class="fa-solid fa-briefcase me-1"></i>Hierarki Pekerjaan
         </button>
       </li>
       <li class="nav-item">
@@ -193,6 +199,25 @@
       </table>
     </div>
 
+    <!-- Tab 2: Pekerjaan / Aktivitas -->
+    <div id="dpa-wrap-2" class="dpa-wrap table-responsive" style="display:none">
+      <table class="dpa-tree">
+        <colgroup><col class="c-uraian"><col class="c-koef"><col class="c-harga"><col class="c-total"></colgroup>
+        <thead class="table-light border-bottom">
+          <tr>
+            <th class="ps-3 uraian-cell">Program / Kegiatan / Sub Keg / Pekerjaan / Rekening</th>
+            <th>Koefisien</th>
+            <th class="text-end">Harga Satuan</th>
+            <th class="text-end pe-3">Jumlah (Rp)</th>
+          </tr>
+        </thead>
+        <tbody id="dpa-tbody-2"></tbody>
+        <tfoot class="dpa-tfoot" id="dpa-foot-2" style="display:none">
+          <tr><td colspan="3" class="ps-3">TOTAL DPA</td><td class="text-end pe-3 dpa-total" id="dpa-grand-2"></td></tr>
+        </tfoot>
+      </table>
+    </div>
+
   </div><!-- /card-body -->
 </div>
 
@@ -225,8 +250,10 @@ function sdColor(sdId) {
 /* ── TreeView factory ── */
 function TreeView(tbodyId, footId, grandId, mode) {
   var expandState = {}, nodeChildren = {}, nodeRows = {}, detN = 0, preSearchState = null;
-  var INDENT = mode === 'dana' ? [14,30,54,76] : [14,30,52,74,96,118];
-  var LVCLS  = mode === 'dana' ? ['dr0','dr5','dr3','dr4','dr6'] : ['dr0','dr1','dr2','dr3','dr4','dr6'];
+  var INDENT, LVCLS;
+  if (mode === 'dana')            { INDENT=[14,30,54,76];               LVCLS=['dr0','dr5','dr3','dr4','dr6']; }
+  else if (mode === 'pekerjaan')  { INDENT=[14,30,52,74,96,118,140];    LVCLS=['dr0','dr1','dr2','dr3','dr4','dr5','dr6']; }
+  else                            { INDENT=[14,30,52,74,96,118];        LVCLS=['dr0','dr1','dr2','dr3','dr4','dr6']; }
 
   function makeHdrRow(nid, pid, lv, kode, nama, chipClass, total, hasKids) {
     var tr = document.createElement('tr');
@@ -400,12 +427,67 @@ function TreeView(tbodyId, footId, grandId, mode) {
     });
   }
 
+  function buildPekerjaan(tbody, data) {
+    var opd=data.opd, opdId='opd'+opd.id;
+    var opdRow=makeHdrRow(opdId,null,0,null,opd.singkat||opd.nama,null,opd.total,true);
+    opdRow.classList.add('open');
+    tbody.appendChild(opdRow); addNode(opdRow,opdId,null,true,true);
+
+    data.programs.forEach(function(prog){
+      var pid='pr'+prog.id;
+      var pr=makeHdrRow(pid,opdId,1,prog.kode,prog.nama,'lv-prog',prog.total,true);
+      tbody.appendChild(pr); addNode(pr,pid,opdId,false,true);
+
+      prog.kegiatans.forEach(function(keg){
+        var kid='kg'+keg.id;
+        var kr=makeHdrRow(kid,pid,2,keg.kode,keg.nama,'lv-keg',keg.total,true);
+        tbody.appendChild(kr); addNode(kr,kid,pid,false,false);
+
+        keg.subkegiatans.forEach(function(sk){
+          var skid='sk'+sk.id;
+          var skr=makeHdrRow(skid,kid,3,sk.kode,sk.nama,'lv-sk',sk.total,true);
+          tbody.appendChild(skr); addNode(skr,skid,kid,false,false);
+
+          /* regroup rekening→item menjadi paket→rekening→item */
+          var pakMap={}, pakOrder=[];
+          sk.rekenings.forEach(function(rek){
+            rek.items.forEach(function(item){
+              var pk=item.paket||'(Tanpa Pekerjaan)';
+              if(!pakMap[pk]){ pakMap[pk]={nama:pk,total:0,reks:{},order:[]}; pakOrder.push(pk); }
+              pakMap[pk].total+=item.total;
+              var rk=rek.id;
+              if(!pakMap[pk].reks[rk]){ pakMap[pk].reks[rk]={id:rek.id,kode:rek.kode,nama:rek.nama,total:0,items:[]}; pakMap[pk].order.push(rk); }
+              pakMap[pk].reks[rk].total+=item.total;
+              pakMap[pk].reks[rk].items.push(item);
+            });
+          });
+
+          pakOrder.forEach(function(pk,pi){
+            var pak=pakMap[pk], pakid=skid+'pk'+pi;
+            var pkr=makeHdrRow(pakid,skid,4,null,pak.nama,'lv-pek',pak.total,true);
+            tbody.appendChild(pkr); addNode(pkr,pakid,skid,false,false);
+
+            pak.order.forEach(function(rk,ri){
+              var rek=pak.reks[rk], rid=pakid+'rk'+ri;
+              var rr=makeHdrRow(rid,pakid,5,rek.kode,rek.nama,'lv-rek',rek.total,true);
+              tbody.appendChild(rr); addNode(rr,rid,pakid,false,false);
+              rek.items.forEach(function(item){
+                var d=makeDetRow(rid,item);
+                tbody.appendChild(d.tr); addNode(d.tr,d.nid,rid,false,false);
+              });
+            });
+          });
+        });
+      });
+    });
+  }
+
   return {
     build: function(data) {
       var tbody = document.getElementById(tbodyId);
       tbody.innerHTML = '';
       expandState={}; nodeChildren={}; nodeRows={}; detN=0; preSearchState=null; sdColorMap={}; sdColorIdx=0;
-      if (mode==='dana') buildDana(tbody,data); else buildProgram(tbody,data);
+      if (mode==='dana') buildDana(tbody,data); else if (mode==='pekerjaan') buildPekerjaan(tbody,data); else buildProgram(tbody,data);
       document.getElementById(footId).style.display='';
       document.getElementById(grandId).textContent = money(data.opd.total);
     },
@@ -470,7 +552,8 @@ function TreeView(tbodyId, footId, grandId, mode) {
 /* ── Init ── */
 var trees = [
   TreeView('dpa-tbody-0','dpa-foot-0','dpa-grand-0','program'),
-  TreeView('dpa-tbody-1','dpa-foot-1','dpa-grand-1','dana')
+  TreeView('dpa-tbody-1','dpa-foot-1','dpa-grand-1','dana'),
+  TreeView('dpa-tbody-2','dpa-foot-2','dpa-grand-2','pekerjaan')
 ];
 var activeTab = 0;
 var currentData = null;
@@ -506,6 +589,7 @@ function loadTree(opdId) {
       trees.forEach(function(t){ /* will rebuild lazily when tab shown */ });
       trees[0] = TreeView('dpa-tbody-0','dpa-foot-0','dpa-grand-0','program');
       trees[1] = TreeView('dpa-tbody-1','dpa-foot-1','dpa-grand-1','dana');
+      trees[2] = TreeView('dpa-tbody-2','dpa-foot-2','dpa-grand-2','pekerjaan');
       showTab(activeTab);
 
       /* summary */

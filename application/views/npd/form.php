@@ -28,7 +28,7 @@ if ($edit) foreach ($row->details as $d) $preset['details'][(int)$d->rekening_id
           <label class="form-label">OPD <span class="text-danger">*</span></label>
           <select class="form-select" name="opd_id" id="opd_id" <?= $edit?'':'required' ?>>
             <option value="">— Pilih OPD —</option>
-            <?php foreach ($opd_opts as $k=>$v): ?><option value="<?= $k ?>"><?= html_escape($v) ?></option><?php endforeach; ?>
+            <?php foreach ($opd_opts as $k=>$v): ?><option value="<?= $k ?>" <?= ($edit && (int) $preset['opd_id'] === (int) $k) ? 'selected' : '' ?>><?= html_escape($v) ?></option><?php endforeach; ?>
           </select>
         </div>
         <?php else: ?>

@@ -188,6 +188,12 @@ jadi mungkin saat membuat pinbuk perlu memilih apakah itu termasuk belanja perja
 - rapikan lagi tampilan cetak pindah buku
 
 
+
+
+modifikasi /anggaran/dpa tambahkan tab baru lagi, setelah sub kegiatan aktifitas / pekerjaan dulu baru rekening
+
+modifikasi /anggaran/realisasi menampilkan tab seperti /anggaran/dpa juga
+
 =================================
 =================================
 =================================

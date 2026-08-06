@@ -6,6 +6,23 @@
 
 ## Log Perkembangan
 
+### [2026-08-06] Tab Pekerjaan (DPA) + Realisasi multi-tab
+- **DPA** (`anggaran/dpa`): tab ke-3 **Hierarki Pekerjaan** (Program→Kegiatan→SubKeg→**Pekerjaan/paket**
+  →Rekening→item) — regroup client-side dari data dpa_tree (tanpa ubah backend).
+- **Realisasi (LRA)**: `realisasi_tree` kini kirim **leaves** (prog/keg/subkeg/pekerjaan/sumber dana/
+  rekening + pagu + realisasi). View punya **3 tab** seperti DPA: **Program / Pekerjaan / Sumber Dana**,
+  digroup generik client-side, tiap level roll-up Pagu·Realisasi·Sisa (+%). Teruji: total & drill sama
+  (OPD 16 real 4.506.666; rekening BBM 400rb, Perjalanan 4.106.666).
+
+### [2026-08-06] Laporan Realisasi Anggaran (LRA) + fix edit NPD
+- **Fix edit NPD** (`views/npd/form.php`): dropdown OPD superadmin kini **ter-preselect** saat edit →
+  rantai cascade (Program→…→Rekening) jalan & form terisi sesuai DB (dulu kosong utk super).
+- **Halaman baru `anggaran/realisasi` (LRA)** — pohon gaya DPA: OPD→Program→Kegiatan→SubKeg→Rekening,
+  kolom **Pagu (DPA) · Realisasi · Sisa** + %; realisasi = Σ `npd_detail.jumlah` dari NPD status
+  **final/dibayar** per (subkeg,rekening), sisa=pagu−realisasi (roll-up tiap level). `Anggaran::realisasi()`
+  + `realisasi_tree()`; menu `anggaran.realisasi` di katalog+sidebar+resolver. Teruji: OPD 16 realisasi
+  4.506.666 (NPD final) → 0 saat di-draft-kan; drill rekening BBM 400rb & Perjalanan 4.106.666 tepat.
+
 ### [2026-08-05] Deploy portable + Modal Penerima kaya-fitur
 - **Deploy**: `config.php` `base_url` kini **auto-deteksi** (host/subfolder/HTTPS); `sess_save_path`
   → `APPPATH.cache/sessions` (folder dibuat). Panduan upload di jawaban chat (RewriteBase, database.php,

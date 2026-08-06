@@ -45,6 +45,7 @@ if ( ! function_exists('menu_catalog'))
 
 			'anggaran.dpa'         => array('DPA', 'Anggaran', $A, $N),
 			'anggaran.arus_kas'    => array('Arus Kas', 'Anggaran', $A, $N),
+			'anggaran.realisasi'   => array('Realisasi (LRA)', 'Anggaran', $A, $N),
 
 			'npd'                  => array('NPD', 'Penatausahaan', $A, array('admin_opd', 'user_opd')),
 
@@ -143,7 +144,11 @@ if ( ! function_exists('current_menu_key'))
 			if (in_array($entity, $gaji_refs, TRUE)) return 'gaji.ref';
 			return 'master.' . $entity;
 		}
-		if ($s1 === 'anggaran')    return (strpos((string)$s2, 'arus_kas') === 0 || strpos((string)$s2, 'ak_') === 0) ? 'anggaran.arus_kas' : 'anggaran.dpa';
+		if ($s1 === 'anggaran')    {
+				if (strpos((string)$s2, 'arus_kas') === 0 || strpos((string)$s2, 'ak_') === 0) return 'anggaran.arus_kas';
+				if (strpos((string)$s2, 'realisasi') === 0) return 'anggaran.realisasi';
+				return 'anggaran.dpa';
+			}
 		if ($s1 === 'gaji')        return ($s2 === 'rekap') ? 'gaji.rekap' : 'gaji.simulasi';
 		if ($s1 === 'rekap')       return 'rekap';
 		if ($s1 === 'npd')         return 'npd';

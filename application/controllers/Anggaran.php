@@ -137,6 +137,89 @@ class Anggaran extends MY_Controller {
 		$this->json_out($this->rekening_options('dd'));
 	}
 
+	// ======================= REALISASI ANGGARAN (LRA) =======================
+
+	public function realisasi()
+	{
+		$opd_opts = is_super()
+			? $this->mm->options('master_opd', 'id', "CONCAT(kode_opd,' - ',nama_opd)", array(), 'kode_opd')
+			: array();
+		$this->render('anggaran/realisasi', array(
+			'opd_opts'  => $opd_opts,
+			'is_super'  => is_super(),
+			'my_opd_id' => is_super() ? '' : scope_opd_id(),
+			'tree_url'  => site_url('anggaran/realisasi_tree'),
+		), 'Realisasi Anggaran (LRA)');
+	}
+
+	/** Pohon Pagu (DPA) + Realisasi (NPD final/dibayar) + Sisa, per Program→Kegiatan→SubKeg→Rekening. */
+	public function realisasi_tree()
+	{
+		$opd_id = is_super() ? $this->input->get('opd_id') : scope_opd_id();
+		if ( ! $opd_id) { $this->json(array('opd' => NULL, 'leaves' => array())); return; }
+
+		$rows = $this->db
+			->select('o.id AS opd_id, o.kode_opd, o.nama_opd, COALESCE(o.singkatan,o.nama_opd) AS opd_singkat,
+			          p.id AS p_id, p.kode_program AS p_kode, p.nama_program AS p_nama,
+			          k.id AS k_id, k.kode_kegiatan AS k_kode, k.nama_kegiatan AS k_nama,
+			          sk.id AS s_id, sk.kode_subkegiatan AS s_kode, sk.nama_subkegiatan AS s_nama,
+			          dd.paket_belanja AS paket, dd.sumber_dana_id AS sd_id,
+			          COALESCE(msd.nama, dd.sumber_dana_text, "(Tanpa Sumber Dana)") AS sd_nama,
+			          r.id AS r_id, r.kode_rekening AS r_kode, r.uraian AS r_nama, dd.total_harga', FALSE)
+			->from('dpa d')
+			->join('dpa_detail dd',         'dd.dpa_id = d.id')
+			->join('master_opd o',           'o.id = d.opd_id')
+			->join('master_program p',       'p.id = dd.program_id')
+			->join('master_kegiatan k',      'k.id = dd.kegiatan_id')
+			->join('master_subkegiatan sk',  'sk.id = dd.subkegiatan_id')
+			->join('master_rekening r',      'r.id = dd.rekening_id')
+			->join('master_sumber_dana msd', 'msd.id = dd.sumber_dana_id', 'left')
+			->where('d.opd_id', (int) $opd_id)
+			->order_by('p.kode_program, k.kode_kegiatan, sk.kode_subkegiatan, dd.paket_belanja, r.kode_rekening')
+			->get()->result_array();
+		if (empty($rows)) { $this->json(array('opd' => NULL, 'leaves' => array())); return; }
+
+		// Realisasi (NPD final/dibayar) per (subkegiatan, pekerjaan, sumber dana, rekening).
+		$real = array();
+		$rr = $this->db->select('n.subkegiatan_id AS sk, n.perihal AS paket, COALESCE(n.sumber_dana_id,0) AS sd, nd.rekening_id AS rek, SUM(nd.jumlah) AS rlz', FALSE)
+			->from('npd n')->join('npd_detail nd', 'nd.npd_id = n.id')
+			->where('n.opd_id', (int) $opd_id)
+			->where_in('n.status', array('final', 'dibayar'))
+			->group_by('n.subkegiatan_id, n.perihal, n.sumber_dana_id, nd.rekening_id')->get()->result();
+		foreach ($rr as $x) $real[$x->sk . '|' . $x->paket . '|' . (int) $x->sd . '|' . $x->rek] = (float) $x->rlz;
+
+		// Agregasi jadi "leaves" unik per (program,kegiatan,subkeg,pekerjaan,sumber dana,rekening).
+		$lmap = array(); $o_pagu = 0;
+		foreach ($rows as $row)
+		{
+			$key = $row['s_id'] . '|' . $row['paket'] . '|' . ((int) $row['sd_id']) . '|' . $row['r_id'];
+			if ( ! isset($lmap[$key]))
+			{
+				$lmap[$key] = array(
+					'p'     => array('id'=>$row['p_id'],'kode'=>$row['p_kode'],'nama'=>$row['p_nama']),
+					'k'     => array('id'=>$row['k_id'],'kode'=>$row['k_kode'],'nama'=>$row['k_nama']),
+					's'     => array('id'=>$row['s_id'],'kode'=>$row['s_kode'],'nama'=>$row['s_nama']),
+					'paket' => ($row['paket'] !== NULL && $row['paket'] !== '') ? $row['paket'] : '(Tanpa Pekerjaan)',
+					'sd'    => array('id'=>(int)$row['sd_id'],'nama'=>$row['sd_nama']),
+					'r'     => array('id'=>$row['r_id'],'kode'=>$row['r_kode'],'nama'=>$row['r_nama']),
+					'pagu'  => 0,
+					'real'  => isset($real[$key]) ? $real[$key] : 0,
+				);
+			}
+			$lmap[$key]['pagu'] += (float) $row['total_harga'];
+			$o_pagu += (float) $row['total_harga'];
+		}
+		$leaves = array_values($lmap);
+		$o_real = 0; foreach ($leaves as $lf) $o_real += $lf['real'];
+
+		$r0 = $rows[0];
+		$this->json(array(
+			'opd' => array('id'=>$r0['opd_id'],'kode'=>$r0['kode_opd'],'nama'=>$r0['nama_opd'],'singkat'=>$r0['opd_singkat'],
+				'pagu'=>$o_pagu,'real'=>$o_real,'sisa'=>$o_pagu-$o_real),
+			'leaves' => $leaves,
+		));
+	}
+
 	// ======================= ARUS KAS =======================
 	private function ak_cfg()
 	{

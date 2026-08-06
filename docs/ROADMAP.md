@@ -66,8 +66,9 @@ URL lokal: `http://localhost/penatausahaan`
 - [x] Enforcement view + CRUD granular di engine Master + gate tombol.
 - [x] Scope OPD non-super + flag `akses_semua_bidang` untuk user_opd.
 
-## Tahap 5 — SPJ & Laporan  ⏳ BERIKUTNYA
-- [ ] **Laporan Realisasi Anggaran (LRA)**: pagu vs realisasi (NPD) per OPD/program/keg/subkeg/rekening.
+## Tahap 5 — SPJ & Laporan  ⏳ BERJALAN
+- [x] **Laporan Realisasi Anggaran (LRA)** (`anggaran/realisasi`): pohon Pagu (DPA) vs Realisasi
+      (NPD **final/dibayar**) vs Sisa per OPD→program→kegiatan→subkeg→rekening, gaya pohon DPA.
 - [ ] **Kelengkapan SPJ**: dokumen pertanggungjawaban (kwitansi, SPTB, daftar penerima, bukti pajak).
 - [ ] **Buku Kas Umum / register**: rekap pencairan & pajak per periode.
 - [ ] NPD status workflow (draft → diajukan → disetujui → dibayar) bila diperlukan.
