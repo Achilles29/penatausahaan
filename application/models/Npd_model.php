@@ -213,7 +213,7 @@ class Npd_model extends CI_Model {
 		$npd = $this->db->get_where('npd', array('id' => (int) $id))->row();
 		if ( ! $npd) return NULL;
 		$npd->details = $this->db
-			->select('nd.*, r.kode_rekening, r.uraian, r.kategori_pajak', FALSE)
+			->select('nd.*, r.kode_rekening, r.uraian, r.kategori_pajak, r.jenis_belanja', FALSE)
 			->from('npd_detail nd')->join('master_rekening r', 'r.id = nd.rekening_id')
 			->where('nd.npd_id', (int) $id)->order_by('r.kode_rekening')->get()->result();
 		return $npd;

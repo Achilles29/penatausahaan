@@ -7,7 +7,8 @@
  *   lainnya          -> pemindahbukuan barang/jasa (PPN + PPh Ps 23)
  * Var: $row(+details), $info, $penmap, $pejabat, $instansi, $format, $judul
  */
-$this->load->view('npd/_print_head', array('judul' => 'Pindah Buku ' . $row->nomor_npd, 'format' => $format));
+$this->load->view('npd/_print_head', array('judul' => 'Pindah Buku ' . $row->nomor_npd, 'format' => $format, 'landscape' => TRUE));
+if ($format === 'word') echo '<div class="Section1">';
 
 $ins  = $instansi;
 $kota = $ins['kota'] ?: '';
@@ -38,11 +39,12 @@ $rp = function ($n) { return number_format((float) $n, 0, ',', '.'); };
 
 // blok tanda tangan (PPTK) — dipakai di tiap halaman
 $ttd = function () use ($kota, $row, $pptk_jab, $pptk_nm, $pptk_nip) { ?>
-	<table style="width:100%; margin-top:16px"><tr>
-		<td style="width:52%">&nbsp;</td>
-		<td style="width:48%; text-align:center">
-			<?= html_escape($kota) ?>, <?= tanggal_id($row->tanggal) ?><br><?= html_escape($pptk_jab) ?>
-			<div style="height:52px"></div>
+	<table style="width:100%; margin-top:20px; font-size:11pt"><tr>
+		<td style="width:55%">&nbsp;</td>
+		<td style="width:45%; text-align:center; font-size:11pt">
+			<?= html_escape($kota) ?>, <?= tanggal_id($row->tanggal) ?><br>
+			<?= html_escape($pptk_jab) ?>
+			<div style="height:60px"></div>
 			<b><u><?= html_escape($pptk_nm ?: '....................') ?></u></b><br>
 			NIP. <?= html_escape($pptk_nip ?: '....................') ?>
 		</td>
@@ -56,9 +58,8 @@ $last = count($details) - 1;
 foreach ($details as $di => $d):
 	$pens  = $penmap[$d->id];
 	$jenis = $d->jenis_belanja ?: jenis_belanja_kategori($d->kategori_pajak);
-	$brk   = $di < $last ? ' style="page-break-after:always"' : '';
 ?>
-<div class="page"<?= $brk ?>>
+<div class="page"><?php if ($di > 0): ?><br style="page-break-before:always;mso-break-type:page-break"><?php endif; ?>
 
 <?php if ($jenis === 'perjalanan'): // ===== FORMAT A: PERJALANAN DINAS =====
 	$grp = array();
@@ -197,4 +198,5 @@ foreach ($details as $di => $d):
 <?php if (empty($details)): ?>
 <div class="page"><p class="muted" style="text-align:center">Belum ada penerima pada NPD ini.</p></div>
 <?php endif; ?>
+<?php if ($format === 'word') echo '</div>'; ?>
 </body></html>

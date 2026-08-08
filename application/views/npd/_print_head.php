@@ -4,9 +4,10 @@
  * Var: $judul, $format ('html'|'pdf'|'excel'|'word')
  * Menyediakan tombol Cetak/PDF, Unduh Excel, Unduh Word saat mode layar.
  */
-$format = isset($format) ? $format : 'html';
-$is_dl  = ($format === 'excel' || $format === 'word');
-$base   = current_url(); // tanpa query string
+$format    = isset($format)    ? $format    : 'html';
+$landscape = isset($landscape) ? (bool) $landscape : FALSE;
+$is_dl     = ($format === 'excel' || $format === 'word');
+$base      = current_url(); // tanpa query string
 $css = '
   * { box-sizing: border-box; }
   body { font-family: "Times New Roman", Georgia, serif; font-size: 12px; color:#000; }
@@ -39,12 +40,40 @@ $css = '
 <meta charset="utf-8">
 <title><?= isset($judul) ? html_escape($judul) : 'Cetak' ?></title>
 <?php if ($format === 'word'): ?>
-<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom></w:WordDocument></xml><![endif]-->
+<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom>
+<?php if ($landscape): ?><w:DoNotOptimizeForBrowser/><?php endif; ?>
+</w:WordDocument></xml><![endif]-->
 <?php endif; ?>
 <style>
 <?= $css ?>
-<?php if ($is_dl): ?>
+<?php if ($is_dl && $landscape): ?>
+  @page Section1 {
+    size: 13.0in 8.46in;
+    mso-page-orientation: landscape;
+    margin: .39in .59in;
+    mso-header-margin: .5in; mso-footer-margin: .5in; mso-paper-source: 0;
+  }
+  div.Section1 { page: Section1; }
+  body           { font-size: 11pt; }
+  h1.doc-title   { font-size: 13pt; margin: 0 0 3pt; }
+  .doc-sub       { font-size: 11pt; margin: 0 0 10pt; }
+  .kop .nm1      { font-size: 13pt; }
+  .kop .nm2      { font-size: 15pt; }
+  .kop .adr      { font-size: 10pt; }
+  .kop-line      { border-bottom: 3pt solid #000; margin: 3pt 0 8pt; }
+  table.grid th, table.grid td { font-size: 10pt; padding: 4pt 6pt; border: 1pt solid #000; }
+  table.grid th  { background: #e0e0e0; font-size: 10pt; }
+  .totrow td     { font-size: 10pt; }
+  .meta td, .kv td { font-size: 10pt; padding: 2pt 4pt; }
+<?php elseif ($is_dl): ?>
   @page { size: 215mm 330mm; margin: 10mm 8mm; } /* Folio / F4 */
+<?php elseif ($landscape): ?>
+  body { background:#f0f0f0; margin:0; }
+  .page { width:310mm; margin:12px auto; padding:11mm 15mm; box-shadow:0 0 6px rgba(0,0,0,.2); }
+  .toolbar { text-align:center; padding:10px; }
+  .toolbar a, .toolbar button { display:inline-block; padding:7px 16px; margin:0 4px; font-size:13px; cursor:pointer; border:0; border-radius:5px; background:#696cff; color:#fff; text-decoration:none; }
+  .toolbar .excel { background:#1d6f42; } .toolbar .word { background:#2b579a; } .toolbar .print { background:#5a5f6a; }
+  @media print { body { background:#fff; } .toolbar { display:none; } .page { box-shadow:none; margin:0; width:auto; padding:0; } @page { size:330mm 215mm landscape; margin:10mm 15mm; } }
 <?php else: ?>
   body { background:#f0f0f0; margin:0; }
   .page { width:215mm; margin:12px auto; padding:11mm 9mm; box-shadow:0 0 6px rgba(0,0,0,.2); } /* Folio / F4 */

@@ -74,14 +74,34 @@ var NCFG = { columns: <?= json_encode($js_cols) ?>, data_url: '<?= $data_url ?>'
     return '<div class="btn-group">'
          +   '<a href="'+NCFG.view_url+'/'+id+'" class="btn btn-sm btn-outline-secondary" title="Lihat"><i class="fa-solid fa-eye"></i></a>'
          +   '<a href="'+NCFG.form_url+'/'+id+'" class="btn btn-sm btn-outline-primary" title="Edit"><i class="fa-solid fa-pen"></i></a>'
-         +   '<button type="button" class="btn btn-sm btn-outline-info dropdown-toggle" data-bs-toggle="dropdown" data-bs-boundary="viewport" title="Cetak"><i class="fa-solid fa-print"></i></button>'
-         +   '<ul class="dropdown-menu dropdown-menu-end">'
-         +     '<li><a class="dropdown-item" target="_blank" href="'+NCFG.cetak_url+'/'+id+'"><i class="fa-solid fa-file-lines me-2"></i>Cetak NPD</a></li>'
-         +     '<li><a class="dropdown-item" target="_blank" href="'+NCFG.pinbuk_url+'/'+id+'"><i class="fa-solid fa-right-left me-2"></i>Pindah Buku</a></li>'
-         +     '<li><a class="dropdown-item" target="_blank" href="'+NCFG.c5_url+'/'+id+'"><i class="fa-solid fa-receipt me-2"></i>Cetak C5</a></li>'
-         +   '</ul>'
+         +   '<button type="button" class="btn btn-sm btn-outline-info btn-cetak-menu" title="Cetak"'
+         +     ' data-cetak="'+NCFG.cetak_url+'/'+id+'" data-pinbuk="'+NCFG.pinbuk_url+'/'+id+'" data-c5="'+NCFG.c5_url+'/'+id+'">'
+         +     '<i class="fa-solid fa-print"></i> <i class="fa-solid fa-chevron-down" style="font-size:.65em"></i></button>'
          +   '<button class="btn btn-sm btn-outline-danger btn-del" data-id="'+id+'" title="Hapus"><i class="fa-solid fa-trash"></i></button>'
          + '</div>'; }});
+
+  // Menu cetak — diteleport ke <body> agar bebas dari overflow container
+  var $cetakMenu = $('<div id="npd-cetak-popup" style="display:none;position:fixed;z-index:1060;min-width:160px;'
+    + 'background:#fff;border:1px solid rgba(0,0,0,.15);border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,.15);padding:4px 0">'
+    + '<a class="dropdown-item py-2 px-3 lnk-cetak" target="_blank" href="#"><i class="fa-solid fa-file-lines me-2"></i>Cetak NPD</a>'
+    + '<a class="dropdown-item py-2 px-3 lnk-pinbuk" target="_blank" href="#"><i class="fa-solid fa-right-left me-2"></i>Pindah Buku</a>'
+    + '<a class="dropdown-item py-2 px-3 lnk-c5"     target="_blank" href="#"><i class="fa-solid fa-receipt me-2"></i>Cetak C5</a>'
+    + '</div>').appendTo('body');
+
+  $(document).on('click', '.btn-cetak-menu', function(e) {
+    e.stopPropagation();
+    var r = this.getBoundingClientRect();
+    $cetakMenu.find('.lnk-cetak').attr('href', this.dataset.cetak);
+    $cetakMenu.find('.lnk-pinbuk').attr('href', this.dataset.pinbuk);
+    $cetakMenu.find('.lnk-c5').attr('href', this.dataset.c5);
+    var menuW = 165, top = r.bottom + 2, right = window.innerWidth - r.right;
+    // flip ke atas jika tidak muat di bawah
+    if (top + 120 > window.innerHeight) top = r.top - 120 - 2;
+    $cetakMenu.css({ top: top, right: right, left: 'auto', display: 'block' });
+  });
+  $(document).on('click', function(e) {
+    if (!$(e.target).closest('#npd-cetak-popup').length) $cetakMenu.hide();
+  });
 
   var table=$('#tbl').DataTable({
     processing:true, serverSide:true, order:[[2,'desc']],
@@ -91,6 +111,7 @@ var NCFG = { columns: <?= json_encode($js_cols) ?>, data_url: '<?= $data_url ?>'
       infoEmpty:'Tidak ada data', infoFiltered:'(disaring dari _MAX_)', zeroRecords:'Belum ada NPD',
       paginate:{first:'Awal',last:'Akhir',next:'›',previous:'‹'} }
   });
+  table.on('draw', function(){ $cetakMenu.hide(); });
   $('.filter-input:not([data-cascade])').on('change',function(){ table.ajax.reload(); });
   if(window.initCascadeFilters) window.initCascadeFilters(table);
   $('#btnResetFilter').on('click',function(){ $('.filter-input').val(''); if(window.initCascadeFilters) window.initCascadeFilters(table); table.ajax.reload(); });
