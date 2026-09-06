@@ -38,9 +38,11 @@ class Akses extends MY_Controller {
 
 	public function save()
 	{
+		$this->require_post();
 		$posted = $this->input->post('p'); // p[role][key][action] = 1
 		if ( ! is_array($posted)) $posted = array();
 
+		$this->db->trans_start();
 		$this->db->where_in('role', $this->roles)->delete('role_permission');
 
 		$batch = array();
@@ -59,6 +61,8 @@ class Akses extends MY_Controller {
 			}
 		}
 		if ($batch) $this->db->insert_batch('role_permission', $batch);
+		$this->db->trans_complete();
+		if ( ! $this->db->trans_status()) show_error('Hak akses gagal disimpan.', 500);
 
 		$this->session->set_flashdata('success', 'Hak akses berhasil disimpan.');
 		redirect('akses');
@@ -66,6 +70,7 @@ class Akses extends MY_Controller {
 
 	public function reset()
 	{
+		$this->require_post();
 		$this->db->where_in('role', $this->roles)->delete('role_permission');
 		$this->session->set_flashdata('success', 'Hak akses dikembalikan ke default.');
 		redirect('akses');

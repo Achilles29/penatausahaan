@@ -53,7 +53,18 @@
  *
  * NOTE: If you change these, also change the error_reporting() code below
  */
-	define('ENVIRONMENT', isset($_SERVER['CI_ENV']) ? $_SERVER['CI_ENV'] : 'development');
+	define('ENVIRONMENT', isset($_SERVER['CI_ENV']) ? $_SERVER['CI_ENV'] : 'production');
+	$incoming_request_id = isset($_SERVER['HTTP_X_REQUEST_ID']) ? strtolower(trim((string) $_SERVER['HTTP_X_REQUEST_ID'])) : '';
+	if (preg_match('/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/D', $incoming_request_id) !== 1)
+	{
+		$request_id_bytes = random_bytes(16);
+		$request_id_bytes[6] = chr((ord($request_id_bytes[6]) & 0x0f) | 0x40);
+		$request_id_bytes[8] = chr((ord($request_id_bytes[8]) & 0x3f) | 0x80);
+		$incoming_request_id = vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($request_id_bytes), 4));
+	}
+	define('NAMUA_REQUEST_ID', $incoming_request_id);
+	$_SERVER['NAMUA_REQUEST_ID'] = NAMUA_REQUEST_ID;
+	if (PHP_SAPI !== 'cli' && ! headers_sent()) header('X-Request-ID: '.NAMUA_REQUEST_ID);
 
 /*
  *---------------------------------------------------------------

@@ -21,7 +21,7 @@ $logo = $ins['logo'] ? base_url($ins['logo']) : '';
   <!-- KOP SURAT -->
   <table class="kop" style="width:100%">
     <tr>
-      <?php if ($logo): ?><td style="width:64px; text-align:center"><img src="<?= $logo ?>" alt="logo" width="43" height="64" style="width:43px; height:64px"></td><?php endif; ?>
+      <?php if ($logo): ?><td style="width:64px; text-align:center"><img src="<?= html_escape($logo) ?>" alt="logo" width="43" height="64" style="width:43px; height:64px"></td><?php endif; ?>
       <td style="text-align:center">
         <div class="nm1"><?= html_escape($ins['pemda']) ?></div>
         <div class="nm2"><?= html_escape(strtoupper($opd)) ?></div>

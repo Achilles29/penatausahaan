@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Namua Projects">
+  <defs>
+    <linearGradient id="namua" x1="8" y1="8" x2="56" y2="56" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8f0d16"/>
+      <stop offset="1" stop-color="#c66a00"/>
+    </linearGradient>
+  </defs>
+  <circle cx="32" cy="32" r="30" fill="#fff" stroke="url(#namua)" stroke-width="4"/>
+  <path d="M18 45V19h6l16 17V19h6v26h-6L24 28v17z" fill="url(#namua)"/>
+</svg>

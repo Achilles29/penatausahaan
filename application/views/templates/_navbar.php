@@ -29,7 +29,13 @@ $initial = strtoupper(mb_substr($u['nama'], 0, 1));
           <small class="text-muted"><?= $u['nip'] ? 'NIP: '.html_escape($u['nip']) : html_escape($u['username']) ?></small>
         </li>
         <li><hr class="dropdown-divider"></li>
-        <li><a class="dropdown-item" href="<?= site_url('auth/logout') ?>"><i class="fa-solid fa-right-from-bracket me-2"></i>Keluar</a></li>
+        <li><a class="dropdown-item" href="<?= site_url('account/password') ?>"><i class="fa-solid fa-key me-2"></i>Ubah kata sandi</a></li>
+        <li><hr class="dropdown-divider"></li>
+        <li>
+          <form action="<?= site_url('auth/logout') ?>" method="post">
+            <button class="dropdown-item" type="submit"><i class="fa-solid fa-right-from-bracket me-2"></i>Keluar</button>
+          </form>
+        </li>
       </ul>
     </div>
   </div>

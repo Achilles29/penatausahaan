@@ -2,8 +2,60 @@
 (function () {
   'use strict';
 
+  function csrf() {
+    var name = document.querySelector('meta[name="csrf-name"]');
+    var hash = document.querySelector('meta[name="csrf-hash"]');
+    return name && hash ? { name: name.content, hash: hash.content } : null;
+  }
+
+  function addCsrfToForms() {
+    var token = csrf();
+    if (!token) return;
+    document.querySelectorAll('form').forEach(function (form) {
+      if ((form.getAttribute('method') || 'get').toLowerCase() !== 'post') return;
+      if (form.querySelector('input[name="' + token.name + '"]')) return;
+      var input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = token.name;
+      input.value = token.hash;
+      form.appendChild(input);
+    });
+  }
+
+  if (window.jQuery) {
+    jQuery.ajaxPrefilter(function (options) {
+      var method = String(options.type || 'GET').toUpperCase();
+      if (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method) || options.crossDomain) return;
+      var token = csrf();
+      if (!token) return;
+      if (options.data instanceof FormData) {
+        if (!options.data.has(token.name)) options.data.append(token.name, token.hash);
+        return;
+      }
+      if (options.data && typeof options.data === 'object') {
+        options.data[token.name] = token.hash;
+        return;
+      }
+      var encoded = encodeURIComponent(token.name) + '=' + encodeURIComponent(token.hash);
+      options.data = options.data ? String(options.data) + '&' + encoded : encoded;
+    });
+  }
+
   // Sidebar toggle (mobile)
   document.addEventListener('click', function (e) {
+    var passwordToggle = e.target.closest('[data-password-toggle]');
+    if (passwordToggle) {
+      var passwordInput = document.getElementById(passwordToggle.getAttribute('data-password-toggle'));
+      if (passwordInput) {
+        var passwordVisible = passwordInput.type === 'text';
+        passwordInput.type = passwordVisible ? 'password' : 'text';
+        passwordToggle.setAttribute('aria-pressed', passwordVisible ? 'false' : 'true');
+        passwordToggle.setAttribute('aria-label', passwordVisible ? 'Tampilkan kata sandi' : 'Sembunyikan kata sandi');
+        var passwordIcon = passwordToggle.querySelector('i');
+        if (passwordIcon) passwordIcon.className = passwordVisible ? 'fa-solid fa-eye' : 'fa-solid fa-eye-slash';
+      }
+    }
+
     var toggle = e.target.closest('.navbar-toggle');
     if (toggle) {
       if (window.innerWidth >= 992) {
@@ -88,6 +140,7 @@
   };
 
   document.addEventListener('DOMContentLoaded', function () {
+    addCsrfToForms();
     if (window.jQuery && jQuery.fn.DataTable) {
       jQuery('table.datatable').each(function () {
         var $t = jQuery(this);

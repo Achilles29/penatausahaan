@@ -1,22 +1,18 @@
 <?php
 defined('BASEPATH') OR exit('No direct script access allowed');
 
-if (isset($_SERVER['HTTP_HOST']) && $_SERVER['HTTP_HOST'] !== '')
+require_once APPPATH.'config/runtime.php';
+$runtime = penatus_runtime_config();
+$runtime_app = isset($runtime['application']) && is_array($runtime['application'])
+	? $runtime['application']
+	: array();
+
+$app_url = penatus_env('APP_URL', isset($runtime_app['url']) ? $runtime_app['url'] : NULL);
+if ($app_url === NULL || filter_var($app_url, FILTER_VALIDATE_URL) === FALSE)
 {
-	$scheme = 'http';
-	if ((isset($_SERVER['HTTPS']) && strtolower($_SERVER['HTTPS']) !== 'off')
-		|| (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https')
-		|| (isset($_SERVER['SERVER_PORT']) && (int) $_SERVER['SERVER_PORT'] === 443))
-	{
-		$scheme = 'https';
-	}
-	$dir = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME']));
-	$config['base_url'] = $scheme . '://' . $_SERVER['HTTP_HOST'] . rtrim($dir, '/') . '/';
+	throw new RuntimeException('APP_URL Penatausahaan belum dikonfigurasi dengan benar.');
 }
-else
-{
-	$config['base_url'] = 'http://localhost/penatausahaan/';
-}
+$config['base_url'] = rtrim($app_url, '/') . '/';
 
 /*
 |--------------------------------------------------------------------------
@@ -218,7 +214,7 @@ $config['allow_get_array'] = TRUE;
 | your log files will fill up very fast.
 |
 */
-$config['log_threshold'] = 0;
+$config['log_threshold'] = ENVIRONMENT === 'production' ? 1 : 4;
 
 /*
 |--------------------------------------------------------------------------
@@ -243,7 +239,7 @@ $config['log_path'] = '';
 | Note: Leaving it blank will default to 'php'.
 |
 */
-$config['log_file_extension'] = '';
+$config['log_file_extension'] = 'jsonl';
 
 /*
 |--------------------------------------------------------------------------
@@ -255,7 +251,7 @@ $config['log_file_extension'] = '';
 | IMPORTANT: This MUST be an integer (no quotes) and you MUST use octal
 |            integer notation (i.e. 0700, 0644, etc.)
 */
-$config['log_file_permissions'] = 0644;
+$config['log_file_permissions'] = 0600;
 
 /*
 |--------------------------------------------------------------------------
@@ -266,7 +262,7 @@ $config['log_file_permissions'] = 0644;
 | codes to set your own date formatting
 |
 */
-$config['log_date_format'] = 'Y-m-d H:i:s';
+$config['log_date_format'] = 'Y-m-d\TH:i:s.uP';
 
 /*
 |--------------------------------------------------------------------------
@@ -319,7 +315,14 @@ $config['cache_query_string'] = FALSE;
 | https://codeigniter.com/userguide3/libraries/encryption.html
 |
 */
-$config['encryption_key'] = 'penatus_a7f3c9e21b8d4056f1e2a9c4d7b60e83';
+$config['encryption_key'] = penatus_env(
+	'APP_ENCRYPTION_KEY',
+	isset($runtime_app['encryption_key']) ? $runtime_app['encryption_key'] : NULL
+);
+if (strlen((string) $config['encryption_key']) < 32)
+{
+	throw new RuntimeException('APP_ENCRYPTION_KEY Penatausahaan belum dikonfigurasi.');
+}
 
 /*
 |--------------------------------------------------------------------------
@@ -377,13 +380,13 @@ $config['encryption_key'] = 'penatus_a7f3c9e21b8d4056f1e2a9c4d7b60e83';
 |
 */
 $config['sess_driver'] = 'files';
-$config['sess_cookie_name'] = 'ci_session';
+$config['sess_cookie_name'] = 'namua_penatus_session';
 $config['sess_samesite'] = 'Lax';
 $config['sess_expiration'] = 7200;
 $config['sess_save_path'] = APPPATH . 'cache/sessions'; // folder harus ADA & WRITABLE (0755/0700) di server
 $config['sess_match_ip'] = FALSE;
 $config['sess_time_to_update'] = 300;
-$config['sess_regenerate_destroy'] = FALSE;
+$config['sess_regenerate_destroy'] = TRUE;
 
 /*
 |--------------------------------------------------------------------------
@@ -404,8 +407,8 @@ $config['sess_regenerate_destroy'] = FALSE;
 $config['cookie_prefix']	= '';
 $config['cookie_domain']	= '';
 $config['cookie_path']		= '/';
-$config['cookie_secure']	= FALSE;
-$config['cookie_httponly'] 	= FALSE;
+$config['cookie_secure']	= TRUE;
+$config['cookie_httponly'] 	= TRUE;
 $config['cookie_samesite'] 	= 'Lax';
 
 /*
@@ -450,11 +453,11 @@ $config['global_xss_filtering'] = FALSE;
 | 'csrf_regenerate' = Regenerate token on every submission
 | 'csrf_exclude_uris' = Array of URIs which ignore CSRF checks
 */
-$config['csrf_protection'] = FALSE;
-$config['csrf_token_name'] = 'csrf_test_name';
-$config['csrf_cookie_name'] = 'csrf_cookie_name';
+$config['csrf_protection'] = TRUE;
+$config['csrf_token_name'] = 'namua_csrf_token';
+$config['csrf_cookie_name'] = 'namua_csrf_cookie';
 $config['csrf_expire'] = 7200;
-$config['csrf_regenerate'] = TRUE;
+$config['csrf_regenerate'] = FALSE;
 $config['csrf_exclude_uris'] = array();
 
 /*

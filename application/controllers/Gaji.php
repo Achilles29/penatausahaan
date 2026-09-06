@@ -61,6 +61,7 @@ class Gaji extends MY_Controller {
 	/** AJAX: POST pegawai_id, bulan, tahun, is_ke → kalkulasi slip gaji. */
 	public function hitung()
 	{
+		$this->require_post();
 		$pegawai_id = (int) $this->input->post('pegawai_id');
 		if ( ! $pegawai_id) { $this->_json(array('ok' => 0, 'msg' => 'Pegawai tidak dipilih')); return; }
 
@@ -90,8 +91,10 @@ class Gaji extends MY_Controller {
 
 	public function rekap()
 	{
-		$opd_options = $this->db->select('id, CONCAT(kode_opd," — ",nama_opd) AS label', FALSE)
-			->from('master_opd')->where('is_active', 1)->order_by('kode_opd')->get()->result_array();
+		$opd_query = $this->db->select('id, CONCAT(kode_opd," — ",nama_opd) AS label', FALSE)
+			->from('master_opd')->where('is_active', 1);
+		if ( ! is_super()) $opd_query->where('id', (int) scope_opd_id());
+		$opd_options = $opd_query->order_by('kode_opd')->get()->result_array();
 		$opd_list = array();
 		foreach ($opd_options as $o) $opd_list[$o['id']] = $o['label'];
 
@@ -110,6 +113,7 @@ class Gaji extends MY_Controller {
 	/** AJAX: POST bulan, tahun, opd_id, is_ke → kalkulasi semua pegawai. */
 	public function hitung_rekap()
 	{
+		$this->require_post();
 		$bulan  = (int) $this->input->post('bulan');
 		$tahun  = (int) $this->input->post('tahun');
 		$opd_id = (int) $this->input->post('opd_id');
@@ -135,8 +139,8 @@ class Gaji extends MY_Controller {
 		$q = $this->db->select('m.id, m.jenis_kepegawaian')->from('pegawai m')
 			->where('m.is_active', 1)
 			->where_in('m.jenis_kepegawaian', array('PNS','PPPK'));
-		if ($opd_id) $q->where('m.opd_id', $opd_id);
-		elseif ( ! is_super()) $q->where('m.opd_id', (int) scope_opd_id());
+		if ( ! is_super()) $q->where('m.opd_id', (int) scope_opd_id());
+		elseif ($opd_id) $q->where('m.opd_id', $opd_id);
 		$pegawais = $this->db->get()->result_array();
 
 		$rows = array();
@@ -230,7 +234,7 @@ class Gaji extends MY_Controller {
 		if ($target_tahun === NULL) $target_tahun = (int) $now->format('Y');
 		$target_date = new DateTime("{$target_tahun}-{$target_bulan}-01");
 
-		$peg = $this->db
+		$pegawai_query = $this->db
 			->select('m.*, o.nama_opd, o.kode_opd, ou.nama_unit,
 			          rjs.nama_jabatan AS jab_struktural, rjs.eselon,
 			          rjf.nama_jabatan AS jab_fungsional,
@@ -241,8 +245,9 @@ class Gaji extends MY_Controller {
 			->join('ref_jabatan rjs', 'rjs.id = m.jabatan_struktural_id',    'left')
 			->join('ref_jabatan rjf', 'rjf.id = m.jabatan_fungsional_id',    'left')
 			->join('ref_jabatan rjp', 'rjp.id = m.jabatan_penatausahaan_id', 'left')
-			->where('m.id', $pegawai_id)
-			->get()->row_array();
+			->where('m.id', $pegawai_id);
+		if ( ! is_super()) $pegawai_query->where('m.opd_id', (int) scope_opd_id());
+		$peg = $pegawai_query->get()->row_array();
 
 		if ( ! $peg) return array('ok' => 0, 'msg' => 'Pegawai tidak ditemukan');
 

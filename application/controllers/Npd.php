@@ -276,6 +276,7 @@ class Npd extends MY_Controller {
 	// ---------------- SAVE ----------------
 	public function save()
 	{
+		$this->require_post();
 		$id     = (int) $this->input->post('id');
 		$opd_id = $this->eff_opd();
 		$sub    = (int) $this->input->post('subkegiatan_id');
@@ -410,7 +411,7 @@ class Npd extends MY_Controller {
 			$this->output
 				->set_content_type($mime, 'utf-8')
 				->set_header('Content-Disposition: attachment; filename="' . $slug . '.' . $ext . '"')
-				->set_header('Cache-Control: max-age=0');
+				->set_header('Cache-Control: no-store, private');
 		}
 		$this->load->view($view, $d); // layout cetak sendiri (tanpa sidebar)
 	}
@@ -564,6 +565,7 @@ class Npd extends MY_Controller {
 
 	public function penerima_save()
 	{
+		$this->require_post();
 		$id        = (int) $this->input->post('id');
 		$detail_id = (int) $this->input->post('npd_detail_id');
 		$detail = $this->db->get_where('npd_detail', array('id' => $detail_id))->row();
@@ -639,6 +641,7 @@ class Npd extends MY_Controller {
 	/** Tambah BANYAK penerima sekaligus (dari modal multi-baris). */
 	public function penerima_batch()
 	{
+		$this->require_post();
 		$detail_id = (int) $this->input->post('npd_detail_id');
 		$detail = $this->db->get_where('npd_detail', array('id' => $detail_id))->row();
 		if ( ! $detail) show_error('Baris NPD tidak ditemukan', 404);
@@ -818,6 +821,7 @@ class Npd extends MY_Controller {
 
 	public function penerima_delete()
 	{
+		$this->require_post();
 		$id  = (int) $this->input->post('id');
 		$row = $this->db->get_where('npd_penerima', array('id' => $id))->row();
 		if ($row)
@@ -842,6 +846,7 @@ class Npd extends MY_Controller {
 	// ---------------- DELETE ----------------
 	public function delete()
 	{
+		$this->require_post();
 		$id  = (int) $this->input->post('id');
 		$row = $this->npd->get_full($id);
 		if ( ! $row || ! $this->can_edit($row)) show_error('Akses ditolak', 403);

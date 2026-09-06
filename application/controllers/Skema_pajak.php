@@ -34,6 +34,7 @@ class Skema_pajak extends MY_Controller {
 	// ---------- Header skema ----------
 	public function save_skema()
 	{
+		$this->require_post();
 		if ( ! $this->can_manage()) show_error('Akses ditolak', 403);
 		$id = (int) $this->input->post('id');
 		$kode = $this->input->post('kode_skema', TRUE);
@@ -61,6 +62,7 @@ class Skema_pajak extends MY_Controller {
 
 	public function delete_skema()
 	{
+		$this->require_post();
 		if ( ! $this->can_manage()) show_error('Akses ditolak', 403);
 		$id = (int) $this->input->post('id');
 		$this->mm->delete('master_skema_pajak', $id); // detail terhapus via ON DELETE CASCADE
@@ -79,6 +81,7 @@ class Skema_pajak extends MY_Controller {
 	// ---------- Aturan (detail) ----------
 	public function save_detail()
 	{
+		$this->require_post();
 		if ( ! $this->can_manage()) show_error('Akses ditolak', 403);
 		$id = (int) $this->input->post('id');
 		$skema_id = (int) $this->input->post('skema_id');
@@ -107,6 +110,7 @@ class Skema_pajak extends MY_Controller {
 
 	public function delete_detail()
 	{
+		$this->require_post();
 		if ( ! $this->can_manage()) show_error('Akses ditolak', 403);
 		$this->mm->delete('master_skema_pajak_detail', (int) $this->input->post('id'));
 		$this->session->set_flashdata('success', 'Aturan pajak dihapus.');

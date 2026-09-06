@@ -258,3 +258,10 @@ untuk Tapera baiknya tetap dihitung kamu tau hitungannya??
 - Subtotal Belanja kolom JUMLAH juga ditotal
 - perhitungan a# seharusnya untuk semua rekening, bukan hanya total.
 - rapikan lagi tampilan tabel agar terlihat profesional dan tampilan jelas. cek juga pilihan warna
+
+
+
+saya belum akan menjual, karena memang masih banyak perlu perbaikan proses bisnisnya.
+tugasmu memperbaiki bug bug atau hal lain yang perlu ditambahkan (selain modul proses bisnis) agar bisa sinkron dengan control kita, dan bisa digunakan untuk test jual, dan aman secara produk.
+
+jadi sekarang perbaiki sesuai roadmap agar bisa siap test jual

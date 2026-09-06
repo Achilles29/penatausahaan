@@ -97,9 +97,10 @@ class User extends MY_Controller {
 
 	public function save()
 	{
+		$this->require_post();
 		$id       = (int) $this->input->post('id');
 		$role     = $this->input->post('role', TRUE);
-		$nama     = $this->input->post('nama', TRUE);
+		$nama     = trim((string) $this->input->post('nama', TRUE));
 		$is_super = is_super();
 		$errors   = array();
 
@@ -111,8 +112,9 @@ class User extends MY_Controller {
 
 		if ($role === 'superadmin')
 		{
-			$username = $this->input->post('username', TRUE);
+			$username = trim((string) $this->input->post('username', TRUE));
 			if ( ! $username) $errors[] = 'Username wajib untuk superadmin.';
+			if (strlen($username) > 50) $errors[] = 'Username maksimal 50 karakter.';
 			$data['username'] = $username; $data['nip'] = NULL;
 			$data['opd_id'] = NULL; $data['opd_unit_id'] = NULL;
 			if ($username && ! $this->mm->is_unique_value('users', 'username', $username, $id ?: NULL))
@@ -149,14 +151,24 @@ class User extends MY_Controller {
 			}
 			$data['username']    = NULL;
 			$data['opd_unit_id'] = $this->input->post('opd_unit_id') ? (int) $this->input->post('opd_unit_id') : NULL;
+			if ($data['opd_unit_id'] !== NULL)
+			{
+				$unit_valid = $this->db->where('id', $data['opd_unit_id'])
+					->where('opd_id', (int) $data['opd_id'])
+					->count_all_results('master_opd_unit') > 0;
+				if ( ! $unit_valid) $errors[] = 'Unit OPD tidak valid atau berada di luar kewenangan.';
+			}
 			// user_opd: akses semua bidang OPD atau hanya bidangnya
 			$data['akses_semua_bidang'] = ($role === 'user_opd' && $this->input->post('akses_semua_bidang')) ? 1 : 0;
 		}
 
 		if ( ! $nama) $errors[] = 'Nama wajib diisi.';
+		if (mb_strlen($nama) > 150) $errors[] = 'Nama maksimal 150 karakter.';
 
 		$pwd = $this->input->post('password');
 		if ($id === 0 && ! $pwd) $errors[] = 'Kata sandi wajib diisi untuk pengguna baru.';
+		if ($pwd && strlen($pwd) < 12) $errors[] = 'Kata sandi minimal 12 karakter.';
+		if ($pwd && strlen($pwd) > 200) $errors[] = 'Kata sandi maksimal 200 karakter.';
 		if ($pwd) $data['password'] = password_hash($pwd, PASSWORD_DEFAULT);
 
 		// admin_opd edit: pastikan target di OPD-nya
@@ -180,6 +192,7 @@ class User extends MY_Controller {
 
 	public function delete()
 	{
+		$this->require_post();
 		$id = (int) $this->input->post('id');
 		if ($id === (int) $this->user['id'])
 		{
@@ -222,7 +235,7 @@ class User extends MY_Controller {
 	/** Opsi unit OPD untuk cascading (dipakai form). */
 	public function unit_options()
 	{
-		$opd = (int) $this->input->get('parent');
+		$opd = is_super() ? (int) $this->input->get('parent') : (int) scope_opd_id();
 		$opts = $this->mm->options('master_opd_unit', 'id', 'nama_unit', array('opd_id' => $opd), 'nama_unit');
 		$this->output->set_content_type('application/json')->set_output(json_encode($opts));
 	}
@@ -260,6 +273,7 @@ class User extends MY_Controller {
 	/** Simpan akses bidang untuk user_opd — mengganti seluruh user_akses user ini. */
 	public function save_akses()
 	{
+		$this->require_post();
 		$user_id    = (int) $this->input->post('user_id');
 		$bidang_raw = $this->input->post('bidang_ids');
 
@@ -272,16 +286,28 @@ class User extends MY_Controller {
 			return;
 		}
 
-		$this->db->delete('user_akses', array('user_id' => $user_id));
-
+		$ids = array();
 		if ($bidang_raw)
 		{
-			$ids = array_filter(array_map('intval', explode(',', $bidang_raw)));
-			foreach ($ids as $bid)
+			$requested = array_values(array_unique(array_filter(array_map('intval', explode(',', $bidang_raw)))));
+			if ($requested)
 			{
-				$this->db->insert('user_akses', array('user_id' => $user_id, 'bidang_urusan_id' => $bid));
+				$allowed_rows = $this->db->select('bidang_urusan_id')->from('opd_bidang_urusan')
+					->where('opd_id', (int) $row['opd_id'])->where_in('bidang_urusan_id', $requested)
+					->get()->result_array();
+				$ids = array_map('intval', array_column($allowed_rows, 'bidang_urusan_id'));
+				if (count($ids) !== count($requested)) show_error('Bidang urusan berada di luar kewenangan pengguna.', 403);
 			}
 		}
+
+		$this->db->trans_start();
+		$this->db->delete('user_akses', array('user_id' => $user_id));
+		foreach ($ids as $bid)
+		{
+			$this->db->insert('user_akses', array('user_id' => $user_id, 'bidang_urusan_id' => $bid));
+		}
+		$this->db->trans_complete();
+		if ( ! $this->db->trans_status()) show_error('Hak akses pengguna gagal disimpan.', 500);
 
 		$this->output->set_content_type('application/json')->set_output(json_encode(array('ok' => 1)));
 	}

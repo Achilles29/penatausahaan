@@ -1,15 +1,18 @@
 <?php defined('BASEPATH') OR exit('No direct script access allowed');
 $assets = base_url('assets/');
+$product = (array) $this->config->item('product');
 ?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-name" content="<?= html_escape($this->security->get_csrf_token_name()) ?>">
+  <meta name="csrf-hash" content="<?= html_escape($this->security->get_csrf_hash()) ?>">
   <!-- State sidebar diterapkan sebelum render agar tidak berkedip. Default: collapsed. -->
   <script>(function(){try{var c=localStorage.getItem('sidebarCollapsed');if(c===null)c='true';if(c==='true')document.documentElement.classList.add('sidebar-collapsed');}catch(e){document.documentElement.classList.add('sidebar-collapsed');}})();</script>
   <title><?= isset($page_title) ? html_escape($page_title) : 'Penatausahaan' ?> &middot; Penatausahaan</title>
-  <link rel="icon" type="image/x-icon" href="<?= $assets ?>img/favicon.ico">
+  <link rel="icon" type="image/svg+xml" href="<?= $assets ?>img/namua-projects.svg">
   <link rel="stylesheet" href="<?= $assets ?>vendor/bootstrap/bootstrap.min.css">
   <link rel="stylesheet" href="<?= $assets ?>vendor/fontawesome/css/all.min.css?v=fa6">
   <link rel="stylesheet" href="<?= $assets ?>vendor/datatables/dataTables.bootstrap5.min.css">
@@ -21,7 +24,7 @@ $assets = base_url('assets/');
   <script src="<?= $assets ?>vendor/bootstrap/bootstrap.bundle.min.js"></script>
   <script src="<?= $assets ?>vendor/datatables/dataTables.min.js"></script>
   <script src="<?= $assets ?>vendor/datatables/dataTables.bootstrap5.min.js"></script>
-  <script src="<?= $assets ?>js/app.js?v=4"></script>
+  <script src="<?= $assets ?>js/app.js?v=5"></script>
 </head>
 <body>
 <div class="layout-wrapper">
@@ -51,7 +54,9 @@ $assets = base_url('assets/');
     </div>
 
     <footer class="text-center text-muted-2 py-3 small">
-      &copy; <?= date('Y') ?> Aplikasi Penatausahaan &middot; v0.1 (Tahap 1)
+      &copy; <?= date('Y') ?> <?= html_escape($product['name']) ?>
+      &middot; v<?= html_escape($product['version']) ?>
+      &middot; <?= html_escape($product['environment']) ?>
     </footer>
   </div>
 </div>

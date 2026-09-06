@@ -355,20 +355,18 @@ Alur form kini: OPD → Program → Kegiatan → Sub Kegiatan → **Pekerjaan (p
 2. Pastikan folder app ada di `C:\xampp\htdocs\penatausahaan`.
 3. Buka `http://localhost/penatausahaan` (hard-refresh bila baru pindah/aset berubah).
 
-## Kredensial default (hasil seed)
-| Role       | Login (identitas)      | Password  | Keterangan                               |
-|------------|------------------------|-----------|------------------------------------------|
-| superadmin | `superadmin`           | `admin123`| akses penuh semua OPD                    |
-| admin_opd  | `197001011990031001`   | `opd123`  | Kepala Dinas Kearsipan & Perpus (OPD 16) |
-| user_opd   | `198901292012061001`   | `user123` | Operator, OPD 16 unit Perpustakaan       |
+## Kredensial hasil seed
 
-> superadmin login **username**, OPD login **NIP**. Ganti password via menu Pengguna.
+Seeder tidak lagi menyimpan password bawaan. Sebelum menjalankan seed/rebuild melalui CLI,
+set `PENATUS_SEED_SUPERADMIN_PASSWORD`, `PENATUS_SEED_ADMIN_OPD_PASSWORD`, dan
+`PENATUS_SEED_USER_OPD_PASSWORD` dengan nilai unik minimal 12 karakter. Superadmin login
+menggunakan **username**, sedangkan akun OPD menggunakan **NIP**.
 
 ## Pindah ke device baru — 2 opsi
 - **A (bawa data):** ekspor+impor database `penatus` (mysqldump) + salin folder `penatausahaan`.
-- **B (rebuild dari literasi):** butuh DB `literasi`. Salin folder, lalu buka
-  `http://localhost/penatausahaan/setup` → **Rebuild penuh** (atau CLI `php index.php setup rebuild`).
-  > `Setup` hanya bisa diakses dari localhost; nonaktifkan di produksi.
+- **B (rebuild dari literasi):** butuh DB `literasi`. Salin folder, set tiga environment
+  password seed, lalu jalankan `php index.php setup/rebuild` melalui CLI.
+  Endpoint web `Setup` dinonaktifkan termasuk ketika aplikasi berada di belakang reverse proxy.
 
 ---
 

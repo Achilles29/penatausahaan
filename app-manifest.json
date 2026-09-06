@@ -1,0 +1,15 @@
+{
+  "manifest_version": 1,
+  "product_code": "NAMUA_PENATAUSAHAAN",
+  "name": "Namua Penatausahaan",
+  "version": "0.3.5-test",
+  "schema_version": "20260906170000",
+  "baseline_schema_version": "legacy-41-20260906",
+  "framework": "CodeIgniter 3.1.13",
+  "runtime": {
+    "php": ">=8.1 <8.5",
+    "database": "MySQL/MariaDB"
+  },
+  "health_path": "/health",
+  "heartbeat_interval_seconds": 300
+}

@@ -1,0 +1,5 @@
+SHELL=/bin/sh
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+*/5 * * * * www /usr/bin/flock -n /var/lock/namua-penatausahaan/heartbeat.lock /bin/sh -c 'cd __APP_ROOT__ && exec __PHP_BINARY__ index.php control_sync/send' >> /var/log/namua-penatausahaan/heartbeat.log 2>&1
+15 2 * * * root /usr/bin/flock -n /var/lock/namua-penatausahaan/backup.lock /bin/sh -c 'cd __APP_ROOT__ && exec __PHP_BINARY__ tools/backup.php' >> /var/log/namua-penatausahaan/backup.log 2>&1

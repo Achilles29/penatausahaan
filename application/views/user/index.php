@@ -124,8 +124,12 @@
             <small class="text-muted">Aktif: user dapat mengakses/CRUD data <b>semua bidang</b> di OPD-nya. Nonaktif: hanya bidang unit-nya (sesuai Akses Bidang).</small>
           </div>
           <div class="mb-3">
-            <label class="form-label">Kata sandi <small class="text-muted" id="pwdHint">(wajib untuk pengguna baru)</small></label>
-            <input type="password" class="form-control" name="password" id="fld_password" autocomplete="new-password">
+            <label class="form-label">Kata sandi <small class="text-muted" id="pwdHint">(minimal 12 karakter; wajib untuk pengguna baru)</small></label>
+            <div class="input-group">
+              <input type="password" class="form-control" name="password" id="fld_password" autocomplete="new-password" minlength="12">
+              <button class="btn btn-outline-secondary" type="button" data-password-toggle="fld_password"
+                      aria-label="Tampilkan kata sandi" aria-pressed="false"><i class="fa-solid fa-eye"></i></button>
+            </div>
           </div>
           <div class="form-check form-switch">
             <input type="checkbox" class="form-check-input" name="is_active" id="fld_is_active" value="1" checked>

@@ -32,6 +32,17 @@ if ( ! function_exists('is_login'))
 	}
 }
 
+if ( ! function_exists('auth_session_fingerprint'))
+{
+	/** Ikat sesi ke hash kata sandi aktif agar reset password mencabut sesi lama. */
+	function auth_session_fingerprint($password_hash)
+	{
+		$CI =& get_instance();
+		$key = (string) $CI->config->item('encryption_key');
+		return hash_hmac('sha256', (string) $password_hash, $key);
+	}
+}
+
 if ( ! function_exists('current_role'))
 {
 	function current_role()

@@ -1,0 +1,14 @@
+{
+  "format_version": 1,
+  "pemda": "Nama Pemerintah Daerah / Instansi",
+  "alamat": "Alamat instansi",
+  "kontak": "Kontak resmi",
+  "website": "https://example.go.id",
+  "kota": "Nama kota",
+  "logo": "",
+  "perihal_npd": "Permintaan Pembayaran Kegiatan Non Tunai",
+  "ppk_nama": "",
+  "ppk_nip": "",
+  "bendahara_nama": "",
+  "bendahara_nip": ""
+}

@@ -156,8 +156,8 @@ class Rekap extends Gaji {
 			->from('pegawai')
 			->where('is_active', 1)
 			->where_in('jenis_kepegawaian', ['PNS','PPPK']);
-		if ($opd_id) $q->where('opd_id', $opd_id);
-		elseif (!is_super()) $q->where('opd_id', (int)scope_opd_id());
+		if (!is_super()) $q->where('opd_id', (int)scope_opd_id());
+		elseif ($opd_id) $q->where('opd_id', $opd_id);
 		if ($jenis_filter && $jenis_filter !== 'SEMUA') $q->where('jenis_kepegawaian', $jenis_filter);
 		$pegawais = $this->db->get()->result_array();
 

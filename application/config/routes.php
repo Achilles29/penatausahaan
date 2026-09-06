@@ -52,6 +52,8 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 $route['default_controller'] = 'dashboard';
 $route['404_override'] = '';
 $route['translate_uri_dashes'] = FALSE;
+$route['account/password'] = 'account/password';
+$route['health'] = 'health/index';
 
 // Endpoint metode 1-segmen HARUS didaftarkan sebelum catch-all di bawah,
 // jika tidak akan dibajak menjadi master/index/<segmen>.

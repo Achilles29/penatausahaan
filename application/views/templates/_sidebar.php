@@ -23,8 +23,8 @@ $gaji_active = ($seg1 === 'gaji' || $seg1 === 'rekap' || ($seg1 === 'master' && 
 ?>
 <aside class="layout-sidebar">
   <div class="sidebar-brand">
-    <img src="<?= base_url('assets/img/logo.png') ?>" alt="Logo" style="height:34px;width:auto;">
-    <span>Penatausahaan</span>
+    <img src="<?= base_url('assets/img/namua-projects.svg') ?>" alt="Namua Projects" style="height:34px;width:auto;">
+    <span>Namua Penatausahaan</span>
   </div>
 
   <ul class="sidebar-menu">

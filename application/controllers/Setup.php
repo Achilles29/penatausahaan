@@ -5,68 +5,58 @@ defined('BASEPATH') OR exit('No direct script access allowed');
  * Controller Setup: bangun ulang database penatus dari nol (skema + import
  * dari literasi + seed user & pajak). Berguna saat pindah device.
  *
- * KEAMANAN: hanya untuk lingkungan pengembangan lokal. Aksi merusak
- * (rebuild) butuh ?confirm=yes. Sebaiknya dinonaktifkan di produksi.
+ * KEAMANAN: hanya dapat dijalankan dari CLI. Pemeriksaan IP localhost tidak
+ * aman di belakang reverse proxy/Cloudflare Tunnel karena koneksi publik
+ * dapat terlihat berasal dari 127.0.0.1.
  */
 class Setup extends CI_Controller {
 
 	public function __construct()
 	{
 		parent::__construct();
-		// Batasi ke akses lokal saja
-		$ip = $this->input->ip_address();
-		if ( ! $this->input->is_cli_request() && ! in_array($ip, array('127.0.0.1', '::1'), TRUE))
+		if ( ! $this->input->is_cli_request())
 		{
-			show_error('Setup hanya dapat diakses dari localhost.', 403);
+			show_404();
 		}
 	}
 
 	public function index()
 	{
 		$counts = $this->counts();
-		echo '<h2>Setup Penatausahaan</h2>';
-		echo '<p>Database: <b>penatus</b></p>';
-		echo '<pre>';
+		echo "Setup Penatausahaan\nDatabase: penatus\n\n";
 		foreach ($counts as $t => $c) { echo str_pad($t, 28) . ' : ' . $c . "\n"; }
-		echo '</pre>';
-		echo '<ul>';
-		echo '<li><a href="' . site_url('setup/rebuild?confirm=yes') . '">Rebuild penuh (skema + import + seed)</a> — <b>menghapus & mengisi ulang</b></li>';
-		echo '<li><a href="' . site_url('setup/seed_users') . '">Seed ulang user saja</a></li>';
-		echo '</ul>';
-		echo '<p><a href="' . site_url('/') . '">&larr; ke aplikasi</a></p>';
+		echo "\nPerintah:\n";
+		echo "  php index.php setup/rebuild     # destruktif: rebuild penuh\n";
+		echo "  php index.php setup/seed_users  # destruktif: reset user\n";
 	}
 
 	/** Rebuild penuh: skema -> import -> seed user. */
 	public function rebuild()
 	{
-		if ($this->input->get('confirm') !== 'yes' && ! $this->input->is_cli_request())
-		{
-			show_error('Tambahkan ?confirm=yes untuk menjalankan rebuild (menghapus data).', 400);
-		}
+		// Fail before the destructive schema/import steps when seed secrets are absent.
+		$this->seed_passwords();
 
 		$log = array();
 		$log[] = $this->run_sql_file(FCPATH . 'docs/master/penatus_schema.sql', 'Skema');
 		$log[] = $this->run_sql_file(FCPATH . 'docs/master/penatus_import.sql', 'Import dari literasi');
 		$log[] = $this->do_seed_users();
 
-		echo '<h2>Rebuild selesai</h2><pre>' . implode("\n", $log) . '</pre>';
-		echo '<pre>';
+		echo "Rebuild selesai\n" . implode("\n", $log) . "\n\n";
 		foreach ($this->counts() as $t => $c) { echo str_pad($t, 28) . ' : ' . $c . "\n"; }
-		echo '</pre>';
-		echo '<p><a href="' . site_url('/') . '">&larr; ke aplikasi</a></p>';
 	}
 
 	/** Seed ulang hanya tabel users (idempotent). */
 	public function seed_users()
 	{
-		echo '<pre>' . $this->do_seed_users() . '</pre>';
-		echo '<p><a href="' . site_url('setup') . '">&larr; kembali</a></p>';
+		echo $this->do_seed_users() . "\n";
 	}
 
 	// ------------------------------------------------------------------
 
 	private function do_seed_users()
 	{
+		$passwords = $this->seed_passwords();
+
 		$this->db->query('SET FOREIGN_KEY_CHECKS = 0');
 		$this->db->truncate('user_akses');
 		$this->db->truncate('users');
@@ -76,30 +66,50 @@ class Setup extends CI_Controller {
 		$users = array(
 			array(
 				'nip' => NULL, 'username' => 'superadmin',
-				'password' => password_hash('admin123', PASSWORD_DEFAULT),
+				'password' => password_hash($passwords['superadmin'], PASSWORD_DEFAULT),
 				'nama' => 'Super Administrator', 'pegawai_id' => NULL,
 				'role' => 'superadmin', 'opd_id' => NULL, 'opd_unit_id' => NULL,
 				'is_active' => 1, 'created_at' => $now,
 			),
 			array(
 				'nip' => '197001011990031001', 'username' => NULL,
-				'password' => password_hash('opd123', PASSWORD_DEFAULT),
-				'nama' => 'Kepala Dinas Kearsipan dan Perpustakaan', 'pegawai_id' => NULL,
+				'password' => password_hash($passwords['admin_opd'], PASSWORD_DEFAULT),
+				'nama' => 'Administrator OPD Demo', 'pegawai_id' => NULL,
 				'role' => 'admin_opd', 'opd_id' => 16, 'opd_unit_id' => NULL,
 				'is_active' => 1, 'created_at' => $now,
 			),
 			array(
 				'nip' => '198901292012061001', 'username' => NULL,
-				'password' => password_hash('user123', PASSWORD_DEFAULT),
-				'nama' => 'MUKHAMMAD ANWAR FUADI', 'pegawai_id' => 1,
+				'password' => password_hash($passwords['user_opd'], PASSWORD_DEFAULT),
+				'nama' => 'Pengguna OPD Demo', 'pegawai_id' => 1,
 				'role' => 'user_opd', 'opd_id' => 16, 'opd_unit_id' => 3,
 				'is_active' => 1, 'created_at' => $now,
 			),
 		);
 		$this->db->insert_batch('users', $users);
 
-		return 'Seed users: ' . count($users) . ' akun (superadmin/admin123, '
-			. '197001011990031001/opd123, 198901292012061001/user123)';
+		return 'Seed users: ' . count($users) . ' akun. Password dibaca dari environment CLI.';
+	}
+
+	private function seed_passwords()
+	{
+		$vars = array(
+			'superadmin' => 'PENATUS_SEED_SUPERADMIN_PASSWORD',
+			'admin_opd'  => 'PENATUS_SEED_ADMIN_OPD_PASSWORD',
+			'user_opd'   => 'PENATUS_SEED_USER_OPD_PASSWORD',
+		);
+		$passwords = array();
+		foreach ($vars as $key => $name)
+		{
+			$value = getenv($name);
+			if ($value === FALSE || strlen($value) < 12)
+			{
+				throw new RuntimeException('Set ' . $name . ' minimal 12 karakter sebelum seed/rebuild.');
+			}
+			$passwords[$key] = $value;
+		}
+
+		return $passwords;
 	}
 
 	private function run_sql_file($path, $label)

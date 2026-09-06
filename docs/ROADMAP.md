@@ -79,5 +79,5 @@ URL lokal: `http://localhost/penatausahaan`
 
 ---
 
-Lihat **PROGRESS.md** untuk status teknis rinci, kredensial, dan cara menjalankan/rebuild.
+Lihat **PROGRESS.md** untuk status teknis rinci dan cara menjalankan/rebuild.
 Lihat **DECISIONS.md** untuk keputusan arsitektur, **DB_SCHEMA.md** untuk struktur database.

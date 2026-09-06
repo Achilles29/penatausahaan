@@ -569,7 +569,7 @@ class Master extends MY_Controller {
 			),
 
 			'ref_tpp' => array(
-				'title' => 'TPP Perbup Rembang', 'table' => 'ref_tpp', 'from' => 'ref_tpp m', 'alias' => 'm',
+				'title' => 'TPP Daerah', 'table' => 'ref_tpp', 'from' => 'ref_tpp m', 'alias' => 'm',
 				'select' => 'm.id, rkj.kelas, m.uraian, m.nominal, m.perbup, m.berlaku_mulai, m.is_active',
 				'joins' => array(
 					array('ref_kelas_jabatan rkj', 'rkj.id = m.kelas_jabatan_id', 'left'),
@@ -591,7 +591,7 @@ class Master extends MY_Controller {
 					array('name' => 'kelas_jabatan_id', 'label' => 'Kelas Jabatan', 'type' => 'select', 'source' => 'kelas_jabatan', 'required' => FALSE),
 					array('name' => 'uraian',           'label' => 'Uraian Jabatan (sesuai Perbup)', 'type' => 'text', 'required' => TRUE, 'placeholder' => 'mis. JF Ahli Muda - Dinas/Badan'),
 					array('name' => 'nominal',          'label' => 'Nominal TPP (Rp)', 'type' => 'number', 'min' => 0, 'required' => TRUE),
-					array('name' => 'perbup',           'label' => 'Dasar Hukum (Perbup)', 'type' => 'text', 'placeholder' => 'mis. Perbup Rembang 45/2024'),
+					array('name' => 'perbup',           'label' => 'Dasar Hukum (Perkada)', 'type' => 'text', 'placeholder' => 'mis. Perkada Nomor 45 Tahun 2024'),
 					array('name' => 'berlaku_mulai',    'label' => 'Berlaku Mulai', 'type' => 'date', 'required' => TRUE),
 					array('name' => 'is_active',        'label' => 'Aktif', 'type' => 'checkbox', 'default' => 1),
 				),
@@ -797,6 +797,7 @@ class Master extends MY_Controller {
 	// ================= SIMPAN =================
 	public function save($entity)
 	{
+		$this->require_post();
 		$cfg = $this->registry($entity);
 		$id   = (int) $this->input->post('id');
 		$key  = $this->pkey($entity);
@@ -868,6 +869,7 @@ class Master extends MY_Controller {
 	// ================= HAPUS =================
 	public function delete($entity)
 	{
+		$this->require_post();
 		$cfg = $this->registry($entity);
 		if ( ! can_delete($this->pkey($entity))) show_error('Akses ditolak', 403);
 		$id = (int) $this->input->post('id');

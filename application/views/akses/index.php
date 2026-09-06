@@ -8,7 +8,7 @@ $role_label = array('admin_opd'=>'Admin OPD','user_opd'=>'User OPD');
   <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
     <span><i class="fa-solid fa-shield-halved me-2 text-primary"></i>Hak Akses (Role Matrix) — izin CRUD per menu</span>
     <div class="d-flex gap-2">
-      <?php if ($has_override): ?><a href="<?= site_url('akses/reset') ?>" class="btn btn-sm btn-label-secondary" onclick="return confirm('Kembalikan semua ke default?')"><i class="fa-solid fa-rotate-left me-1"></i>Reset Default</a><?php endif; ?>
+      <?php if ($has_override): ?><button type="submit" formaction="<?= site_url('akses/reset') ?>" formmethod="post" class="btn btn-sm btn-label-secondary" onclick="return confirm('Kembalikan semua ke default?')"><i class="fa-solid fa-rotate-left me-1"></i>Reset Default</button><?php endif; ?>
       <button type="submit" class="btn btn-sm btn-primary"><i class="fa-solid fa-floppy-disk me-1"></i>Simpan</button>
     </div>
   </div>
