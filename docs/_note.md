@@ -282,3 +282,6 @@ dan lainya
 - oke kamu setuju otomatis, berarti di masing masing aplikasi nanti ada definisi tentang modul atau bagaimana konsepnya? jadi agar konsisten untuk masing masing aplikasi. dan control tidak perlu membuat manual fitur fiturnya.
 
 oke kalau sudah oke, eksekusi dan pandu saya untuk memulai dari menambahkan produk
+
+- hapus juga Namua Finance & POS
+- saat saya tambah produk, kenapa otomatis muncul penatausahaan?
