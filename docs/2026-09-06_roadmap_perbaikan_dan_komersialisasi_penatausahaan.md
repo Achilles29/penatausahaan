@@ -2,7 +2,7 @@
 
 **Tanggal audit awal:** 6 September 2026  
 **Aplikasi:** Namua Penatausahaan  
-**Domain produksi:** `https://efin.namuaprojects.com`  
+**Status runtime:** master source; belum ada domain instance demo/produksi terpisah  
 **Batas pekerjaan:** aplikasi `penatausahaan` dan integrasinya dengan Control Center; tidak
 menyentuh kode maupun database Finance.
 
@@ -133,6 +133,8 @@ dan file internal selalu 404, tidak ada akun/credential bawaan, serta restore ba
 - [ ] Tambahkan integrasi pelaporan exception/error ke kanal operasi sebelum pilot data nyata.
 - [ ] Lengkapi test master, DPA, NPD, cetak, dan laporan; smoke auth, CSRF, session revoke, dan scope lintas OPD sudah lulus.
 - [x] Buat `app-manifest.json`, baseline schema, release manifest, dan checksum artifact.
+- [x] Naikkan `app-manifest.json` ke kontrak v2 agar feature, edition, maturity,
+      runtime, dan licensing policy dapat diimpor otomatis oleh Local Source Registry Control.
 
 **Gerbang P1:** clean install dari migration berhasil pada database kosong dan smoke test lulus tanpa
 menggunakan data maupun credential pelanggan.
@@ -187,20 +189,26 @@ angka yang direkonsiliasi.
 
 **Target:** Penatausahaan terdaftar dan terpantau tanpa memberi Control akses ke data transaksi.
 
-- [x] Daftarkan product, edition, feature, customer demo, dan instance Penatausahaan di Control.
-- [x] Provision `instance_id` dan secret HMAC unik untuk setiap instalasi.
-- [x] Implement heartbeat tiap 5 menit dengan timeout offline 15 menit.
+- [x] Daftarkan master source Penatausahaan pada allowlist Local Source Registry Control.
+- [ ] Review dan impor product, edition, feature, serta licensing policy melalui
+      **Produk → Tambah dari source**; tindakan approval ini sengaja dilakukan pengguna.
+- [ ] Buat customer demo dan instance hanya setelah runtime demo terisolasi tersedia.
+- [x] Dukungan provision `instance_id` dan secret HMAC unik tersedia untuk setiap instalasi.
+- [x] Implementasi heartbeat tiap 5 menit dengan timeout offline 15 menit tersedia; sender tidak
+      boleh diaktifkan pada master source.
 - [x] Payload minimum: version, environment, app/db health, migration version, queue/storage status,
       backup freshness, disk usage, dan timestamp; tanpa PII maupun nilai transaksi.
 - [x] Tambahkan endpoint lokal health yang tidak mengungkap detail sensitif.
 - [x] Terapkan signed release manifest Ed25519, checksum artifact, identitas release aktif, serta
-      receipt aktivasi/rollback bertanda HMAC yang tersimpan di Control.
+      receipt aktivasi/rollback bertanda HMAC; registry pilot lama telah dihapus karena menunjuk
+      master source dan harus diuji ulang pada runtime demo terisolasi.
 - [ ] Tambahkan approval dan eksekusi deployment dari Control serta tautkan receipt ke deployment
       yang disetujui; receipt out-of-band saat ini sengaja tidak dianggap sebagai approval.
 - [ ] Tambahkan offline-tolerant entitlement cache dan audit perubahan lisensi.
 
-**Gerbang P5:** heartbeat valid tampil `HEALTHY` di Control, replay/signature salah ditolak, dan tidak ada
-data keuangan atau identitas pegawai pada payload.
+**Gerbang P5:** belum terpenuhi ulang. Heartbeat valid harus berasal dari runtime demo/customer yang
+terisolasi, tampil `HEALTHY` di Control, menolak replay/signature salah, dan tidak memuat data
+keuangan atau identitas pegawai.
 
 ### P6 — Packaging, QA, dan keamanan rilis
 

@@ -265,3 +265,20 @@ saya belum akan menjual, karena memang masih banyak perlu perbaikan proses bisni
 tugasmu memperbaiki bug bug atau hal lain yang perlu ditambahkan (selain modul proses bisnis) agar bisa sinkron dengan control kita, dan bisa digunakan untuk test jual, dan aman secara produk.
 
 jadi sekarang perbaiki sesuai roadmap agar bisa siap test jual
+
+
+jadi semua aplikasi yang ada di server ini, adalah source code master, bukan aplikasi yang dijalankan. jelaskan jadi berikan saya panduan untuk manajemennya di control sampai dengan siap jual.
+kita test dengan penatausahaan. jadi kita hapus dulu, lalu nanti saya akan menambahkan. beri panduan lengkap dan jelas. tuliskan juga halaman panduan di control.
+
+
+- halaman panduannya kurang terstruktur dan membingungkan. baiknya dibuat tab tab agar tidak turun jauh ke bawah
+- coba jelaskan dulu ke saya secara detail. bagaimana polanya? source code produk yang didaftarakan disimpan dimana? di server atau di git? lalu data modul yang ditambahkan ke produk itu manual atau autodetect dari soucecode? menurut saya sih seharusnya auto bukan manual
+lalu pengaturan terkait licensinya bagaimana?
+dan lainya
+
+
+
+- artinya control mengambil data dari server kan? control tidak menyimpan file source code, tapi source code berada di server yang sama dengan control, jadi data langsung mengambil dari server itu, bukan dari git secara langsung.
+- oke kamu setuju otomatis, berarti di masing masing aplikasi nanti ada definisi tentang modul atau bagaimana konsepnya? jadi agar konsisten untuk masing masing aplikasi. dan control tidak perlu membuat manual fitur fiturnya.
+
+oke kalau sudah oke, eksekusi dan pandu saya untuk memulai dari menambahkan produk

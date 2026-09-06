@@ -13,6 +13,14 @@ MANIFEST="$OUTPUT_DIR/${NAME}.release.json"
 
 install -d -m 0750 "$OUTPUT_DIR"
 cd "$ROOT"
+if ! git rev-parse --verify HEAD >/dev/null 2>&1; then
+  echo "Release build requires a Git commit." >&2
+  exit 1
+fi
+if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
+  echo "Release build refused: the source worktree is not clean." >&2
+  exit 1
+fi
 /www/server/php/81/bin/php tools/security_scan.php
 
 tar \
@@ -44,7 +52,6 @@ SHA256=$(sha256sum "$ARCHIVE" | awk '{print $1}')
 SIZE=$(stat -c '%s' "$ARCHIVE")
 COMMIT=$(git rev-parse --verify HEAD 2>/dev/null || printf 'unversioned')
 DIRTY=false
-if [ -n "$(git status --porcelain 2>/dev/null || true)" ]; then DIRTY=true; fi
 
 /www/server/php/81/bin/php -r '
 $applicationManifest=json_decode(file_get_contents($argv[8]."/app-manifest.json"),true,32,JSON_THROW_ON_ERROR);

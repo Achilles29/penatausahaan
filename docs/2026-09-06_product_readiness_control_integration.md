@@ -2,8 +2,22 @@
 
 **Tanggal:** 6 September 2026  
 **Versi:** `0.3.5-test`  
-**Status:** siap untuk **test jual internal** menggunakan data sintetis; belum untuk penjualan atau
-produksi pelanggan.
+**Status:** master source sudah masuk Local Source Registry; **belum siap test jual ulang** sampai
+katalog disetujui pengguna dan runtime demo terisolasi dibuat dari artifact.
+
+> **Koreksi arsitektur 6 September 2026 malam:** direktori ini adalah master
+> source, bukan aplikasi staging/produksi. Registry pilot, customer internal,
+> instance `namua-penatausahaan-efin-staging`, heartbeat, receipt, dan artifact
+> aktif telah dihapus dari Control. Cron heartbeat master dinonaktifkan. Hasil
+> test source/build di bawah tetap menjadi bukti teknis, tetapi status health
+> lama tidak boleh dianggap sebagai bukti instance runtime.
+
+> **Integrasi baru:** `app-manifest.json` versi 2 kini mendeklarasikan identitas
+> produk, 14 feature beserta maturity, edition `INTERNAL_TEST`, runtime contract,
+> dan licensing policy. Scanner root Control membacanya dari master source lokal
+> tanpa mengeksekusi source, lalu menerbitkan snapshot privat untuk preview.
+> Produk sengaja belum diimpor agar proses approval dapat dicoba manual dari
+> menu **Produk → Tambah dari source**.
 
 ## Ruang lingkup yang selesai
 
@@ -54,12 +68,12 @@ produksi pelanggan.
 | Restore disposable | 43 tabel aktual dan seluruh row count sama; database test dihapus |
 | Signature negatif | Manifest yang diubah dalam memori ditolak oleh verifikasi Ed25519 |
 | Kontrak receipt Control | Duplikat idempotent `200`; replay `409`; signature salah `401` |
-| Control security/static scan | 52/52 lulus |
+| Control security/static scan | 57/57 lulus |
 | Control HTTP smoke | Lulus termasuk endpoint receipt yang menolak method tidak sah |
 | Nginx config | `nginx -t` lulus |
 | Control heartbeat | HTTP 202, overall `OK`, seluruh enam komponen `OK` |
 
-## Registrasi Control
+## Registrasi Control historis (sudah dihapus)
 
 - Product: `NAMUA_PENATAUSAHAAN`
 - Customer internal: `NAMUA_PRODUCT_LAB`
@@ -79,7 +93,11 @@ produksi pelanggan.
 - Validasi staging tersimpan pada audit log Control sebagai `release.staging_validation_passed`;
   release sengaja tetap `DRAFT/ALPHA` dan tidak diberi status deployment/approval palsu.
 
-Control hanya menerima metadata operasional dan tidak memperoleh akses ke isi database Penatausahaan.
+Seluruh record pada daftar di atas sudah tidak aktif di Control. Backup database
+dan archive private disimpan untuk pemulihan administratif; audit log tetap
+append-only. Pendaftaran katalog berikutnya wajib melalui preview manifest pada
+halaman `/products/import` di Control. Instance hanya dibuat setelah runtime
+terpisah tersedia.
 
 ## Batas dan pekerjaan lanjutan
 

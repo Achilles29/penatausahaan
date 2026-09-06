@@ -1,7 +1,8 @@
 {
-  "manifest_version": 1,
+  "manifest_version": 2,
   "product_code": "NAMUA_PENATAUSAHAAN",
   "name": "Namua Penatausahaan",
+  "description": "Aplikasi penatausahaan keuangan daerah dari penganggaran sampai pertanggungjawaban.",
   "version": "0.3.5-test",
   "schema_version": "20260906170000",
   "baseline_schema_version": "legacy-41-20260906",
@@ -11,5 +12,153 @@
     "database": "MySQL/MariaDB"
   },
   "health_path": "/health",
-  "heartbeat_interval_seconds": 300
+  "heartbeat_interval_seconds": 300,
+  "features": [
+    {
+      "code": "BUDGET_DPA",
+      "name": "DPA",
+      "category": "Anggaran",
+      "description": "Pengelolaan DPA dan rincian pagu.",
+      "value_type": "BOOLEAN",
+      "default_value": "0",
+      "maturity": "ALPHA"
+    },
+    {
+      "code": "CASH_PLAN",
+      "name": "Anggaran Kas",
+      "category": "Anggaran",
+      "description": "Rencana arus kas periodik.",
+      "value_type": "BOOLEAN",
+      "default_value": "0",
+      "maturity": "ALPHA"
+    },
+    {
+      "code": "NPD_CORE",
+      "name": "NPD Inti",
+      "category": "Penatausahaan",
+      "description": "Pembuatan NPD dan daftar penerima.",
+      "value_type": "BOOLEAN",
+      "default_value": "0",
+      "maturity": "ALPHA"
+    },
+    {
+      "code": "NPD_APPROVAL",
+      "name": "Approval NPD",
+      "category": "Penatausahaan",
+      "description": "Workflow maker, checker, dan approver.",
+      "value_type": "BOOLEAN",
+      "default_value": "0",
+      "maturity": "PLANNED"
+    },
+    {
+      "code": "TRANSFER_BOOK",
+      "name": "Pindah Buku",
+      "category": "Penatausahaan",
+      "description": "Pindah buku persisted dan terlacak.",
+      "value_type": "BOOLEAN",
+      "default_value": "0",
+      "maturity": "PLANNED"
+    },
+    {
+      "code": "TAX_ENGINE",
+      "name": "Engine Pajak",
+      "category": "Penatausahaan",
+      "description": "Perhitungan dan rule pack pajak versioned.",
+      "value_type": "BOOLEAN",
+      "default_value": "0",
+      "maturity": "PLANNED"
+    },
+    {
+      "code": "SPJ_DOCUMENTS",
+      "name": "Dokumen SPJ",
+      "category": "Pertanggungjawaban",
+      "description": "Checklist dan penyimpanan dokumen SPJ.",
+      "value_type": "BOOLEAN",
+      "default_value": "0",
+      "maturity": "PLANNED"
+    },
+    {
+      "code": "BKU_REGISTER",
+      "name": "BKU dan Register",
+      "category": "Pertanggungjawaban",
+      "description": "BKU dan register penatausahaan.",
+      "value_type": "BOOLEAN",
+      "default_value": "0",
+      "maturity": "PLANNED"
+    },
+    {
+      "code": "LRA_REPORT",
+      "name": "Laporan Realisasi",
+      "category": "Pelaporan",
+      "description": "Pagu, realisasi, dan sisa anggaran.",
+      "value_type": "BOOLEAN",
+      "default_value": "0",
+      "maturity": "ALPHA"
+    },
+    {
+      "code": "PAYROLL_ASN",
+      "name": "Payroll ASN",
+      "category": "Add-on",
+      "description": "Simulasi dan rekap penggajian ASN.",
+      "value_type": "BOOLEAN",
+      "default_value": "0",
+      "maturity": "ALPHA"
+    },
+    {
+      "code": "SSO",
+      "name": "Single Sign-On",
+      "category": "Integrasi",
+      "description": "Integrasi identitas customer.",
+      "value_type": "BOOLEAN",
+      "default_value": "0",
+      "maturity": "PLANNED"
+    },
+    {
+      "code": "AUDIT_EXPORT",
+      "name": "Audit Export",
+      "category": "Keamanan",
+      "description": "Ekspor audit terstruktur.",
+      "value_type": "BOOLEAN",
+      "default_value": "0",
+      "maturity": "PLANNED"
+    },
+    {
+      "code": "MANAGED_BACKUP",
+      "name": "Managed Backup",
+      "category": "Operasional",
+      "description": "Monitoring backup terenkripsi dan uji restore.",
+      "value_type": "BOOLEAN",
+      "default_value": "0",
+      "maturity": "ALPHA"
+    },
+    {
+      "code": "API_INTEGRATION",
+      "name": "API Integration",
+      "category": "Integrasi",
+      "description": "Integrasi API eksternal.",
+      "value_type": "BOOLEAN",
+      "default_value": "0",
+      "maturity": "PLANNED"
+    }
+  ],
+  "editions": [
+    {
+      "code": "INTERNAL_TEST",
+      "name": "Internal Test",
+      "description": "Edition khusus pengujian internal; bukan paket komersial.",
+      "sort_order": 5,
+      "features": {
+        "BUDGET_DPA": "1",
+        "CASH_PLAN": "1",
+        "NPD_CORE": "1",
+        "LRA_REPORT": "1"
+      }
+    }
+  ],
+  "licensing": {
+    "mode": "SIGNED_OFFLINE_CAPABLE",
+    "lease_days": 30,
+    "grace_days": 30,
+    "expired_behavior": "READ_ONLY_EXPORT"
+  }
 }
